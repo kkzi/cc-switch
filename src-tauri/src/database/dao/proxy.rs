@@ -27,6 +27,7 @@ impl Database {
 
     fn normalize_model_failover_mode(mode: &str) -> &'static str {
         match mode {
+            "round_robin" => "round_robin",
             "random" => "random",
             _ => "random",
         }

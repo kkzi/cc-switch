@@ -44,6 +44,14 @@ fn test_parse_deeplink_with_notes() {
 }
 
 #[test]
+fn test_parse_provider_deeplink_supports_opencode() {
+    let url =
+        "ccswitch://v1/import?resource=provider&app=opencode&name=OpenCode&endpoint=https%3A%2F%2Fapi.example.com&apiKey=key123";
+    let request = parse_deeplink_url(url).unwrap();
+    assert_eq!(request.app, Some("opencode".to_string()));
+}
+
+#[test]
 fn test_parse_invalid_scheme() {
     let url = "https://v1/import?resource=provider&app=claude&name=Test";
 
@@ -392,6 +400,20 @@ fn test_parse_mcp_deeplink() {
     assert_eq!(request.apps.unwrap(), "claude,codex");
     assert_eq!(request.config.unwrap(), config_b64);
     assert!(request.enabled.unwrap());
+}
+
+#[test]
+fn test_parse_mcp_deeplink_supports_opencode_openclaw_apps() {
+    let config = r#"{"mcpServers":{"test":{"command":"echo"}}}"#;
+    let config_b64 = BASE64_STANDARD.encode(config);
+    let url = format!(
+        "ccswitch://v1/import?resource=mcp&apps=claude,opencode,openclaw&config={}&enabled=true",
+        config_b64
+    );
+
+    let request = parse_deeplink_url(&url).unwrap();
+    assert_eq!(request.resource, "mcp");
+    assert_eq!(request.apps.unwrap(), "claude,opencode,openclaw");
 }
 
 #[test]

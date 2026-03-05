@@ -1232,14 +1232,30 @@ impl Database {
                 AppError::Database(format!("删除旧表 fork_provider_failover_queue 失败: {e}"))
             })?;
 
-        let deleted = conn
-            .execute(
+        let settings_table_exists = conn
+            .query_row(
+                "SELECT EXISTS(
+                    SELECT 1
+                    FROM forkdb.sqlite_master
+                    WHERE type = 'table' AND name = 'settings'
+                )",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .map(|v| v != 0)
+            .map_err(|e| AppError::Database(format!("检查 forkdb.settings 是否存在失败: {e}")))?;
+
+        let deleted = if settings_table_exists {
+            conn.execute(
                 "DELETE FROM forkdb.settings WHERE key LIKE 'fork_provider_failover_enabled_%'",
                 [],
             )
             .map_err(|e| {
                 AppError::Database(format!("清理旧设置 fork_provider_failover_enabled_* 失败: {e}"))
-            })?;
+            })?
+        } else {
+            0
+        };
 
         log::info!("已完成旧独立全局故障转移残留清理，删除 settings 键 {deleted} 条");
         Ok(())

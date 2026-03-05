@@ -666,8 +666,12 @@ mod tests {
             .unwrap();
 
         assert_eq!(providers.len(), 2);
-        assert_eq!(providers[0].id, "b");
-        assert_eq!(providers[1].id, "c");
+        let mut ids = providers
+            .iter()
+            .map(|provider| provider.id.as_str())
+            .collect::<Vec<_>>();
+        ids.sort_unstable();
+        assert_eq!(ids, vec!["b", "c"]);
     }
 
     #[tokio::test]
@@ -1038,4 +1042,3 @@ mod tests {
         assert_eq!(providers[0].id, "a");
     }
 }
-
