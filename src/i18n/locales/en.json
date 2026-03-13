@@ -146,7 +146,11 @@
         "oauthHint": "Google official uses OAuth personal authentication, no need to fill in API Key. The browser will automatically open for login on first use.",
         "apiKeyPlaceholder": "Enter Gemini API Key"
       }
-    }
+    },
+    "quickMoveAlreadyBottom": "Already at bottom",
+    "quickMoveAlreadyTop": "Already at top",
+    "quickMoveBottom": "Moved to bottom",
+    "quickMoveTop": "Moved to top"
   },
   "notifications": {
     "providerAdded": "Provider added",
@@ -307,6 +311,10 @@
           "debug": "Detailed info including SSE stream and request/response",
           "trace": "All logs, most verbose"
         }
+      },
+      "forkFailover": {
+        "description": "Configure hybrid failover chain combining providers and route modes",
+        "title": "Hybrid Failover Chain"
       }
     },
     "language": "Language",
@@ -759,7 +767,12 @@
     "categoryOfficial": "Official",
     "categoryCnOfficial": "Opensource Official",
     "categoryAggregation": "Aggregation",
-    "categoryThirdParty": "Third Party"
+    "categoryThirdParty": "Third Party",
+    "autoFetchModels": "Auto-fetch models",
+    "fetchModelsFailedHint": "Failed to fetch models, please check the endpoint and API Key",
+    "fetchedModelCount": "{{count}} models fetched",
+    "modelConfig": "Model Config",
+    "modelsFetched": "Models fetched successfully"
   },
   "endpointTest": {
     "title": "API Endpoint Management",
@@ -785,7 +798,9 @@
     "testUnavailable": "Speed test unavailable",
     "noResult": "No result returned",
     "testFailed": "Speed test failed: {{error}}",
-    "empty": "No endpoints"
+    "empty": "No endpoints",
+    "notTested": "Not tested",
+    "status": "Status"
   },
   "providerAdvanced": {
     "testConfig": "Model Test Config",
@@ -883,7 +898,10 @@
     "noExtraOptions": "No extra options configured",
     "noModelOptions": "Model options, click + to add",
     "modelOptionKeyPlaceholder": "provider",
-    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}"
+    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}",
+    "importFetchedModels": "Import fetched models",
+    "importFetchedModelsResult": "Imported {{count}} models",
+    "noFetchedModels": "No fetched models to import"
   },
   "providerPreset": {
     "label": "Provider Preset",
@@ -1385,7 +1403,13 @@
       "addDeny": "Add Deny",
       "saveSuccess": "Tool permissions saved",
       "saveFailed": "Failed to save tool permissions",
-      "loadFailed": "Failed to load tool permissions"
+      "loadFailed": "Failed to load tool permissions",
+      "profiles": {
+        "custom": "Custom",
+        "default": "Default",
+        "permissive": "Permissive",
+        "strict": "Strict"
+      }
     },
     "agents": {
       "title": "Agents Config",
@@ -1808,7 +1832,8 @@
         "active": "{{appLabel}} is intercepting - {{address}}:{{port}}\nSwitch provider for hot switching",
         "broken": "{{appLabel}} is intercepting, but proxy service is not running",
         "inactive": "Intercept {{appLabel}}'s live config to route requests through local proxy"
-      }
+      },
+      "requiredForClaudeRouting": "Claude model routing requires proxy takeover to be enabled"
     },
     "failover": {
       "proxyRequired": "Proxy service must be started to configure failover",
@@ -1831,7 +1856,8 @@
       "removeFailed": "Failed to remove",
       "reorderSuccess": "Queue order updated",
       "reorderFailed": "Failed to update order",
-      "toggleFailed": "Failed to update status"
+      "toggleFailed": "Failed to update status",
+      "modelInfo": "Model: {{model}}"
     },
     "autoFailover": {
       "info": "When the failover queue has multiple providers, the system will try them in priority order when requests fail. When a provider reaches the consecutive failure threshold, the circuit breaker will open and skip it temporarily.",
@@ -1879,7 +1905,55 @@
       "startFailed": "Failed to start proxy service: {{detail}}"
     },
     "stoppedWithRestore": "Proxy service stopped, all takeover configs restored",
-    "stopWithRestoreFailed": "Stop failed: {{detail}}"
+    "stopWithRestoreFailed": "Stop failed: {{detail}}",
+    "claudeModelRouting": {
+      "defaultProvider": "Default Provider",
+      "description": "Route different Claude model families (Opus/Sonnet/Haiku) to different providers",
+      "failoverMode": "Failover Mode",
+      "failoverModeRandom": "Random",
+      "failoverModeRoundRobin": "Round Robin",
+      "modelColumn": "Model",
+      "modelQueueDescription": "Configure independent failover queue for this model family",
+      "modelQueueTitle": "Model Failover Queue",
+      "none": "None",
+      "providerNotFound": "Provider not found",
+      "queueDisabledHint": "Enable model-family failover in settings first",
+      "rowRouteActive": "Route active",
+      "rowRouteInactive": "Route inactive",
+      "searchProvider": "Search provider",
+      "statusColumn": "Status",
+      "step2": "Step 2: Assign providers to each model family",
+      "step3": "Step 3: Configure model-family failover queues (optional)",
+      "title": "Claude Model Routing"
+    },
+    "mode": {
+      "bannerTitle": "Routing Mode",
+      "collapseModelRoutes": "Collapse model routes",
+      "editForkFailover": "Edit hybrid failover chain",
+      "expandModelRoutes": "Expand model routes",
+      "global": "Global",
+      "globalFallback": "Global Fallback",
+      "modelBackupEditHint": "Edit model-family failover from the routing panel",
+      "modelFailover": "Model Failover",
+      "modelNameForProvider": "Model: {{model}}",
+      "modelRouting": "Model Routing",
+      "modelRoutingAndFailover": "Model Routing + Failover",
+      "recentSwitch": "Recent switch: {{provider}} ({{source}})",
+      "recentSwitchEmpty": "No recent switches",
+      "retryCount": "Retry: {{count}}",
+      "routeModeAlreadyEnabled": "Route mode is already enabled",
+      "routeToggle": "Route Toggle",
+      "tagDefault": "Default",
+      "tagFailover": "Failover",
+      "virtualActionUnsupported": "This action is not supported for virtual providers",
+      "virtualNotInFailoverQueue": "Virtual provider is not in the failover queue",
+      "virtualProvider": "Virtual Provider"
+    },
+    "switchSource": {
+      "failover": "Failover",
+      "failoverEnabled": "Failover Enabled",
+      "manual": "Manual"
+    }
   },
   "streamCheck": {
     "configSaved": "Health check config saved",
@@ -1896,7 +1970,9 @@
     "operational": "{{providerName}} is operational ({{responseTimeMs}}ms)",
     "degraded": "{{providerName}} is slow ({{responseTimeMs}}ms)",
     "failed": "{{providerName}} check failed: {{message}}",
-    "error": "{{providerName}} check error: {{error}}"
+    "error": "{{providerName}} check error: {{error}}",
+    "failedHint": "Check failed. This does not necessarily mean the provider is unusable.",
+    "testPromptHint": "Custom test prompt for health check requests"
   },
   "proxyConfig": {
     "proxyEnabled": "Proxy Enabled",

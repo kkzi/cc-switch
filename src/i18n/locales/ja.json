@@ -146,7 +146,11 @@
         "oauthHint": "Google 公式は OAuth 個人認証を使用するため API Key は不要です。初回利用時にブラウザが開きます。",
         "apiKeyPlaceholder": "Gemini API Key を入力"
       }
-    }
+    },
+    "quickMoveAlreadyBottom": "すでに最下位です",
+    "quickMoveAlreadyTop": "すでに最上位です",
+    "quickMoveBottom": "最下位に移動しました",
+    "quickMoveTop": "最上位に移動しました"
   },
   "notifications": {
     "providerAdded": "プロバイダーを追加しました",
@@ -307,6 +311,10 @@
           "debug": "SSE ストリームとリクエスト/レスポンスを含む詳細情報",
           "trace": "すべてのログ、最も詳細"
         }
+      },
+      "forkFailover": {
+        "description": "プロバイダーとルートモードを組み合わせたハイブリッドフェイルオーバーチェーンを設定",
+        "title": "ハイブリッドフェイルオーバーチェーン"
       }
     },
     "language": "言語",
@@ -759,7 +767,12 @@
     "categoryOfficial": "公式",
     "categoryCnOfficial": "オープンソース公式",
     "categoryAggregation": "アグリゲーター",
-    "categoryThirdParty": "サードパーティ"
+    "categoryThirdParty": "サードパーティ",
+    "autoFetchModels": "モデルを自動取得",
+    "fetchModelsFailedHint": "モデルの取得に失敗しました。エンドポイントと API Key を確認してください",
+    "fetchedModelCount": "{{count}} 件のモデルを取得",
+    "modelConfig": "モデル設定",
+    "modelsFetched": "モデルの取得に成功しました"
   },
   "endpointTest": {
     "title": "API エンドポイント管理",
@@ -785,7 +798,9 @@
     "testUnavailable": "速度テストを実行できません",
     "noResult": "結果がありません",
     "testFailed": "速度テストに失敗しました: {{error}}",
-    "empty": "エンドポイントがありません"
+    "empty": "エンドポイントがありません",
+    "notTested": "未テスト",
+    "status": "ステータス"
   },
   "providerAdvanced": {
     "testConfig": "モデルテスト設定",
@@ -883,7 +898,10 @@
     "noExtraOptions": "追加オプションはありません",
     "noModelOptions": "モデルオプション、+ をクリックして追加",
     "modelOptionKeyPlaceholder": "provider",
-    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}"
+    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}",
+    "importFetchedModels": "取得したモデルをインポート",
+    "importFetchedModelsResult": "{{count}} 件のモデルをインポートしました",
+    "noFetchedModels": "インポートできるモデルがありません"
   },
   "providerPreset": {
     "label": "プロバイダータイプ",
@@ -1385,7 +1403,13 @@
       "addDeny": "拒否を追加",
       "saveSuccess": "ツール権限を保存しました",
       "saveFailed": "ツール権限の保存に失敗しました",
-      "loadFailed": "ツール権限の読み込みに失敗しました"
+      "loadFailed": "ツール権限の読み込みに失敗しました",
+      "profiles": {
+        "custom": "カスタム",
+        "default": "デフォルト",
+        "permissive": "許容",
+        "strict": "厳格"
+      }
     },
     "agents": {
       "title": "Agents 設定",
@@ -1808,7 +1832,8 @@
         "active": "{{appLabel}} がインターセプト中 - {{address}}:{{port}}\nホットスイッチングのためプロバイダを切り替え",
         "broken": "{{appLabel}} がインターセプト中ですが、プロキシサービスが実行されていません",
         "inactive": "{{appLabel}} のライブ設定をインターセプトしてリクエストをローカルプロキシ経由でルーティング"
-      }
+      },
+      "requiredForClaudeRouting": "Claudeモデルルーティングにはプロキシテイクオーバーの有効化が必要です"
     },
     "failover": {
       "proxyRequired": "フェイルオーバーを設定するには、プロキシサービスを先に起動する必要があります",
@@ -1831,7 +1856,8 @@
       "removeFailed": "削除に失敗しました",
       "reorderSuccess": "キュー順序を更新しました",
       "reorderFailed": "順序の更新に失敗しました",
-      "toggleFailed": "状態の更新に失敗しました"
+      "toggleFailed": "状態の更新に失敗しました",
+      "modelInfo": "モデル: {{model}}"
     },
     "autoFailover": {
       "info": "フェイルオーバーキューに複数のプロバイダーが設定されている場合、リクエストが失敗すると優先度順に試行します。プロバイダーが連続失敗のしきい値に達すると、サーキットブレーカーが開き、一時的にスキップされます。",
@@ -1879,7 +1905,55 @@
       "startFailed": "プロキシサービスの開始に失敗しました: {{detail}}"
     },
     "stoppedWithRestore": "プロキシサービスが停止し、すべてのテイクオーバー設定が復元されました",
-    "stopWithRestoreFailed": "停止に失敗しました: {{detail}}"
+    "stopWithRestoreFailed": "停止に失敗しました: {{detail}}",
+    "claudeModelRouting": {
+      "defaultProvider": "デフォルトプロバイダー",
+      "description": "Claudeの異なるモデルファミリー（Opus/Sonnet/Haiku）を異なるプロバイダーにルーティング",
+      "failoverMode": "フェイルオーバーモード",
+      "failoverModeRandom": "ランダム",
+      "failoverModeRoundRobin": "ラウンドロビン",
+      "modelColumn": "モデル",
+      "modelQueueDescription": "このモデルファミリー用の独立フェイルオーバーキューを設定",
+      "modelQueueTitle": "モデルフェイルオーバーキュー",
+      "none": "なし",
+      "providerNotFound": "プロバイダーが見つかりません",
+      "queueDisabledHint": "先に設定でモデルファミリーフェイルオーバーを有効にしてください",
+      "rowRouteActive": "ルート有効",
+      "rowRouteInactive": "ルート無効",
+      "searchProvider": "プロバイダーを検索",
+      "statusColumn": "ステータス",
+      "step2": "ステップ 2: 各モデルファミリーにプロバイダーを割り当て",
+      "step3": "ステップ 3: モデルファミリーのフェイルオーバーキューを設定（任意）",
+      "title": "Claude モデルルーティング"
+    },
+    "mode": {
+      "bannerTitle": "ルーティングモード",
+      "collapseModelRoutes": "モデルルートを折りたたむ",
+      "editForkFailover": "ハイブリッドフェイルオーバーチェーンを編集",
+      "expandModelRoutes": "モデルルートを展開",
+      "global": "グローバル",
+      "globalFallback": "グローバルフォールバック",
+      "modelBackupEditHint": "ルーティングパネルからモデルファミリーフェイルオーバーを編集",
+      "modelFailover": "モデルフェイルオーバー",
+      "modelNameForProvider": "モデル: {{model}}",
+      "modelRouting": "モデルルーティング",
+      "modelRoutingAndFailover": "モデルルーティング + フェイルオーバー",
+      "recentSwitch": "最近の切替: {{provider}}（{{source}}）",
+      "recentSwitchEmpty": "最近の切替なし",
+      "retryCount": "リトライ: {{count}}",
+      "routeModeAlreadyEnabled": "ルートモードはすでに有効です",
+      "routeToggle": "ルート切替",
+      "tagDefault": "デフォルト",
+      "tagFailover": "フェイルオーバー",
+      "virtualActionUnsupported": "仮想プロバイダーではこの操作はサポートされていません",
+      "virtualNotInFailoverQueue": "仮想プロバイダーはフェイルオーバーキューに含まれていません",
+      "virtualProvider": "仮想プロバイダー"
+    },
+    "switchSource": {
+      "failover": "フェイルオーバー",
+      "failoverEnabled": "フェイルオーバー有効",
+      "manual": "手動"
+    }
   },
   "streamCheck": {
     "configSaved": "ヘルスチェック設定を保存しました",
@@ -1896,7 +1970,9 @@
     "operational": "{{providerName}} は正常に動作しています ({{responseTimeMs}}ms)",
     "degraded": "{{providerName}} の応答が遅いです ({{responseTimeMs}}ms)",
     "failed": "{{providerName}} のチェックに失敗しました: {{message}}",
-    "error": "{{providerName}} のチェックでエラーが発生しました: {{error}}"
+    "error": "{{providerName}} のチェックでエラーが発生しました: {{error}}",
+    "failedHint": "チェックに失敗しました。プロバイダーが使用不可とは限りません。",
+    "testPromptHint": "ヘルスチェックリクエスト用のカスタムテストプロンプト"
   },
   "proxyConfig": {
     "proxyEnabled": "プロキシ有効",

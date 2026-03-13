@@ -149,7 +149,8 @@
     "quickMoveAlreadyBottom": "该供应商已在末尾",
     "quickMoveAlreadyTop": "该供应商已在目标位置",
     "quickMoveBottom": "一键置底",
-    "quickMoveTop": "一键置顶"
+    "quickMoveTop": "一键置顶",
+    "noProvidersDescriptionSnippet": "API Key 和端点以外的设置（如插件配置）将保存到公共配置片段中，供多个供应商共享"
   },
   "notifications": {
     "providerAdded": "供应商已添加",
@@ -181,7 +182,8 @@
     "openclawDefaultModelSet": "已设为默认模型",
     "openclawDefaultModelSetFailed": "设置默认模型失败",
     "openclawNoModels": "该供应商没有配置模型",
-    "backfillWarning": "切换成功，但旧供应商配置回填失败，您手动修改的配置可能未保存"
+    "backfillWarning": "切换成功，但旧供应商配置回填失败，您手动修改的配置可能未保存",
+    "openAIFormatHint": "此供应商使用 OpenAI 兼容格式，需要开启代理服务才能正常使用"
   },
   "confirm": {
     "deleteProvider": "删除供应商",
@@ -197,6 +199,21 @@
       "title": "配置用量查询",
       "message": "用量查询需要配置专用的查询脚本或 API 参数，请确保您已从供应商处获取相关信息。\n\n如不确定如何配置，请先查阅供应商文档。",
       "confirm": "我已了解，继续配置"
+    },
+    "failover": {
+      "title": "启用故障转移",
+      "message": "故障转移是一项高级功能，启用前请确保您已了解其工作原理。\n\n建议先在故障转移队列中配置好供应商优先级。",
+      "confirm": "我已了解，继续启用"
+    },
+    "streamCheck": {
+      "title": "模型健康检查",
+      "message": "健康检查会向供应商发送一次直接 API 请求来测试连通性。以下情况可能导致检查失败：\n\n• 官方供应商（使用 OAuth 登录，无独立 API Key）\n• 部分中转服务（会校验请求来源是否为 Claude Code CLI）\n• AWS Bedrock（使用 IAM 签名认证）\n\n检查失败并不意味着供应商不可用——仅表示无法通过独立请求验证。请以应用内的实际表现为准。",
+      "confirm": "我已了解，继续检查"
+    },
+    "autoSync": {
+      "title": "启用自动同步",
+      "message": "开启自动同步后，每次数据库变更都会自动上传到 WebDAV 服务器。\n\n这可能会产生较多网络流量，请确保您的网络和 WebDAV 服务能够承受频繁的数据传输。",
+      "confirm": "我已了解，继续启用"
     }
   },
   "settings": {
@@ -216,7 +233,9 @@
         "enableFeature": "在主页面显示本地代理开关",
         "enableFeatureDescription": "开启后，主页面顶部将显示代理和故障转移开关",
         "running": "运行中",
-        "stopped": "已停止"
+        "stopped": "已停止",
+        "enableFailoverToggle": "在主页显示故障转移开关",
+        "enableFailoverToggleDescription": "启用后，故障转移开关将独立显示在主页顶部"
       },
       "modelTest": {
         "title": "模型测试配置",
@@ -285,8 +304,17 @@
         "description": "用于配置 Claude 模型路由（模型->供应商）的模型首选与备用顺序；在供应商列表启用后生效。",
         "title": "Claude 模型路由（模型->供应商）配置"
       },
-      "modelTestConfig": {
-        "title": "模型测试配置"
+      "optimizer": {
+        "title": "Bedrock 请求优化器",
+        "description": "在发送请求前自动优化 Thinking 和 Cache 配置（仅适用于 Bedrock 供应商）",
+        "enabled": "启用优化器",
+        "thinkingOptimizer": "Thinking 优化",
+        "thinkingOptimizerDescription": "自动为 Opus/Sonnet 启用 Adaptive Thinking，为旧模型注入 Extended Thinking",
+        "cacheInjection": "缓存注入",
+        "cacheInjectionDescription": "在请求关键位置自动注入缓存断点，减少重复 token 计费",
+        "cacheTtl": "缓存 TTL",
+        "cacheTtl5m": "5 分钟",
+        "cacheTtl1h": "1 小时"
       }
     },
     "language": "界面语言",
@@ -405,7 +433,10 @@
         "createdAt": "上传时间",
         "artifacts": "包含内容",
         "warning": "恢复将覆盖本地所有数据和技能配置",
-        "confirm": "确认恢复"
+        "confirm": "确认恢复",
+        "path": "远程路径",
+        "dbCompat": "数据库兼容性",
+        "legacyNotice": "检测到旧版远程路径，恢复后下次上传将写入新的 v2/db-v6 路径。"
       },
       "confirmUpload": {
         "title": "上传到云端",
@@ -417,7 +448,10 @@
         "deviceName": "上传设备",
         "createdAt": "上传时间",
         "warning": "将覆盖云端已有的同步数据",
-        "confirm": "确认上传"
+        "confirm": "确认上传",
+        "path": "远程路径",
+        "dbCompat": "数据库兼容性",
+        "legacyNotice": "检测到旧版远程数据，此次上传将写入新的 v2/db-v6 路径，不会覆盖旧路径。"
       }
     },
     "autoReload": "数据已刷新",
@@ -617,7 +651,15 @@
     "messageCopied": "已复制消息内容",
     "noResumeCommand": "此会话无法恢复",
     "resume": "恢复会话",
-    "resumeTooltip": "在终端中恢复此会话"
+    "resumeTooltip": "在终端中恢复此会话",
+    "delete": "删除会话",
+    "deleting": "删除中...",
+    "deleteTooltip": "永久删除此本地会话记录",
+    "deleteConfirmTitle": "删除会话",
+    "deleteConfirmMessage": "此操作将永久删除本地会话 \"{{title}}\"\n会话 ID：{{sessionId}}\n\n此操作无法撤销。",
+    "deleteConfirmAction": "删除会话",
+    "sessionDeleted": "会话已删除",
+    "deleteFailed": "删除会话失败：{{error}}"
   },
   "console": {
     "providerSwitchReceived": "收到供应商切换事件:",
@@ -671,7 +713,12 @@
       "aicodemirror": "AICodeMirror 是 CC Switch 的官方合作伙伴，使用此链接注册可享受8折优惠！",
       "aicoding": "AI Coding 为 CC Switch 的用户提供了特殊优惠，首次充值可以享受 9 折优惠！",
       "crazyrouter": "CrazyRouter 为 CC Switch 的用户提供了特殊优惠，首次充值赠予 30% 额外额度！",
-      "sssaicode": "SSAI Code 为 CC Switch 的用户提供了特殊优惠，每次充值赠予额外 $10 额度！"
+      "sssaicode": "SSAI Code 为 CC Switch 的用户提供了特殊优惠，每次充值赠予额外 $10 额度！",
+      "ctok": "访问官网加入 CTok 社区并订阅计划。",
+      "micu": "Micu 是 CC Switch 的官方合作伙伴",
+      "siliconflow": "SiliconFlow 是 CC Switch 的官方合作伙伴",
+      "ucloud": "Compshare 为 CC Switch 的用户提供了专属福利，通过此链接注册即可获得 ¥5 平台试用额度！",
+      "x-code": "XCodeAPI 为 CC Switch 的用户提供了特殊优惠，通过此链接注册首单可获得 10% 额外额度（联系客服领取）"
     },
     "parameterConfig": "参数配置 - {{name}} *",
     "mainModel": "主模型 (可选)",
@@ -716,7 +763,16 @@
     "autoFetchModels": "自动获取模型",
     "fetchedModelCount": "已获取 {{count}} 个模型，可一键导入。",
     "modelConfig": "模型配置",
-    "modelsFetched": "已获取 {{count}} 个模型"
+    "modelsFetched": "已获取 {{count}} 个模型",
+    "apiFormatOpenAIResponses": "OpenAI Responses API（需要代理）",
+    "apiHintResponses": "💡 填写兼容 OpenAI Responses API 的服务端点地址，不要以斜杠结尾",
+    "authField": "认证字段",
+    "authFieldApiKey": "ANTHROPIC_API_KEY",
+    "authFieldAuthToken": "ANTHROPIC_AUTH_TOKEN（默认）",
+    "authFieldHint": "选择配置使用的认证环境变量名",
+    "presets": {
+      "ucloud": "Compshare"
+    }
   },
   "endpointTest": {
     "title": "请求地址管理",
@@ -1318,7 +1374,11 @@
       "saveSuccess": "环境变量已保存",
       "saveFailed": "保存环境变量失败",
       "loadFailed": "读取环境变量失败",
-      "duplicateKey": "检测到重复的变量名: {{key}}"
+      "duplicateKey": "检测到重复的变量名: {{key}}",
+      "editorHint": "以 JSON 格式编辑完整 env 配置，支持嵌套对象如 env.vars 和 env.shellEnv。",
+      "empty": "OpenClaw env 不能为空，请使用 {} 表示空对象。",
+      "invalidJson": "OpenClaw env 必须是有效的 JSON。",
+      "objectRequired": "OpenClaw env 必须是 JSON 对象。"
     },
     "tools": {
       "title": "工具权限",
@@ -1337,7 +1397,15 @@
       "addDeny": "添加拒绝",
       "saveSuccess": "工具权限已保存",
       "saveFailed": "保存工具权限失败",
-      "loadFailed": "读取工具权限失败"
+      "loadFailed": "读取工具权限失败",
+      "profileCoding": "编程",
+      "profileFull": "完整",
+      "profileMessaging": "对话",
+      "profileMinimal": "最小",
+      "profileUnset": "未设置",
+      "unsupportedProfileDescription": "当前 tools.profile 值 '{{value}}' 不在 OpenClaw 支持列表中。在您选择新值之前，当前值将被保留。",
+      "unsupportedProfileLabel": "不支持",
+      "unsupportedProfileTitle": "检测到不支持的工具配置"
     },
     "agents": {
       "title": "Agents 配置",
@@ -1355,8 +1423,27 @@
       "maxConcurrent": "最大并发数",
       "saveSuccess": "Agents 配置已保存",
       "saveFailed": "保存 Agents 配置失败",
-      "loadFailed": "读取 Agents 配置失败"
-    }
+      "loadFailed": "读取 Agents 配置失败",
+      "addFallback": "添加备用模型",
+      "legacyTimeoutTitle": "检测到旧版超时配置",
+      "legacyTimeoutDescription": "此配置仍使用 agents.defaults.timeout，保存后将自动迁移为 timeoutSeconds。",
+      "noModels": "没有已配置的供应商模型，请先添加一个 OpenClaw 供应商。",
+      "notInList": "{{value}}（未配置）"
+    },
+    "backupCreated": "已创建备份：{{path}}",
+    "fallbackModel": "备用模型",
+    "health": {
+      "invalidToolsProfile": "tools.profile 包含不支持的值，OpenClaw 目前支持 minimal、coding、messaging 或 full。",
+      "legacyTimeout": "agents.defaults.timeout 已弃用，请保存 Agents 面板以将其迁移为 timeoutSeconds。",
+      "parseFailed": "openclaw.json 无法解析为有效的 JSON5，请先修复文件再在此处编辑。",
+      "stringifiedEnvVars": "env.vars 应为对象，但当前值看起来被字符串化或格式异常。",
+      "stringifiedShellEnv": "env.shellEnv 应为对象，但当前值看起来被字符串化或格式异常。",
+      "title": "检测到 OpenClaw 配置警告"
+    },
+    "inputTypes": "输入类型",
+    "primaryModel": "主模型",
+    "userAgent": "发送 User-Agent",
+    "userAgentHint": "部分供应商需要浏览器 User-Agent 请求头才能正常工作。"
   },
   "env": {
     "warning": {
@@ -1602,7 +1689,8 @@
     "selectIcon": "选择图标",
     "preview": "预览",
     "clickToChange": "点击更换图标",
-    "clickToSelect": "点击选择图标"
+    "clickToSelect": "点击选择图标",
+    "color": "颜色"
   },
   "migration": {
     "success": "配置迁移成功",
@@ -1910,7 +1998,24 @@
     "minRequests": "最小请求数",
     "validationFailed": "以下字段超出有效范围: {{fields}}",
     "configSaved": "熔断器配置已保存",
-    "saveFailed": "保存失败"
+    "saveFailed": "保存失败",
+    "loading": "加载中...",
+    "title": "熔断器配置",
+    "description": "调整熔断器参数以控制故障检测与恢复行为",
+    "failureThresholdHint": "连续失败多少次后触发熔断",
+    "timeoutSecondsHint": "熔断后等待多长时间再尝试恢复（半开状态）",
+    "successThresholdHint": "半开状态下成功多少次后关闭熔断器",
+    "errorRateThresholdHint": "错误率超过此值时打开熔断器",
+    "minRequestsHint": "计算错误率前的最小请求数",
+    "saveConfig": "保存配置",
+    "instructionsTitle": "配置说明",
+    "instructions": {
+      "failureThreshold": "连续失败次数达到此值时，熔断器将打开",
+      "timeout": "熔断器打开后，等待此时间再进入半开状态",
+      "successThreshold": "半开状态下成功次数达到此值时，关闭熔断器",
+      "errorRate": "错误率超过此值时打开熔断器",
+      "minRequests": "请求数达到此值后才开始计算错误率"
+    }
   },
   "universalProvider": {
     "title": "统一供应商",

@@ -431,36 +431,6 @@ export function SettingsPage({
                           <LogConfigPanel />
                         </AccordionContent>
                       </AccordionItem>
-
-                      <AccordionItem
-                        value="modelTestConfig"
-                        className="rounded-xl glass-card overflow-hidden"
-                      >
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
-                          <div className="flex items-center gap-3">
-                            <FlaskConical className="h-5 w-5 text-green-500" />
-                            <div className="text-left">
-                              <h3 className="text-base font-semibold">
-                                {t("settings.advanced.modelTestConfig.title", {
-                                  defaultValue: "模型测试配置",
-                                })}
-                              </h3>
-                              <p className="text-sm text-muted-foreground font-normal">
-                                {t(
-                                  "settings.advanced.modelTestConfig.description",
-                                  {
-                                    defaultValue:
-                                      "测试时使用各站点配置的主模型，可自定义超时、重试次数和提示词",
-                                  },
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-4 border-t border-border/50">
-                          <ModelTestConfigPanel />
-                        </AccordionContent>
-                      </AccordionItem>
                     </Accordion>
                   </motion.div>
                 ) : null}
