@@ -8,7 +8,7 @@ import {
   Cloud,
   ScrollText,
   HardDriveDownload,
-  TestTube2,
+  FlaskConical,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -380,7 +380,33 @@ export function SettingsPage({
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-6 pb-6 pt-4 border-t border-border/50">
-                          <WebdavSyncSection config={settings?.webdavSync} />
+                          <WebdavSyncSection
+                            config={settings?.webdavSync}
+                            settings={settings}
+                            onAutoSave={handleAutoSave}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem
+                        value="test"
+                        className="rounded-xl glass-card overflow-hidden"
+                      >
+                        <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
+                          <div className="flex items-center gap-3">
+                            <FlaskConical className="h-5 w-5 text-emerald-500" />
+                            <div className="text-left">
+                              <h3 className="text-base font-semibold">
+                                {t("settings.advanced.modelTest.title")}
+                              </h3>
+                              <p className="text-sm text-muted-foreground font-normal">
+                                {t("settings.advanced.modelTest.description")}
+                              </p>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-6 pb-6 pt-4 border-t border-border/50">
+                          <ModelTestConfigPanel />
                         </AccordionContent>
                       </AccordionItem>
 
@@ -412,7 +438,7 @@ export function SettingsPage({
                       >
                         <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
                           <div className="flex items-center gap-3">
-                            <TestTube2 className="h-5 w-5 text-green-500" />
+                            <FlaskConical className="h-5 w-5 text-green-500" />
                             <div className="text-left">
                               <h3 className="text-base font-semibold">
                                 {t("settings.advanced.modelTestConfig.title", {

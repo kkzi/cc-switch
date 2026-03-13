@@ -138,13 +138,17 @@ export function CodexFormFields({
             onChange={(v) => onModelNameChange(v)}
             suggestions={modelSuggestions}
             placeholder={t("codexConfig.modelNamePlaceholder", {
-              defaultValue: "例如: gpt-5-codex",
+              defaultValue: "例如: gpt-5.4",
             })}
           />
           <p className="text-xs text-muted-foreground">
-            {t("codexConfig.modelNameHint", {
-              defaultValue: "指定使用的模型，将自动更新到 config.toml 中",
-            })}
+            {modelName.trim()
+              ? t("codexConfig.modelNameHint", {
+                  defaultValue: "指定使用的模型，将自动更新到 config.toml 中",
+                })
+              : t("providerForm.modelHint", {
+                  defaultValue: "💡 留空将使用供应商的默认模型",
+                })}
           </p>
         </div>
       )}

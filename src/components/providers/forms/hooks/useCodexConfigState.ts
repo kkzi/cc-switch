@@ -74,10 +74,8 @@ export function useCodexConfigState({ initialData }: UseCodexConfigStateProps) {
       return;
     }
     const extracted = extractCodexBaseUrl(codexConfig) || "";
-    if (extracted !== codexBaseUrl) {
-      setCodexBaseUrl(extracted);
-    }
-  }, [codexConfig, codexBaseUrl]);
+    setCodexBaseUrl((prev) => (prev === extracted ? prev : extracted));
+  }, [codexConfig]);
 
   // 与 TOML 配置保持模型名称同步
   useEffect(() => {
@@ -85,10 +83,8 @@ export function useCodexConfigState({ initialData }: UseCodexConfigStateProps) {
       return;
     }
     const extracted = extractCodexModelName(codexConfig) || "";
-    if (extracted !== codexModelName) {
-      setCodexModelName(extracted);
-    }
-  }, [codexConfig, codexModelName]);
+    setCodexModelName((prev) => (prev === extracted ? prev : extracted));
+  }, [codexConfig]);
 
   // 获取 API Key（从 auth JSON）
   const getCodexAuthApiKey = useCallback((authString: string): string => {
@@ -164,10 +160,6 @@ export function useCodexConfigState({ initialData }: UseCodexConfigStateProps) {
     (url: string) => {
       const sanitized = url.trim();
       setCodexBaseUrl(sanitized);
-
-      if (!sanitized) {
-        return;
-      }
 
       isUpdatingCodexBaseUrlRef.current = true;
       setCodexConfig((prev) => setCodexBaseUrlInConfig(prev, sanitized));

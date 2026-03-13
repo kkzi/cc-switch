@@ -2,7 +2,7 @@
 
 # CC Switch (Fork)
 
-Based on [farion1231/cc-switch](https://github.com/farion1231/cc-switch), synced to upstream v3.11.1.
+Based on [farion1231/cc-switch](https://github.com/farion1231/cc-switch), synced to upstream v3.12.2.
 
 **Personal fork for my own use — practical first.** Added or modified features have not been fully tested and **may contain bugs or be incompatible with upstream**. If this is a concern, please use the [official version](https://github.com/farion1231/cc-switch).
 
@@ -15,13 +15,20 @@ English | [中文](README.md) | [日本語](README_JA.md) | [Changelog](CHANGELO
 | Feature | Official Version | Personal Enhanced Fork |
 |---------|------------------|------------------------|
 | Provider card | Name only | Shows current model name after provider name |
-| Test model button | Hidden | Restored |
-| Test parameter config | Hidden | Restored, with random prompt testing support |
-| Tray left-click | Opens menu | Opens / minimizes the main window |
-| One-click pin to top (or bottom) | Not available | Available from right-click on site card |
-| Auto-fetch models | Not available | Custom dropdown, full list display + match-based sorting |
-| Model routing | Not available | Claude config supports per-site model routing for precise stability/cost control |
-| New site insertion position | Appended to end | Inserted at second position |
+| Model selector | Plain text input | `ModelSuggest` dropdown with auto-suggest + match-based sorting |
+| Auto-fetch models | Not available | Fetch via `/v1/models` API; OpenCode supports batch import |
+| Test config panel | Hidden | Restored in Advanced Settings with configurable prompts |
+| Test prompts | Fixed single prompt | Random selection from 18-prompt pool, user-customizable |
+| Tray left-click | Opens menu | Toggles main window show/hide |
+| Windows taskbar | Always visible | Hidden when window minimized to tray |
+| Right-click context menu | Not available | Pin to top/bottom from provider card |
+| Claude model routing | Not available | Per-model-family (Opus/Sonnet/Haiku/Custom) provider routing with UI panel and banner |
+| Model-family failover | App-level only | Independent failover queues per model family, with random/round-robin modes |
+| Hybrid failover chain | Not available | Mixed chain combining providers and route modes |
+| Model-level health | Provider-level only | Per (provider, model_key) health tracking |
+| Stream check | Disabled | Re-enabled |
+| Fork data isolation | Single database | Fork-specific data stored in separate attached DB, decoupled from upstream schema |
+| New provider position | Appended to end | Inserted at second position |
 
 ---
 
@@ -92,7 +99,7 @@ Claude Code / Codex / Gemini official channels at 38% / 2% / 9% of original pric
 
 ## Features
 
-### Current Version: v3.11.1 | [Full Changelog](CHANGELOG.md) | [Release Notes](docs/release-note-v3.11.1-en.md)
+### Current Version: v3.12.2 | [Full Changelog](CHANGELOG.md) | [Release Notes](docs/release-notes/v3.12.2-en.md)
 
 **v3.8.0 Major Update (2025-11-28)**
 
@@ -468,7 +475,7 @@ pnpm test:unit --coverage
 
 ## Tech Stack
 
-**Frontend**: React 18 · TypeScript · Vite · TailwindCSS 4 · TanStack Query v5 · react-i18next · react-hook-form · zod · shadcn/ui · @dnd-kit
+**Frontend**: React 18 · TypeScript · Vite · TailwindCSS 3.4 · TanStack Query v5 · react-i18next · react-hook-form · zod · shadcn/ui · @dnd-kit
 
 **Backend**: Tauri 2.8 · Rust · serde · tokio · thiserror · tauri-plugin-updater/process/dialog/store/log
 

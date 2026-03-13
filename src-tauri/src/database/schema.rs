@@ -420,6 +420,27 @@ impl Database {
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
 
+        // 17. Usage Daily Rollups 表 (日聚合统计)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS usage_daily_rollups (
+                date TEXT NOT NULL,
+                app_type TEXT NOT NULL,
+                provider_id TEXT NOT NULL,
+                model TEXT NOT NULL,
+                request_count INTEGER NOT NULL DEFAULT 0,
+                success_count INTEGER NOT NULL DEFAULT 0,
+                input_tokens INTEGER NOT NULL DEFAULT 0,
+                output_tokens INTEGER NOT NULL DEFAULT 0,
+                cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+                cache_creation_tokens INTEGER NOT NULL DEFAULT 0,
+                total_cost_usd TEXT NOT NULL DEFAULT '0',
+                avg_latency_ms INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (date, app_type, provider_id, model)
+            )",
+            [],
+        )
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
         // 尝试添加 live_takeover_active 列到 proxy_config 表
         let _ = conn.execute(
             "ALTER TABLE proxy_config ADD COLUMN live_takeover_active INTEGER NOT NULL DEFAULT 0",
@@ -503,9 +524,9 @@ impl Database {
 
         if version > SCHEMA_VERSION {
             // 兼容历史 fork 版本：
-            // 旧实现曾将仅存在于 forkdb 的扩展迁移计入主库 user_version（6/7）。
-            // 为了与上游（仅支持到 5）共存，这里自动回写主库版本号到 5。
-            if matches!(version, 6 | 7) {
+            // 旧实现曾将仅存在于 forkdb 的扩展迁移计入主库 user_version（7）。
+            // 现在上游已升至 v6，仅 v7 才是旧 fork 专属，自动回写到当前版本。
+            if version == 7 {
                 log::warn!(
                     "检测到历史 fork 主库版本号 {version}，自动回写为 {SCHEMA_VERSION} 以兼容上游版本"
                 );
@@ -553,14 +574,9 @@ impl Database {
                         Self::set_user_version(conn, 5)?;
                     }
                     5 => {
-                        log::info!("迁移数据库从 v5 到 v6（Claude 模型族路由与模型级健康）");
+                        log::info!("迁移数据库从 v5 到 v6（使用量聚合表）");
                         Self::migrate_v5_to_v6(conn)?;
                         Self::set_user_version(conn, 6)?;
-                    }
-                    6 => {
-                        log::info!("迁移数据库从 v6 到 v7（Claude 模型族独立备选队列）");
-                        Self::migrate_v6_to_v7(conn)?;
-                        Self::set_user_version(conn, 7)?;
                     }
                     _ => {
                         return Err(AppError::Database(format!(
@@ -1120,101 +1136,29 @@ impl Database {
         Ok(())
     }
 
-    /// v5 -> v6 迁移：Claude 模型族路由与模型级健康
+    /// v5 -> v6 迁移：添加使用量日聚合表
     fn migrate_v5_to_v6(conn: &Connection) -> Result<(), AppError> {
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS forkdb.fork_model_route_policy (
+            "CREATE TABLE IF NOT EXISTS usage_daily_rollups (
+                date TEXT NOT NULL,
                 app_type TEXT NOT NULL,
-                model_key TEXT NOT NULL,
-                enabled INTEGER NOT NULL DEFAULT 0,
-                default_provider_id TEXT,
-                model_failover_enabled INTEGER NOT NULL DEFAULT 1,
-                model_failover_mode TEXT NOT NULL DEFAULT 'random',
-                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-                PRIMARY KEY (app_type, model_key)
-            )",
-            [],
-        )
-        .map_err(|e| AppError::Database(format!("创建 fork_model_route_policy 失败: {e}")))?;
-        let _ = conn.execute(
-            "ALTER TABLE forkdb.fork_model_route_policy
-             ADD COLUMN model_failover_mode TEXT NOT NULL DEFAULT 'random'",
-            [],
-        );
-
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS forkdb.fork_provider_health_model (
                 provider_id TEXT NOT NULL,
-                app_type TEXT NOT NULL,
-                model_key TEXT NOT NULL,
-                is_healthy INTEGER NOT NULL DEFAULT 1,
-                consecutive_failures INTEGER NOT NULL DEFAULT 0,
-                last_success_at TEXT,
-                last_failure_at TEXT,
-                last_error TEXT,
-                updated_at TEXT NOT NULL,
-                PRIMARY KEY (provider_id, app_type, model_key),
-                FOREIGN KEY (provider_id, app_type) REFERENCES providers(id, app_type) ON DELETE CASCADE
+                model TEXT NOT NULL,
+                request_count INTEGER NOT NULL DEFAULT 0,
+                success_count INTEGER NOT NULL DEFAULT 0,
+                input_tokens INTEGER NOT NULL DEFAULT 0,
+                output_tokens INTEGER NOT NULL DEFAULT 0,
+                cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+                cache_creation_tokens INTEGER NOT NULL DEFAULT 0,
+                total_cost_usd TEXT NOT NULL DEFAULT '0',
+                avg_latency_ms INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (date, app_type, provider_id, model)
             )",
             [],
         )
-        .map_err(|e| AppError::Database(format!("创建 fork_provider_health_model 失败: {e}")))?;
+        .map_err(|e| AppError::Database(format!("创建 usage_daily_rollups 表失败: {e}")))?;
 
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS forkdb.idx_fork_provider_health_model
-             ON fork_provider_health_model(app_type, model_key, is_healthy)",
-            [],
-        )
-        .map_err(|e| AppError::Database(format!("创建模型健康索引失败: {e}")))?;
-
-        log::info!("v5 -> v6 迁移完成：已添加 Claude 模型族路由与模型级健康表");
-        Ok(())
-    }
-
-    /// v6 -> v7 迁移：Claude 模型族故障转移队列与混合链
-    fn migrate_v6_to_v7(conn: &Connection) -> Result<(), AppError> {
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS forkdb.fork_model_failover_queue (
-                app_type TEXT NOT NULL,
-                model_key TEXT NOT NULL,
-                provider_id TEXT NOT NULL,
-                sort_index INTEGER,
-                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-                PRIMARY KEY (app_type, model_key, provider_id),
-                FOREIGN KEY (provider_id, app_type) REFERENCES providers(id, app_type) ON DELETE CASCADE
-            )",
-            [],
-        )
-        .map_err(|e| AppError::Database(format!("创建 fork_model_failover_queue 失败: {e}")))?;
-
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS forkdb.idx_fork_model_failover_queue
-             ON fork_model_failover_queue(app_type, model_key, sort_index)",
-            [],
-        )
-        .map_err(|e| AppError::Database(format!("创建模型队列索引失败: {e}")))?;
-
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS forkdb.fork_failover_chain (
-                app_type TEXT NOT NULL,
-                node_type TEXT NOT NULL CHECK (node_type IN ('provider', 'route_mode')),
-                node_id TEXT NOT NULL,
-                sort_index INTEGER,
-                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-                PRIMARY KEY (app_type, node_type, node_id)
-            )",
-            [],
-        )
-        .map_err(|e| AppError::Database(format!("创建 fork_failover_chain 失败: {e}")))?;
-
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS forkdb.idx_fork_failover_chain
-             ON fork_failover_chain(app_type, sort_index)",
-            [],
-        )
-        .map_err(|e| AppError::Database(format!("创建混合链路索引失败: {e}")))?;
-
-        log::info!("v6 -> v7 迁移完成：已添加 Claude 模型族故障转移队列与混合链");
+        log::info!("v5 -> v6 迁移完成：已添加使用量日聚合表");
         Ok(())
     }
 
@@ -1534,6 +1478,15 @@ impl Database {
                 "0.3",
                 "2.5",
                 "0.03",
+                "0",
+            ),
+            // StepFun 系列
+            (
+                "step-3.5-flash",
+                "Step 3.5 Flash",
+                "0.10",
+                "0.30",
+                "0.02",
                 "0",
             ),
             // ====== 国产模型 (CNY/1M tokens) ======

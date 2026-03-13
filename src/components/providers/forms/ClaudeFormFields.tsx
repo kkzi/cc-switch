@@ -12,7 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import EndpointSpeedTest from "./EndpointSpeedTest";
 import { ApiKeySection, EndpointField } from "./shared";
-import type { ProviderCategory, ClaudeApiFormat } from "@/types";
+import type {
+  ProviderCategory,
+  ClaudeApiFormat,
+  ClaudeApiKeyField,
+} from "@/types";
 import type { TemplateValueConfig } from "@/config/claudeProviderPresets";
 import { Loader2 } from "lucide-react";
 
@@ -74,6 +78,10 @@ interface ClaudeFormFieldsProps {
   onFetchModels?: () => void;
   isFetchingModels?: boolean;
   modelSuggestions?: string[];
+
+  // Auth Field (ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY)
+  apiKeyField: ClaudeApiKeyField;
+  onApiKeyFieldChange: (field: ClaudeApiKeyField) => void;
 }
 
 export function ClaudeFormFields({
@@ -111,6 +119,8 @@ export function ClaudeFormFields({
   onFetchModels,
   isFetchingModels = false,
   modelSuggestions = [],
+  apiKeyField,
+  onApiKeyFieldChange,
 }: ClaudeFormFieldsProps) {
   const { t } = useTranslation();
 
@@ -173,9 +183,11 @@ export function ClaudeFormFields({
           onChange={onBaseUrlChange}
           placeholder={t("providerForm.apiEndpointPlaceholder")}
           hint={
-            apiFormat === "openai_chat"
-              ? t("providerForm.apiHintOAI")
-              : t("providerForm.apiHint")
+            apiFormat === "openai_responses"
+              ? t("providerForm.apiHintResponses")
+              : apiFormat === "openai_chat"
+                ? t("providerForm.apiHintOAI")
+                : t("providerForm.apiHint")
           }
           onManageClick={() => onEndpointModalToggle(true)}
         />
@@ -218,11 +230,50 @@ export function ClaudeFormFields({
                   defaultValue: "OpenAI Chat Completions (需转换)",
                 })}
               </SelectItem>
+              <SelectItem value="openai_responses">
+                {t("providerForm.apiFormatOpenAIResponses", {
+                  defaultValue: "OpenAI Responses API (需转换)",
+                })}
+              </SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
             {t("providerForm.apiFormatHint", {
               defaultValue: "选择供应商 API 的输入格式",
+            })}
+          </p>
+        </div>
+      )}
+
+      {/* 认证字段选择器 */}
+      {shouldShowModelSelector && (
+        <div className="space-y-2">
+          <FormLabel>
+            {t("providerForm.authField", { defaultValue: "认证字段" })}
+          </FormLabel>
+          <Select
+            value={apiKeyField}
+            onValueChange={(v) => onApiKeyFieldChange(v as ClaudeApiKeyField)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ANTHROPIC_AUTH_TOKEN">
+                {t("providerForm.authFieldAuthToken", {
+                  defaultValue: "ANTHROPIC_AUTH_TOKEN（默认）",
+                })}
+              </SelectItem>
+              <SelectItem value="ANTHROPIC_API_KEY">
+                {t("providerForm.authFieldApiKey", {
+                  defaultValue: "ANTHROPIC_API_KEY",
+                })}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {t("providerForm.authFieldHint", {
+              defaultValue: "选择写入配置的认证环境变量名",
             })}
           </p>
         </div>
