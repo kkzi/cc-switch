@@ -1,17 +1,24 @@
 import { http, HttpResponse } from "msw";
 import type { AppId } from "@/lib/api/types";
 import type { McpServer, Provider, Settings } from "@/types";
+import type {
+  ClaudeModelRoutePolicy,
+  ClaudeModelRoutingSettings,
+} from "@/types/proxy";
 import {
   addProvider,
   deleteProvider,
   deleteSession,
+  getClaudeModelRoutingSettings,
   getCurrentProviderId,
   getSessionMessages,
   getProviders,
   listProviders,
+  listClaudeModelRoutePolicies,
   listSessions,
   resetProviderState,
   setCurrentProviderId,
+  setClaudeModelRoutingSettings,
   updateProvider,
   updateSortOrder,
   getSettings,
@@ -22,6 +29,7 @@ import {
   setMcpServerEnabled,
   upsertMcpServer,
   deleteMcpServer,
+  upsertClaudeModelRoutePolicy,
 } from "./state";
 
 const TAURI_ENDPOINT = "http://tauri.local";
@@ -210,6 +218,8 @@ export const handlers = [
     success(true),
   ),
 
+  http.post(`${TAURI_ENDPOINT}/check_env_conflicts`, () => success([])),
+
   http.post(`${TAURI_ENDPOINT}/get_config_dir`, async ({ request }) => {
     const { app } = await withJson<{ app: AppId }>(request);
     return success(app === "claude" ? "/default/claude" : "/default/codex");
@@ -297,10 +307,45 @@ export const handlers = [
       claude: false,
       codex: false,
       gemini: false,
+      opencode: false,
+      openclaw: false,
     }),
   ),
 
   http.post(`${TAURI_ENDPOINT}/is_live_takeover_active`, () => success(false)),
+
+  http.post(`${TAURI_ENDPOINT}/get_claude_model_routing_settings`, () =>
+    success(getClaudeModelRoutingSettings()),
+  ),
+  http.post(
+    `${TAURI_ENDPOINT}/set_claude_model_routing_settings`,
+    async ({ request }) => {
+      const { settings } = await withJson<{
+        settings?: ClaudeModelRoutingSettings;
+      }>(request);
+      if (!settings) {
+        return HttpResponse.json(false, { status: 400 });
+      }
+      setClaudeModelRoutingSettings(settings);
+      return success(true);
+    },
+  ),
+  http.post(`${TAURI_ENDPOINT}/list_claude_model_route_policies`, () =>
+    success(listClaudeModelRoutePolicies()),
+  ),
+  http.post(
+    `${TAURI_ENDPOINT}/upsert_claude_model_route_policy`,
+    async ({ request }) => {
+      const { policy } = await withJson<{
+        policy?: ClaudeModelRoutePolicy;
+      }>(request);
+      if (!policy) {
+        return HttpResponse.json(false, { status: 400 });
+      }
+      upsertClaudeModelRoutePolicy(policy);
+      return success(true);
+    },
+  ),
 
   // Failover / circuit breaker defaults
   http.post(`${TAURI_ENDPOINT}/get_failover_queue`, () => success([])),

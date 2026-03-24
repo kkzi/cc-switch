@@ -1,4 +1,20 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { ModelSuggest } from "@/components/ui/model-suggest";
@@ -9,16 +25,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import EndpointSpeedTest from "./EndpointSpeedTest";
+import { CopilotAuthSection } from "./CopilotAuthSection";
 import { ApiKeySection, EndpointField } from "./shared";
+import {
+  copilotGetModels,
+  copilotGetModelsForAccount,
+} from "@/lib/api/copilot";
+import type { CopilotModel } from "@/lib/api/copilot";
 import type {
   ProviderCategory,
   ClaudeApiFormat,
   ClaudeApiKeyField,
 } from "@/types";
 import type { TemplateValueConfig } from "@/config/claudeProviderPresets";
-import { Loader2 } from "lucide-react";
 
 interface EndpointCandidate {
   url: string;
@@ -26,7 +47,6 @@ interface EndpointCandidate {
 
 interface ClaudeFormFieldsProps {
   providerId?: string;
-  // API Key
   shouldShowApiKey: boolean;
   apiKey: string;
   onApiKeyChange: (key: string) => void;
@@ -35,14 +55,15 @@ interface ClaudeFormFieldsProps {
   websiteUrl: string;
   isPartner?: boolean;
   partnerPromotionKey?: string;
-
-  // Template Values
+  isCopilotPreset?: boolean;
+  usesOAuth?: boolean;
+  isCopilotAuthenticated?: boolean;
+  selectedGitHubAccountId?: string | null;
+  onGitHubAccountSelect?: (accountId: string | null) => void;
   templateValueEntries: Array<[string, TemplateValueConfig]>;
   templateValues: Record<string, TemplateValueConfig>;
   templatePresetName: string;
   onTemplateValueChange: (key: string, value: string) => void;
-
-  // Base URL
   shouldShowSpeedTest: boolean;
   baseUrl: string;
   onBaseUrlChange: (url: string) => void;
@@ -51,8 +72,6 @@ interface ClaudeFormFieldsProps {
   onCustomEndpointsChange?: (endpoints: string[]) => void;
   autoSelect: boolean;
   onAutoSelectChange: (checked: boolean) => void;
-
-  // Model Selector
   shouldShowModelSelector: boolean;
   claudeModel: string;
   reasoningModel: string;
@@ -68,18 +87,12 @@ interface ClaudeFormFieldsProps {
       | "ANTHROPIC_DEFAULT_OPUS_MODEL",
     value: string,
   ) => void;
-
-  // Speed Test Endpoints
   speedTestEndpoints: EndpointCandidate[];
-
-  // API Format (for third-party providers that use OpenAI Chat Completions format)
   apiFormat: ClaudeApiFormat;
   onApiFormatChange: (format: ClaudeApiFormat) => void;
   onFetchModels?: () => void;
   isFetchingModels?: boolean;
   modelSuggestions?: string[];
-
-  // Auth Field (ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY)
   apiKeyField: ClaudeApiKeyField;
   onApiKeyFieldChange: (field: ClaudeApiKeyField) => void;
 }
@@ -94,6 +107,11 @@ export function ClaudeFormFields({
   websiteUrl,
   isPartner,
   partnerPromotionKey,
+  isCopilotPreset,
+  usesOAuth,
+  isCopilotAuthenticated,
+  selectedGitHubAccountId,
+  onGitHubAccountSelect,
   templateValueEntries,
   templateValues,
   templatePresetName,
@@ -123,11 +141,170 @@ export function ClaudeFormFields({
   onApiKeyFieldChange,
 }: ClaudeFormFieldsProps) {
   const { t } = useTranslation();
+  const hasAnyAdvancedValue = !!(
+    claudeModel ||
+    reasoningModel ||
+    defaultHaikuModel ||
+    defaultSonnetModel ||
+    defaultOpusModel ||
+    apiFormat !== "anthropic" ||
+    apiKeyField !== "ANTHROPIC_AUTH_TOKEN"
+  );
+  const [advancedExpanded, setAdvancedExpanded] =
+    useState(hasAnyAdvancedValue);
+  const [copilotModels, setCopilotModels] = useState<CopilotModel[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+
+  useEffect(() => {
+    if (hasAnyAdvancedValue) {
+      setAdvancedExpanded(true);
+    }
+  }, [hasAnyAdvancedValue]);
+
+  useEffect(() => {
+    if (!isCopilotPreset || !isCopilotAuthenticated) {
+      setCopilotModels([]);
+      setModelsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setModelsLoading(true);
+    const fetchModels = selectedGitHubAccountId
+      ? copilotGetModelsForAccount(selectedGitHubAccountId)
+      : copilotGetModels();
+
+    fetchModels
+      .then((models) => {
+        if (!cancelled) {
+          setCopilotModels(models);
+        }
+      })
+      .catch((error) => {
+        console.warn("[Copilot] Failed to fetch models:", error);
+        if (!cancelled) {
+          toast.error(
+            t("copilot.loadModelsFailed", {
+              defaultValue: "加载 Copilot 模型列表失败",
+            }),
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setModelsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCopilotAuthenticated, isCopilotPreset, selectedGitHubAccountId, t]);
+
+  const renderModelInput = (
+    id: string,
+    value: string,
+    field: ClaudeFormFieldsProps["onModelChange"] extends (
+      key: infer F,
+      next: string,
+    ) => void
+      ? F
+      : never,
+    placeholder?: string,
+  ) => {
+    if (isCopilotPreset && copilotModels.length > 0) {
+      const grouped: Record<string, CopilotModel[]> = {};
+      for (const model of copilotModels) {
+        const vendor = model.vendor || "Other";
+        if (!grouped[vendor]) {
+          grouped[vendor] = [];
+        }
+        grouped[vendor].push(model);
+      }
+
+      return (
+        <div className="flex gap-1">
+          <Input
+            id={id}
+            type="text"
+            value={value}
+            onChange={(event) => onModelChange(field, event.target.value)}
+            placeholder={placeholder}
+            autoComplete="off"
+            className="flex-1"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="shrink-0">
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="max-h-64 overflow-y-auto z-[200]"
+            >
+              {Object.keys(grouped)
+                .sort()
+                .map((vendor, index) => (
+                  <div key={vendor}>
+                    {index > 0 && <DropdownMenuSeparator />}
+                    <DropdownMenuLabel>{vendor}</DropdownMenuLabel>
+                    {grouped[vendor].map((model) => (
+                      <DropdownMenuItem
+                        key={model.id}
+                        onSelect={() => onModelChange(field, model.id)}
+                      >
+                        {model.id}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    }
+
+    if (isCopilotPreset && modelsLoading) {
+      return (
+        <div className="flex gap-1">
+          <Input
+            id={id}
+            type="text"
+            value={value}
+            onChange={(event) => onModelChange(field, event.target.value)}
+            placeholder={placeholder}
+            autoComplete="off"
+            className="flex-1"
+          />
+          <Button variant="outline" size="icon" className="shrink-0" disabled>
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <ModelSuggest
+        id={id}
+        value={value}
+        onChange={(nextValue) => onModelChange(field, nextValue)}
+        suggestions={modelSuggestions}
+        placeholder={placeholder}
+      />
+    );
+  };
 
   return (
     <>
-      {/* API Key 输入框 */}
-      {shouldShowApiKey && (
+      {isCopilotPreset && (
+        <CopilotAuthSection
+          selectedAccountId={selectedGitHubAccountId}
+          onAccountSelect={onGitHubAccountSelect}
+        />
+      )}
+
+      {shouldShowApiKey && !usesOAuth && (
         <ApiKeySection
           value={apiKey}
           onChange={onApiKeyChange}
@@ -139,7 +316,6 @@ export function ClaudeFormFields({
         />
       )}
 
-      {/* 模板变量输入 */}
       {templateValueEntries.length > 0 && (
         <div className="space-y-3">
           <FormLabel>
@@ -164,7 +340,9 @@ export function ClaudeFormFields({
                     config.defaultValue ??
                     ""
                   }
-                  onChange={(e) => onTemplateValueChange(key, e.target.value)}
+                  onChange={(event) =>
+                    onTemplateValueChange(key, event.target.value)
+                  }
                   placeholder={config.placeholder || config.label}
                   autoComplete="off"
                 />
@@ -174,7 +352,6 @@ export function ClaudeFormFields({
         </div>
       )}
 
-      {/* Base URL 输入框 */}
       {shouldShowSpeedTest && (
         <EndpointField
           id="baseUrl"
@@ -193,7 +370,6 @@ export function ClaudeFormFields({
         />
       )}
 
-      {/* 端点测速弹窗 */}
       {shouldShowSpeedTest && isEndpointModalOpen && (
         <EndpointSpeedTest
           appId="claude"
@@ -209,192 +385,208 @@ export function ClaudeFormFields({
         />
       )}
 
-      {/* API 格式选择（仅非官方、非云服务商显示） */}
-      {shouldShowModelSelector && category !== "cloud_provider" && (
-        <div className="space-y-2">
-          <FormLabel htmlFor="apiFormat">
-            {t("providerForm.apiFormat", { defaultValue: "API 格式" })}
-          </FormLabel>
-          <Select value={apiFormat} onValueChange={onApiFormatChange}>
-            <SelectTrigger id="apiFormat" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="anthropic">
-                {t("providerForm.apiFormatAnthropic", {
-                  defaultValue: "Anthropic Messages (原生)",
-                })}
-              </SelectItem>
-              <SelectItem value="openai_chat">
-                {t("providerForm.apiFormatOpenAIChat", {
-                  defaultValue: "OpenAI Chat Completions (需转换)",
-                })}
-              </SelectItem>
-              <SelectItem value="openai_responses">
-                {t("providerForm.apiFormatOpenAIResponses", {
-                  defaultValue: "OpenAI Responses API (需转换)",
-                })}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            {t("providerForm.apiFormatHint", {
-              defaultValue: "选择供应商 API 的输入格式",
-            })}
-          </p>
-        </div>
-      )}
-
-      {/* 认证字段选择器 */}
       {shouldShowModelSelector && (
-        <div className="space-y-2">
-          <FormLabel>
-            {t("providerForm.authField", { defaultValue: "认证字段" })}
-          </FormLabel>
-          <Select
-            value={apiKeyField}
-            onValueChange={(v) => onApiKeyFieldChange(v as ClaudeApiKeyField)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ANTHROPIC_AUTH_TOKEN">
-                {t("providerForm.authFieldAuthToken", {
-                  defaultValue: "ANTHROPIC_AUTH_TOKEN（默认）",
-                })}
-              </SelectItem>
-              <SelectItem value="ANTHROPIC_API_KEY">
-                {t("providerForm.authFieldApiKey", {
-                  defaultValue: "ANTHROPIC_API_KEY",
-                })}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            {t("providerForm.authFieldHint", {
-              defaultValue: "选择写入配置的认证环境变量名",
-            })}
-          </p>
-        </div>
-      )}
-
-      {/* 模型选择器 */}
-      {shouldShowModelSelector && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <FormLabel className="mb-0">
-              {t("providerForm.modelConfig", { defaultValue: "模型配置" })}
-            </FormLabel>
-            {onFetchModels && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onFetchModels}
-                disabled={isFetchingModels}
-              >
-                {isFetchingModels && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {t("providerForm.autoFetchModels", {
-                  defaultValue: "自动获取模型",
-                })}
-              </Button>
+        <Collapsible
+          open={advancedExpanded}
+          onOpenChange={setAdvancedExpanded}
+        >
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant={null}
+              size="sm"
+              className="h-8 gap-1.5 px-0 text-sm font-medium text-foreground hover:opacity-70"
+            >
+              {advancedExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+              {t("providerForm.advancedOptionsToggle")}
+            </Button>
+          </CollapsibleTrigger>
+          {!advancedExpanded && (
+            <p className="text-xs text-muted-foreground mt-1 ml-1">
+              {t("providerForm.advancedOptionsHint")}
+            </p>
+          )}
+          <CollapsibleContent className="space-y-4 pt-2">
+            {category !== "cloud_provider" && (
+              <div className="space-y-2">
+                <FormLabel htmlFor="apiFormat">
+                  {t("providerForm.apiFormat", {
+                    defaultValue: "API 格式",
+                  })}
+                </FormLabel>
+                <Select value={apiFormat} onValueChange={onApiFormatChange}>
+                  <SelectTrigger id="apiFormat" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="anthropic">
+                      {t("providerForm.apiFormatAnthropic", {
+                        defaultValue: "Anthropic Messages (原生)",
+                      })}
+                    </SelectItem>
+                    <SelectItem value="openai_chat">
+                      {t("providerForm.apiFormatOpenAIChat", {
+                        defaultValue: "OpenAI Chat Completions (需转换)",
+                      })}
+                    </SelectItem>
+                    <SelectItem value="openai_responses">
+                      {t("providerForm.apiFormatOpenAIResponses", {
+                        defaultValue: "OpenAI Responses API (需转换)",
+                      })}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t("providerForm.apiFormatHint", {
+                    defaultValue: "选择供应商 API 的输入格式",
+                  })}
+                </p>
+              </div>
             )}
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 主模型 */}
             <div className="space-y-2">
-              <FormLabel htmlFor="claudeModel">
-                {t("providerForm.anthropicModel", { defaultValue: "主模型" })}
+              <FormLabel>
+                {t("providerForm.authField", { defaultValue: "认证字段" })}
               </FormLabel>
-              <ModelSuggest
-                id="claudeModel"
-                value={claudeModel}
-                onChange={(v) => onModelChange("ANTHROPIC_MODEL", v)}
-                suggestions={modelSuggestions}
-                placeholder={t("providerForm.modelPlaceholder", {
-                  defaultValue: "",
-                })}
-              />
-            </div>
-
-            {/* 推理模型 */}
-            <div className="space-y-2">
-              <FormLabel htmlFor="reasoningModel">
-                {t("providerForm.anthropicReasoningModel")}
-              </FormLabel>
-              <ModelSuggest
-                id="reasoningModel"
-                value={reasoningModel}
-                onChange={(v) => onModelChange("ANTHROPIC_REASONING_MODEL", v)}
-                suggestions={modelSuggestions}
-              />
-            </div>
-
-            {/* 默认 Haiku */}
-            <div className="space-y-2">
-              <FormLabel htmlFor="claudeDefaultHaikuModel">
-                {t("providerForm.anthropicDefaultHaikuModel", {
-                  defaultValue: "Haiku 默认模型",
-                })}
-              </FormLabel>
-              <ModelSuggest
-                id="claudeDefaultHaikuModel"
-                value={defaultHaikuModel}
-                onChange={(v) => onModelChange("ANTHROPIC_DEFAULT_HAIKU_MODEL", v)}
-                suggestions={modelSuggestions}
-                placeholder={t("providerForm.haikuModelPlaceholder", {
-                  defaultValue: "",
-                })}
-              />
-            </div>
-
-            {/* 默认 Sonnet */}
-            <div className="space-y-2">
-              <FormLabel htmlFor="claudeDefaultSonnetModel">
-                {t("providerForm.anthropicDefaultSonnetModel", {
-                  defaultValue: "Sonnet 默认模型",
-                })}
-              </FormLabel>
-              <ModelSuggest
-                id="claudeDefaultSonnetModel"
-                value={defaultSonnetModel}
-                onChange={(v) =>
-                  onModelChange("ANTHROPIC_DEFAULT_SONNET_MODEL", v)
+              <Select
+                value={apiKeyField}
+                onValueChange={(value) =>
+                  onApiKeyFieldChange(value as ClaudeApiKeyField)
                 }
-                suggestions={modelSuggestions}
-                placeholder={t("providerForm.modelPlaceholder", {
-                  defaultValue: "",
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ANTHROPIC_AUTH_TOKEN">
+                    {t("providerForm.authFieldAuthToken", {
+                      defaultValue: "ANTHROPIC_AUTH_TOKEN（默认）",
+                    })}
+                  </SelectItem>
+                  <SelectItem value="ANTHROPIC_API_KEY">
+                    {t("providerForm.authFieldApiKey", {
+                      defaultValue: "ANTHROPIC_API_KEY",
+                    })}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t("providerForm.authFieldHint", {
+                  defaultValue: "选择写入配置的认证环境变量名",
                 })}
-              />
+              </p>
             </div>
 
-            {/* 默认 Opus */}
-            <div className="space-y-2">
-              <FormLabel htmlFor="claudeDefaultOpusModel">
-                {t("providerForm.anthropicDefaultOpusModel", {
-                  defaultValue: "Opus 默认模型",
-                })}
-              </FormLabel>
-              <ModelSuggest
-                id="claudeDefaultOpusModel"
-                value={defaultOpusModel}
-                onChange={(v) => onModelChange("ANTHROPIC_DEFAULT_OPUS_MODEL", v)}
-                suggestions={modelSuggestions}
-                placeholder={t("providerForm.modelPlaceholder", {
-                  defaultValue: "",
-                })}
-              />
+            <div className="space-y-1 pt-2 border-t">
+              <div className="flex items-center justify-between gap-3">
+                <FormLabel className="mb-0">
+                  {t("providerForm.modelMappingLabel")}
+                </FormLabel>
+                {onFetchModels && !isCopilotPreset && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onFetchModels}
+                    disabled={isFetchingModels}
+                  >
+                    {isFetchingModels && (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    )}
+                    {t("providerForm.autoFetchModels", {
+                      defaultValue: "自动获取模型",
+                    })}
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("providerForm.modelMappingHint")}
+              </p>
             </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {t("providerForm.modelHelper", {
-              defaultValue:
-                "可选：指定默认使用的 Claude 模型，留空则使用系统默认。",
-            })}
-          </p>
-        </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <FormLabel htmlFor="claudeModel">
+                  {t("providerForm.anthropicModel", {
+                    defaultValue: "主模型",
+                  })}
+                </FormLabel>
+                {renderModelInput(
+                  "claudeModel",
+                  claudeModel,
+                  "ANTHROPIC_MODEL",
+                  t("providerForm.modelPlaceholder", { defaultValue: "" }),
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel htmlFor="reasoningModel">
+                  {t("providerForm.anthropicReasoningModel")}
+                </FormLabel>
+                {renderModelInput(
+                  "reasoningModel",
+                  reasoningModel,
+                  "ANTHROPIC_REASONING_MODEL",
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel htmlFor="claudeDefaultHaikuModel">
+                  {t("providerForm.anthropicDefaultHaikuModel", {
+                    defaultValue: "Haiku 默认模型",
+                  })}
+                </FormLabel>
+                {renderModelInput(
+                  "claudeDefaultHaikuModel",
+                  defaultHaikuModel,
+                  "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+                  t("providerForm.haikuModelPlaceholder", {
+                    defaultValue: "",
+                  }),
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel htmlFor="claudeDefaultSonnetModel">
+                  {t("providerForm.anthropicDefaultSonnetModel", {
+                    defaultValue: "Sonnet 默认模型",
+                  })}
+                </FormLabel>
+                {renderModelInput(
+                  "claudeDefaultSonnetModel",
+                  defaultSonnetModel,
+                  "ANTHROPIC_DEFAULT_SONNET_MODEL",
+                  t("providerForm.modelPlaceholder", { defaultValue: "" }),
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel htmlFor="claudeDefaultOpusModel">
+                  {t("providerForm.anthropicDefaultOpusModel", {
+                    defaultValue: "Opus 默认模型",
+                  })}
+                </FormLabel>
+                {renderModelInput(
+                  "claudeDefaultOpusModel",
+                  defaultOpusModel,
+                  "ANTHROPIC_DEFAULT_OPUS_MODEL",
+                  t("providerForm.modelPlaceholder", { defaultValue: "" }),
+                )}
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              {t("providerForm.modelHelper", {
+                defaultValue:
+                  "可选：指定默认使用的 Claude 模型，留空则使用系统默认。",
+              })}
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </>
   );

@@ -64,7 +64,10 @@
     "saveFailed": "保存失败: {{error}}",
     "hideAttribution": "隐藏 AI 署名",
     "alwaysThinking": "扩展思考",
-    "enableTeammates": "Teammates 模式"
+    "enableTeammates": "Teammates 模式",
+    "enableToolSearch": "启用 Tool Search",
+    "effortHigh": "高强度思考",
+    "disableAutoUpgrade": "禁用自动升级"
   },
   "header": {
     "viewOnGithub": "在 GitHub 上查看",
@@ -772,7 +775,11 @@
     "authFieldHint": "选择配置使用的认证环境变量名",
     "presets": {
       "ucloud": "Compshare"
-    }
+    },
+    "modelMappingLabel": "模型映射",
+    "modelMappingHint": "如果供应商原生提供 Claude 系列模型，通常无需配置。仅在需要将请求映射到不同模型名称时填写。",
+    "advancedOptionsToggle": "高级选项",
+    "advancedOptionsHint": "包含 API 格式、认证字段、模型映射等配置。大多数场景下保持默认即可。"
   },
   "endpointTest": {
     "title": "请求地址管理",
@@ -847,7 +854,10 @@
     "modelName": "模型名称",
     "modelNameHint": "指定使用的模型，将自动更新到 config.toml 中",
     "modelNamePlaceholder": "例如: gpt-5-codex",
-    "noCommonConfigToApply": "通用配置片段为空或没有可写入的内容"
+    "noCommonConfigToApply": "通用配置片段为空或没有可写入的内容",
+    "contextWindow1M": "1M 上下文窗口",
+    "autoCompactLimit": "压缩阈值",
+    "autoCompactLimitHint": "上下文 token 数达到此阈值时自动压缩历史"
   },
   "geminiConfig": {
     "envFile": "环境变量 (.env)",
@@ -902,7 +912,11 @@
     "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}",
     "importFetchedModels": "导入已获取模型",
     "importFetchedModelsResult": "模型导入完成：新增 {{imported}} 个，补全名称 {{updated}} 个。",
-    "noFetchedModels": "暂无可导入模型，请先自动获取。"
+    "noFetchedModels": "暂无可导入模型，请先自动获取。",
+    "modelExtraFields": "模型属性",
+    "noModelExtraFields": "模型属性 (variants, cost 等)，点击 + 添加",
+    "modelExtraFieldKeyPlaceholder": "variants",
+    "sdkOptions": "SDK 选项"
   },
   "providerPreset": {
     "label": "预设供应商",
@@ -1084,7 +1098,11 @@
     "fieldExtra": "• extra: 字符串，扩展字段，可自由补充需要展示的文本",
     "tip1": "• 变量 {{apiKey}} 和 {{baseUrl}} 会自动替换",
     "tip2": "• extractor 函数在沙箱环境中执行，支持 ES2020+ 语法",
-    "tip3": "• 整个配置必须用 () 包裹，形成对象字面量表达式"
+    "tip3": "• 整个配置必须用 () 包裹，形成对象字面量表达式",
+    "templateCopilot": "GitHub Copilot",
+    "copilotAutoAuth": "自动使用 OAuth 认证，无需手动配置凭证",
+    "resetDate": "重置日期",
+    "premiumRequests": "Premium 请求"
   },
   "errors": {
     "usage_query_failed": "用量查询失败",
@@ -1597,6 +1615,27 @@
       "successSingle": "技能 {{name}} 已安装",
       "successMultiple": "成功安装 {{count}} 个技能",
       "noSkillsFound": "ZIP 文件中未找到技能（需包含 SKILL.md 文件）"
+    },
+    "backup": {
+      "location": "备份位置: {{path}}"
+    },
+    "restoreFromBackup": {
+      "button": "从备份中恢复",
+      "title": "从备份中恢复",
+      "description": "选择一个 Skills 备份，将文件恢复到本地并重新加入当前列表。",
+      "empty": "暂无可恢复的 Skills 备份",
+      "createdAt": "备份时间",
+      "path": "备份路径",
+      "restore": "恢复",
+      "restoring": "恢复中...",
+      "delete": "删除",
+      "deleting": "删除中...",
+      "deleteSuccess": "技能备份 {{name}} 已删除",
+      "deleteFailed": "删除技能备份失败",
+      "deleteConfirmTitle": "确认删除备份",
+      "deleteConfirmMessage": "确定要删除技能备份 \"{{name}}\" 吗？此操作无法撤销。",
+      "success": "技能 {{name}} 已从备份恢复",
+      "failed": "从备份恢复失败"
     }
   },
   "deeplink": {
@@ -2247,5 +2286,35 @@
     },
     "suggestedDefaults": "应用建议默认配置",
     "suggestedDefaultsHint": "使用此预设推荐的默认模型配置"
+  },
+  "copilot": {
+    "authSection": "GitHub Copilot 认证",
+    "authStatus": "认证状态",
+    "authenticated": "已认证: {{username}}",
+    "notAuthenticated": "未认证",
+    "loginWithGitHub": "使用 GitHub 登录",
+    "loginRequired": "请先登录 GitHub Copilot",
+    "waitingForAuth": "等待授权中...",
+    "enterCode": "请在浏览器中输入验证码：",
+    "logout": "注销",
+    "authSuccess": "GitHub Copilot 认证成功",
+    "authFailed": "认证失败: {{error}}",
+    "authTimeout": "认证超时，请重试",
+    "tokenExpired": "令牌已过期，请重新认证",
+    "accountCount": "{{count}} 个账号",
+    "selectAccount": "选择账号",
+    "selectAccountPlaceholder": "选择一个 GitHub 账号",
+    "useDefaultAccount": "使用默认账号",
+    "loggedInAccounts": "已登录账号",
+    "defaultAccount": "默认",
+    "selected": "已选中",
+    "removeAccount": "移除账号",
+    "setAsDefault": "设为默认",
+    "addAnotherAccount": "添加其他账号",
+    "logoutAll": "注销所有账号",
+    "retry": "重试",
+    "copyCode": "复制代码",
+    "migrationFailed": "旧认证数据迁移失败：{{error}}",
+    "loadModelsFailed": "加载 Copilot 模型列表失败"
   }
 }

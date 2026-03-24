@@ -64,7 +64,10 @@
     "saveFailed": "Save failed: {{error}}",
     "hideAttribution": "Hide AI Attribution",
     "alwaysThinking": "Extended Thinking",
-    "enableTeammates": "Teammates Mode"
+    "enableTeammates": "Teammates Mode",
+    "enableToolSearch": "Enable Tool Search",
+    "effortHigh": "High Effort Thinking",
+    "disableAutoUpgrade": "Disable Auto-Upgrade"
   },
   "header": {
     "viewOnGithub": "View on GitHub",
@@ -772,7 +775,11 @@
     "fetchModelsFailedHint": "Failed to fetch models, please check the endpoint and API Key",
     "fetchedModelCount": "{{count}} models fetched",
     "modelConfig": "Model Config",
-    "modelsFetched": "{{count}} models fetched successfully"
+    "modelsFetched": "{{count}} models fetched successfully",
+    "modelMappingLabel": "Model Mapping",
+    "modelMappingHint": "Usually not needed if the provider natively serves Claude models. Only configure when you need to map requests to different model names.",
+    "advancedOptionsToggle": "Advanced Options",
+    "advancedOptionsHint": "Includes API format, auth field, and model mapping. Defaults work for most use cases."
   },
   "endpointTest": {
     "title": "API Endpoint Management",
@@ -847,7 +854,10 @@
     "modelNameHint": "Specify the model to use, will be auto-updated in config.toml",
     "modelName": "Model Name",
     "modelNamePlaceholder": "e.g., gpt-5-codex",
-    "noCommonConfigToApply": "Common config snippet is empty or has no writable content"
+    "noCommonConfigToApply": "Common config snippet is empty or has no writable content",
+    "contextWindow1M": "1M Context Window",
+    "autoCompactLimit": "Auto Compact Limit",
+    "autoCompactLimitHint": "Auto-compacts history when context reaches this token limit"
   },
   "geminiConfig": {
     "envFile": "Environment Variables (.env)",
@@ -902,7 +912,11 @@
     "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}",
     "importFetchedModels": "Import fetched models",
     "importFetchedModelsResult": "Import complete: {{imported}} new, {{updated}} names updated.",
-    "noFetchedModels": "No fetched models to import"
+    "noFetchedModels": "No fetched models to import",
+    "modelExtraFields": "Model Properties",
+    "noModelExtraFields": "Model properties (variants, cost, etc.), click + to add",
+    "modelExtraFieldKeyPlaceholder": "variants",
+    "sdkOptions": "SDK Options"
   },
   "providerPreset": {
     "label": "Provider Preset",
@@ -1084,7 +1098,11 @@
     "fieldExtra": "• extra: String, custom display text",
     "tip1": "• Variables {{apiKey}} and {{baseUrl}} are automatically replaced",
     "tip2": "• Extractor function runs in sandbox environment, supports ES2020+ syntax",
-    "tip3": "• Entire config must be wrapped in () to form object literal expression"
+    "tip3": "• Entire config must be wrapped in () to form object literal expression",
+    "templateCopilot": "GitHub Copilot",
+    "copilotAutoAuth": "Auto OAuth authentication, no manual credentials needed",
+    "resetDate": "Reset date",
+    "premiumRequests": "Premium Requests"
   },
   "errors": {
     "usage_query_failed": "Usage query failed",
@@ -1597,6 +1615,27 @@
       "successSingle": "Skill {{name}} installed",
       "successMultiple": "Successfully installed {{count}} skills",
       "noSkillsFound": "No skills found in ZIP file (requires SKILL.md file)"
+    },
+    "backup": {
+      "location": "Backup location: {{path}}"
+    },
+    "restoreFromBackup": {
+      "button": "Restore Backup",
+      "title": "Restore From Backup",
+      "description": "Choose a Skills backup to restore its files locally and add it back to the current list.",
+      "empty": "No Skills backups available to restore",
+      "createdAt": "Backed up at",
+      "path": "Backup path",
+      "restore": "Restore",
+      "restoring": "Restoring...",
+      "delete": "Delete",
+      "deleting": "Deleting...",
+      "deleteSuccess": "Deleted backup for {{name}}",
+      "deleteFailed": "Failed to delete skill backup",
+      "deleteConfirmTitle": "Delete Backup",
+      "deleteConfirmMessage": "Are you sure you want to delete the backup for \"{{name}}\"? This action cannot be undone.",
+      "success": "Skill {{name}} restored from backup",
+      "failed": "Failed to restore from backup"
     }
   },
   "deeplink": {
@@ -2247,5 +2286,35 @@
     },
     "suggestedDefaults": "Apply Suggested Defaults",
     "suggestedDefaultsHint": "Use this preset's recommended default model configuration"
+  },
+  "copilot": {
+    "authSection": "GitHub Copilot Authentication",
+    "authStatus": "Authentication Status",
+    "authenticated": "Authenticated as {{username}}",
+    "notAuthenticated": "Not authenticated",
+    "loginWithGitHub": "Login with GitHub",
+    "loginRequired": "Please login to GitHub Copilot first",
+    "waitingForAuth": "Waiting for authorization...",
+    "enterCode": "Please enter the code in your browser:",
+    "logout": "Logout",
+    "authSuccess": "GitHub Copilot authentication successful",
+    "authFailed": "Authentication failed: {{error}}",
+    "authTimeout": "Authentication timed out, please try again",
+    "tokenExpired": "Token expired, please re-authenticate",
+    "accountCount": "{{count}} account(s)",
+    "selectAccount": "Select Account",
+    "selectAccountPlaceholder": "Select a GitHub account",
+    "useDefaultAccount": "Use default account",
+    "loggedInAccounts": "Logged in accounts",
+    "defaultAccount": "Default",
+    "selected": "Selected",
+    "removeAccount": "Remove account",
+    "setAsDefault": "Set as default",
+    "addAnotherAccount": "Add another account",
+    "logoutAll": "Logout all accounts",
+    "retry": "Retry",
+    "copyCode": "Copy code",
+    "migrationFailed": "Legacy auth migration failed: {{error}}",
+    "loadModelsFailed": "Failed to load Copilot models"
   }
 }

@@ -26,3 +26,7 @@ flatpak-repo/
 release-assets
 .worktrees/
 .spec-workflow/
+copilot-api
+.history
+CODEBUDDY.md
+.github

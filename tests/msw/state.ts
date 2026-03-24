@@ -6,6 +6,10 @@ import type {
   SessionMeta,
   Settings,
 } from "@/types";
+import type {
+  ClaudeModelRoutePolicy,
+  ClaudeModelRoutingSettings,
+} from "@/types/proxy";
 
 type ProvidersByApp = Record<AppId, Record<string, Provider>>;
 type CurrentProviderState = Record<AppId, string>;
@@ -86,6 +90,13 @@ let settingsState: Settings = {
   language: "zh",
 };
 let appConfigDirOverride: string | null = null;
+const createDefaultClaudeRoutingSettings = (): ClaudeModelRoutingSettings => ({
+  routeEnabled: false,
+  modelFailoverEnabled: false,
+});
+const createDefaultClaudeRoutePolicies = (): ClaudeModelRoutePolicy[] => [];
+let claudeModelRoutingSettingsState = createDefaultClaudeRoutingSettings();
+let claudeModelRoutePoliciesState = createDefaultClaudeRoutePolicies();
 const sessionMessageKey = (providerId: string, sourcePath: string) =>
   `${providerId}:${sourcePath}`;
 
@@ -195,6 +206,8 @@ export const resetProviderState = () => {
     language: "zh",
   };
   appConfigDirOverride = null;
+  claudeModelRoutingSettingsState = createDefaultClaudeRoutingSettings();
+  claudeModelRoutePoliciesState = createDefaultClaudeRoutePolicies();
   mcpConfigs = {
     claude: {
       sample: {
@@ -318,6 +331,39 @@ export const getAppConfigDirOverride = () => appConfigDirOverride;
 
 export const setAppConfigDirOverrideState = (value: string | null) => {
   appConfigDirOverride = value;
+};
+
+export const getClaudeModelRoutingSettings = () =>
+  JSON.parse(
+    JSON.stringify(claudeModelRoutingSettingsState),
+  ) as ClaudeModelRoutingSettings;
+
+export const setClaudeModelRoutingSettings = (
+  value: ClaudeModelRoutingSettings,
+) => {
+  claudeModelRoutingSettingsState = JSON.parse(
+    JSON.stringify(value),
+  ) as ClaudeModelRoutingSettings;
+};
+
+export const listClaudeModelRoutePolicies = () =>
+  JSON.parse(JSON.stringify(claudeModelRoutePoliciesState)) as
+    ClaudeModelRoutePolicy[];
+
+export const upsertClaudeModelRoutePolicy = (value: ClaudeModelRoutePolicy) => {
+  const nextValue = JSON.parse(JSON.stringify(value)) as ClaudeModelRoutePolicy;
+  const existingIndex = claudeModelRoutePoliciesState.findIndex(
+    (policy) =>
+      policy.appType === nextValue.appType &&
+      policy.modelKey === nextValue.modelKey,
+  );
+
+  if (existingIndex >= 0) {
+    claudeModelRoutePoliciesState[existingIndex] = nextValue;
+    return;
+  }
+
+  claudeModelRoutePoliciesState.push(nextValue);
 };
 
 export const getMcpConfig = (appType: AppId) => {

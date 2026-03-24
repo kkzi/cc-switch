@@ -64,7 +64,10 @@
     "saveFailed": "保存に失敗しました: {{error}}",
     "hideAttribution": "AI署名を非表示",
     "alwaysThinking": "拡張思考",
-    "enableTeammates": "Teammates モード"
+    "enableTeammates": "Teammates モード",
+    "enableToolSearch": "Tool Search を有効化",
+    "effortHigh": "高強度思考",
+    "disableAutoUpgrade": "自動アップグレードを無効化"
   },
   "header": {
     "viewOnGithub": "GitHub で見る",
@@ -772,7 +775,11 @@
     "fetchModelsFailedHint": "モデルの取得に失敗しました。エンドポイントと API Key を確認してください",
     "fetchedModelCount": "{{count}} 件のモデルを取得",
     "modelConfig": "モデル設定",
-    "modelsFetched": "{{count}} 件のモデルを取得しました"
+    "modelsFetched": "{{count}} 件のモデルを取得しました",
+    "modelMappingLabel": "モデルマッピング",
+    "modelMappingHint": "プロバイダーが Claude モデルをネイティブ提供している場合、通常は設定不要です。リクエストを別のモデル名にマッピングする場合のみ設定してください。",
+    "advancedOptionsToggle": "高級オプション",
+    "advancedOptionsHint": "API フォーマット、認証フィールド、モデルマッピングの設定を含みます。通常はデフォルトのままで問題ありません。"
   },
   "endpointTest": {
     "title": "API エンドポイント管理",
@@ -847,7 +854,10 @@
     "modelNameHint": "使用するモデルを指定します。config.toml に自動更新されます",
     "modelName": "モデル名",
     "modelNamePlaceholder": "例: gpt-5-codex",
-    "noCommonConfigToApply": "共通設定スニペットが空か、書き込み可能な内容がありません"
+    "noCommonConfigToApply": "共通設定スニペットが空か、書き込み可能な内容がありません",
+    "contextWindow1M": "1M コンテキストウィンドウ",
+    "autoCompactLimit": "自動圧縮しきい値",
+    "autoCompactLimitHint": "コンテキストトークン数がこのしきい値に達すると履歴を自動圧縮"
   },
   "geminiConfig": {
     "envFile": "環境変数 (.env)",
@@ -902,7 +912,11 @@
     "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}",
     "importFetchedModels": "取得したモデルをインポート",
     "importFetchedModelsResult": "インポート完了：新規 {{imported}} 件、名前補完 {{updated}} 件。",
-    "noFetchedModels": "インポートできるモデルがありません"
+    "noFetchedModels": "インポートできるモデルがありません",
+    "modelExtraFields": "モデルプロパティ",
+    "noModelExtraFields": "モデルプロパティ（variants、cost など）、+ をクリックして追加",
+    "modelExtraFieldKeyPlaceholder": "variants",
+    "sdkOptions": "SDK オプション"
   },
   "providerPreset": {
     "label": "プロバイダータイプ",
@@ -1084,7 +1098,11 @@
     "fieldExtra": "• extra: String。自由記述の追加テキスト",
     "tip1": "• 変数 {{apiKey}} と {{baseUrl}} は自動で置換されます",
     "tip2": "• 抽出関数はサンドボックスで実行され、ES2020+ の構文を使えます",
-    "tip3": "• 全体を () で囲み、オブジェクトリテラル式にしてください"
+    "tip3": "• 全体を () で囲み、オブジェクトリテラル式にしてください",
+    "templateCopilot": "GitHub Copilot",
+    "copilotAutoAuth": "OAuth 認証を自動使用、手動設定不要",
+    "resetDate": "リセット日",
+    "premiumRequests": "Premium リクエスト"
   },
   "errors": {
     "usage_query_failed": "利用状況の取得に失敗しました",
@@ -1597,6 +1615,27 @@
       "successSingle": "スキル {{name}} をインストールしました",
       "successMultiple": "{{count}} 件のスキルをインストールしました",
       "noSkillsFound": "ZIP ファイルにスキルが見つかりません（SKILL.md が必要です）"
+    },
+    "backup": {
+      "location": "バックアップ場所: {{path}}"
+    },
+    "restoreFromBackup": {
+      "button": "バックアップから復元",
+      "title": "バックアップから復元",
+      "description": "Skills バックアップを選択して、ローカルにファイルを復元し、現在の一覧へ戻します。",
+      "empty": "復元できる Skills バックアップはありません",
+      "createdAt": "バックアップ日時",
+      "path": "バックアップパス",
+      "restore": "復元",
+      "restoring": "復元中...",
+      "delete": "削除",
+      "deleting": "削除中...",
+      "deleteSuccess": "スキルバックアップ {{name}} を削除しました",
+      "deleteFailed": "スキルバックアップの削除に失敗しました",
+      "deleteConfirmTitle": "バックアップを削除",
+      "deleteConfirmMessage": "スキルバックアップ「{{name}}」を削除しますか？この操作は元に戻せません。",
+      "success": "スキル {{name}} をバックアップから復元しました",
+      "failed": "バックアップからの復元に失敗しました"
     }
   },
   "deeplink": {
@@ -2247,5 +2286,35 @@
     },
     "suggestedDefaults": "推奨デフォルト設定を適用",
     "suggestedDefaultsHint": "このプリセットの推奨デフォルトモデル設定を使用します"
+  },
+  "copilot": {
+    "authSection": "GitHub Copilot 認証",
+    "authStatus": "認証状態",
+    "authenticated": "認証済み: {{username}}",
+    "notAuthenticated": "未認証",
+    "loginWithGitHub": "GitHub でログイン",
+    "loginRequired": "先に GitHub Copilot にログインしてください",
+    "waitingForAuth": "認証を待っています...",
+    "enterCode": "ブラウザで以下のコードを入力してください：",
+    "logout": "ログアウト",
+    "authSuccess": "GitHub Copilot 認証に成功しました",
+    "authFailed": "認証に失敗しました: {{error}}",
+    "authTimeout": "認証がタイムアウトしました。もう一度お試しください",
+    "tokenExpired": "トークンの有効期限が切れました。再認証してください",
+    "accountCount": "{{count}} アカウント",
+    "selectAccount": "アカウントを選択",
+    "selectAccountPlaceholder": "GitHub アカウントを選択",
+    "useDefaultAccount": "デフォルトアカウントを使用",
+    "loggedInAccounts": "ログイン済みアカウント",
+    "defaultAccount": "デフォルト",
+    "selected": "選択中",
+    "removeAccount": "アカウントを削除",
+    "setAsDefault": "デフォルトに設定",
+    "addAnotherAccount": "別のアカウントを追加",
+    "logoutAll": "すべてのアカウントをログアウト",
+    "retry": "再試行",
+    "copyCode": "コードをコピー",
+    "migrationFailed": "旧認証データの移行に失敗しました: {{error}}",
+    "loadModelsFailed": "Copilot モデル一覧の読み込みに失敗しました"
   }
 }
