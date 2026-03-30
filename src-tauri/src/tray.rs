@@ -7,6 +7,10 @@ use tauri::{Emitter, Manager};
 
 use crate::app_config::AppType;
 use crate::error::AppError;
+use crate::main_window::{
+    hide_then_schedule_main_window_destroy, resolve_toggle_main_window_action,
+    spawn_show_main_window, ToggleMainWindowAction,
+};
 use crate::store::AppState;
 
 /// 托盘菜单文本（国际化）
@@ -418,47 +422,29 @@ pub fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
 
     match event_id {
         "toggle_main" => {
-            if let Some(window) = app.get_webview_window("main") {
-                let visible = window.is_visible().unwrap_or(false);
-                if visible {
-                    let _ = window.hide();
-                    #[cfg(target_os = "windows")]
-                    {
-                        let _ = window.set_skip_taskbar(true);
-                    }
-                    #[cfg(target_os = "macos")]
-                    {
-                        apply_tray_policy(app, false);
-                    }
-                } else {
-                    #[cfg(target_os = "windows")]
-                    {
-                        let _ = window.set_skip_taskbar(false);
-                    }
-                    let _ = window.unminimize();
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                    #[cfg(target_os = "macos")]
-                    {
-                        apply_tray_policy(app, true);
+            let maybe_window = app.get_webview_window("main");
+            let window_exists = maybe_window.is_some();
+            let window_visible = maybe_window
+                .as_ref()
+                .and_then(|window| window.is_visible().ok())
+                .unwrap_or(false);
+
+            match resolve_toggle_main_window_action(window_exists, window_visible) {
+                ToggleMainWindowAction::CreateOrFocus => {
+                    spawn_show_main_window(app.clone());
+                }
+                ToggleMainWindowAction::RevealExisting => {
+                    spawn_show_main_window(app.clone());
+                }
+                ToggleMainWindowAction::HideThenDestroy => {
+                    if let Err(err) = hide_then_schedule_main_window_destroy(app) {
+                        log::error!("托盘切换隐藏主窗口失败: {err}");
                     }
                 }
             }
         }
         "show_main" => {
-            if let Some(window) = app.get_webview_window("main") {
-                #[cfg(target_os = "windows")]
-                {
-                    let _ = window.set_skip_taskbar(false);
-                }
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-                #[cfg(target_os = "macos")]
-                {
-                    apply_tray_policy(app, true);
-                }
-            }
+            spawn_show_main_window(app.clone());
         }
         "quit" => {
             log::info!("退出应用");

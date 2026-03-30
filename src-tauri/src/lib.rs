@@ -12,6 +12,7 @@ mod error;
 mod gemini_config;
 mod gemini_mcp;
 mod init_status;
+mod main_window;
 mod mcp;
 mod openclaw_config;
 mod opencode_config;
@@ -37,6 +38,7 @@ pub use config::{get_claude_mcp_path, get_claude_settings_path, read_json_file};
 pub use database::Database;
 pub use deeplink::{import_provider_from_deeplink, parse_deeplink_url, DeepLinkImportRequest};
 pub use error::AppError;
+use main_window::{ensure_main_window, spawn_show_main_window, MAIN_WINDOW_LABEL};
 pub use mcp::{
     import_from_claude, import_from_codex, import_from_gemini, remove_server_from_claude,
     remove_server_from_codex, remove_server_from_gemini, sync_enabled_to_claude,
@@ -92,6 +94,79 @@ fn redact_url_for_log(url_str: &str) -> String {
     }
 }
 
+fn buffer_pending_deeplink(app: &tauri::AppHandle, request: DeepLinkImportRequest) {
+    if let Some(state) = app.try_state::<AppState>() {
+        state.set_pending_deeplink(request);
+        state.clear_pending_deeplink_error();
+    } else {
+        log::warn!("AppState unavailable; pending deep link was not buffered");
+    }
+}
+
+fn buffer_pending_deeplink_error(app: &tauri::AppHandle, url: &str, error: &str) {
+    if let Some(state) = app.try_state::<AppState>() {
+        state.set_pending_deeplink_error(crate::deeplink::PendingDeepLinkError {
+            url: url.to_string(),
+            error: error.to_string(),
+        });
+        state.clear_pending_deeplink();
+    } else {
+        log::warn!("AppState unavailable; pending deep link error was not buffered");
+    }
+}
+
+fn emit_deeplink_or_buffer(app: &tauri::AppHandle, request: DeepLinkImportRequest) {
+    let can_emit_live = app
+        .try_state::<AppState>()
+        .map(|state| state.is_main_window_ready())
+        .unwrap_or(false)
+        && app.get_webview_window(MAIN_WINDOW_LABEL).is_some();
+
+    if can_emit_live {
+        if let Err(err) = app.emit("deeplink-import", &request) {
+            log::error!("✗ Failed to emit deeplink-import event: {err}");
+            buffer_pending_deeplink(app, request);
+        } else {
+            if let Some(state) = app.try_state::<AppState>() {
+                state.clear_pending_deeplink();
+                state.clear_pending_deeplink_error();
+            }
+            log::info!("✓ Emitted deeplink-import event to frontend");
+        }
+    } else {
+        log::info!("主窗口尚未就绪，已缓存 deeplink-import 事件");
+        buffer_pending_deeplink(app, request);
+    }
+}
+
+fn emit_deeplink_error_or_buffer(app: &tauri::AppHandle, url: &str, error: &str) {
+    let payload = serde_json::json!({
+        "url": url,
+        "error": error,
+    });
+    let can_emit_live = app
+        .try_state::<AppState>()
+        .map(|state| state.is_main_window_ready())
+        .unwrap_or(false)
+        && app.get_webview_window(MAIN_WINDOW_LABEL).is_some();
+
+    if can_emit_live {
+        if let Err(err) = app.emit("deeplink-error", payload) {
+            log::error!("✗ Failed to emit deeplink-error event: {err}");
+            buffer_pending_deeplink_error(app, url, error);
+        } else {
+            if let Some(state) = app.try_state::<AppState>() {
+                state.clear_pending_deeplink();
+                state.clear_pending_deeplink_error();
+            }
+            log::info!("✓ Emitted deeplink-error event to frontend");
+        }
+    } else {
+        log::info!("主窗口尚未就绪，已缓存 deeplink-error 事件");
+        buffer_pending_deeplink_error(app, url, error);
+    }
+}
+
 /// 统一处理 ccswitch:// 深链接 URL
 ///
 /// - 解析 URL
@@ -120,34 +195,18 @@ fn handle_deeplink_url(
                 request.name
             );
 
-            if let Err(e) = app.emit("deeplink-import", &request) {
-                log::error!("✗ Failed to emit deeplink-import event: {e}");
-            } else {
-                log::info!("✓ Emitted deeplink-import event to frontend");
-            }
-
-            if focus_main_window {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.unminimize();
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                    log::info!("✓ Window shown and focused");
-                }
-            }
+            emit_deeplink_or_buffer(app, request);
         }
         Err(e) => {
             log::error!("✗ Failed to parse deep link URL: {e}");
 
-            if let Err(emit_err) = app.emit(
-                "deeplink-error",
-                serde_json::json!({
-                    "url": url_str,
-                    "error": e.to_string()
-                }),
-            ) {
-                log::error!("✗ Failed to emit deeplink-error event: {emit_err}");
-            }
+            emit_deeplink_error_or_buffer(app, url_str, &e.to_string());
         }
+    }
+
+    if focus_main_window {
+        spawn_show_main_window(app.clone());
+        log::info!("✓ Requested main window reveal");
     }
 
     true
@@ -207,7 +266,7 @@ pub fn run() {
             // Check for deep link URL in args (mainly for Windows/Linux command line)
             let mut found_deeplink = false;
             for arg in &args {
-                if handle_deeplink_url(app, arg, false, "single_instance args") {
+                if handle_deeplink_url(app, arg, true, "single_instance args") {
                     found_deeplink = true;
                     break;
                 }
@@ -217,11 +276,8 @@ pub fn run() {
                 log::info!("ℹ No deep link URL found in args (this is expected on macOS when launched via system)");
             }
 
-            // Show and focus window regardless
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
+            if !found_deeplink {
+                spawn_show_main_window(app.clone());
             }
         }));
     }
@@ -232,19 +288,22 @@ pub fn run() {
         // 拦截窗口关闭：根据设置决定是否最小化到托盘
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() != MAIN_WINDOW_LABEL {
+                    return;
+                }
+
                 let settings = crate::settings::get_settings();
 
                 if settings.minimize_to_tray_on_close {
                     api.prevent_close();
-                    let _ = window.hide();
-                    #[cfg(target_os = "windows")]
-                    {
-                        let _ = window.set_skip_taskbar(true);
-                    }
-                    #[cfg(target_os = "macos")]
-                    {
-                        tray::apply_tray_policy(window.app_handle(), false);
-                    }
+                    let app_handle = window.app_handle().clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(err) =
+                            crate::main_window::hide_then_schedule_main_window_destroy(&app_handle)
+                        {
+                            log::error!("关闭主窗口时隐藏主窗口失败: {err}");
+                        }
+                    });
                 } else {
                     window.app_handle().exit(0);
                 }
@@ -790,37 +849,17 @@ pub fn run() {
                 });
             });
 
-            // Linux: 禁用 WebKitGTK 硬件加速，防止 EGL 初始化失败导致白屏
-            #[cfg(target_os = "linux")]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.with_webview(|webview| {
-                        use webkit2gtk::{WebViewExt, SettingsExt, HardwareAccelerationPolicy};
-                        let wk_webview = webview.inner();
-                        if let Some(settings) = WebViewExt::settings(&wk_webview) {
-                            SettingsExt::set_hardware_acceleration_policy(&settings, HardwareAccelerationPolicy::Never);
-                            log::info!("已禁用 WebKitGTK 硬件加速");
-                        }
-                    });
-                }
-            }
-
-            // 静默启动：根据设置决定是否显示主窗口
+            // 静默启动：根据设置决定是否创建并显示主窗口
             let settings = crate::settings::get_settings();
-            if let Some(window) = app.get_webview_window("main") {
-                if settings.silent_startup {
-                    // 静默启动模式：保持窗口隐藏
-                    let _ = window.hide();
-                    #[cfg(target_os = "windows")]
-                    let _ = window.set_skip_taskbar(true);
-                    #[cfg(target_os = "macos")]
-                    tray::apply_tray_policy(app.handle(), false);
-                    log::info!("静默启动模式：主窗口已隐藏");
-                } else {
-                    // 正常启动模式：显示窗口
-                    let _ = window.show();
-                    log::info!("正常启动模式：主窗口已显示");
-                }
+            if settings.silent_startup {
+                #[cfg(target_os = "macos")]
+                tray::apply_tray_policy(app.handle(), false);
+                log::info!("静默启动模式：跳过主窗口创建");
+            } else if let Err(err) = ensure_main_window(app.handle(), true) {
+                log::error!("正常启动模式创建主窗口失败: {err}");
+                return Err(Box::new(err));
+            } else {
+                log::info!("正常启动模式：主窗口已创建并显示");
             }
 
 
@@ -931,6 +970,9 @@ pub fn run() {
             commands::merge_deeplink_config,
             commands::import_from_deeplink,
             commands::import_from_deeplink_unified,
+            commands::take_pending_deeplink,
+            commands::take_pending_deeplink_error,
+            commands::set_main_window_ready,
             update_tray_menu,
             // Environment variable management
             commands::check_env_conflicts,
@@ -1142,16 +1184,7 @@ pub fn run() {
             match event {
                 // macOS 在 Dock 图标被点击并重新激活应用时会触发 Reopen 事件，这里手动恢复主窗口
                 RunEvent::Reopen { .. } => {
-                    if let Some(window) = app_handle.get_webview_window("main") {
-                        #[cfg(target_os = "windows")]
-                        {
-                            let _ = window.set_skip_taskbar(false);
-                        }
-                        let _ = window.unminimize();
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                        tray::apply_tray_policy(app_handle, true);
-                    }
+                    spawn_show_main_window(app_handle.clone());
                 }
                 // 处理通过自定义 URL 协议触发的打开事件（例如 ccswitch://...）
                 RunEvent::Opened { urls } => {
@@ -1160,48 +1193,8 @@ pub fn run() {
                         log::info!("RunEvent::Opened with URL: {url_str}");
 
                         if url_str.starts_with("ccswitch://") {
-                            // 解析并广播深链接事件，复用与 single_instance 相同的逻辑
-                            match crate::deeplink::parse_deeplink_url(&url_str) {
-                                Ok(request) => {
-                                    log::info!(
-                                        "Successfully parsed deep link from RunEvent::Opened: resource={}, app={:?}",
-                                        request.resource,
-                                        request.app
-                                    );
-
-                                    if let Err(e) =
-                                        app_handle.emit("deeplink-import", &request)
-                                    {
-                                        log::error!(
-                                            "Failed to emit deep link event from RunEvent::Opened: {e}"
-                                        );
-                                    }
-                                }
-                                Err(e) => {
-                                    log::error!(
-                                        "Failed to parse deep link URL from RunEvent::Opened: {e}"
-                                    );
-
-                                    if let Err(emit_err) = app_handle.emit(
-                                        "deeplink-error",
-                                        serde_json::json!({
-                                            "url": url_str,
-                                            "error": e.to_string()
-                                        }),
-                                    ) {
-                                        log::error!(
-                                            "Failed to emit deep link error event from RunEvent::Opened: {emit_err}"
-                                        );
-                                    }
-                                }
-                            }
-
-                            // 确保主窗口可见
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.unminimize();
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
+                            let _ =
+                                handle_deeplink_url(app_handle, &url_str, true, "RunEvent::Opened");
                         }
                     }
                 }

@@ -573,7 +573,12 @@ mod tests {
         let providers = router.select_providers("claude", None).await.unwrap();
         assert_eq!(providers.len(), 2);
 
-        assert!(router.allow_provider_request("b", "claude", None).await.allowed);
+        assert!(
+            router
+                .allow_provider_request("b", "claude", None)
+                .await
+                .allowed
+        );
     }
 
     #[tokio::test]
@@ -783,9 +788,18 @@ mod tests {
         .unwrap();
 
         let router = ProviderRouter::new(db.clone());
-        let first = router.select_providers("claude", Some("haiku")).await.unwrap();
-        let second = router.select_providers("claude", Some("haiku")).await.unwrap();
-        let third = router.select_providers("claude", Some("haiku")).await.unwrap();
+        let first = router
+            .select_providers("claude", Some("haiku"))
+            .await
+            .unwrap();
+        let second = router
+            .select_providers("claude", Some("haiku"))
+            .await
+            .unwrap();
+        let third = router
+            .select_providers("claude", Some("haiku"))
+            .await
+            .unwrap();
 
         assert_eq!(
             first.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(),
@@ -843,11 +857,17 @@ mod tests {
         let mut seen_orders = std::collections::HashSet::new();
 
         for _ in 0..20 {
-            let providers = router.select_providers("claude", Some("haiku")).await.unwrap();
+            let providers = router
+                .select_providers("claude", Some("haiku"))
+                .await
+                .unwrap();
             let order = providers.iter().map(|p| p.id.clone()).collect::<Vec<_>>();
             let mut sorted = order.clone();
             sorted.sort();
-            assert_eq!(sorted, vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+            assert_eq!(
+                sorted,
+                vec!["a".to_string(), "b".to_string(), "c".to_string()]
+            );
             seen_orders.insert(order.join(","));
         }
 

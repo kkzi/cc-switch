@@ -73,4 +73,3 @@ async fn model_failover_available_providers_excludes_existing_queue_members() {
     assert_eq!(available.len(), 1);
     assert_eq!(available[0].id, "c");
 }
-

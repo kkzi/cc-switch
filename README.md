@@ -14,25 +14,25 @@
 
 </div>
 
-## 与上游的区别
+## 与上游的主要差异
 
-| 功能 | 官方版 | 自用增强版 |
-|------|--------|------------|
-| 供应商卡片 | 只显示名称 | 名称后显示当前模型名 |
-| 模型选择器 | 纯文本输入 | `ModelSuggest` 下拉框，自动建议 + 匹配排序 |
-| 自动获取模型 | 无 | 通过 `/v1/models` API 获取；OpenCode 支持批量导入 |
-| 测试参数配置 | 已隐藏 | 在高级设置中恢复，支持配置提示词 |
-| 测试提示词 | 固定单条 | 从 18 条提示词池中随机选取，支持用户自定义 |
-| 托盘左键单击 | 弹出菜单 | 切换主窗口显示/隐藏 |
-| Windows 任务栏 | 始终可见 | 最小化到托盘时隐藏 |
-| 右键上下文菜单 | 无 | 供应商卡片右键置顶/置底 |
-| Claude 模型分流 | 无 | 按模型族（Opus/Sonnet/Haiku/自定义）分配供应商，含 UI 面板和横幅 |
-| 模型族故障转移 | 仅应用级 | 每个模型族独立故障转移队列，支持随机/轮询模式 |
-| 混合故障转移链 | 无 | 混合链，组合供应商与路由模式 |
-| 模型级健康状态 | 仅供应商级 | 按 (供应商, 模型键) 粒度追踪健康状态 |
-| Stream 检查 | 已禁用 | 已重新启用 |
-| Fork 数据隔离 | 单数据库 | Fork 专有数据存储在独立附加数据库，与上游 schema 解耦 |
-| 新增供应商位置 | 排到最后 | 排到第二顺位 |
+这个仓库不是“只改几个 patch 的镜像”，而是一个持续跟随上游的长期 fork。下面列的是后续同步时最需要留意的几条主线，便于快速判断哪些改动不能被上游直接覆盖。
+
+- Claude 路由与故障转移扩展：增加了按模型族分流、模型级健康状态、模型级故障转移队列、混合故障转移链等能力。对应后端实现集中在 `src-tauri/src/database/dao/fork_proxy.rs` 及相关 `fork_` 数据表、`src-tauri/src/proxy/provider_router.rs`、`src-tauri/src/proxy/forwarder.rs`。
+- Fork 数据隔离：fork 自有的路由/健康状态/设置尽量放在独立附加数据库或 `fork_` 命名空间里，减少与上游 schema 迁移的直接冲突。这部分同步时不要轻易并回上游主表。
+- 托管认证与 GitHub Copilot 集成：新增了 Auth Center、GitHub Copilot OAuth、多账号选择、provider 绑定托管认证源等能力，涉及 `src-tauri/src/commands/auth.rs`、`src-tauri/src/commands/copilot.rs`、`src-tauri/src/proxy/providers/copilot_auth.rs`、`src/components/settings/AuthCenterPanel.tsx` 等一组文件。
+- 主窗口与深链接生命周期：托盘左键切换主窗口显示/隐藏、Windows 最小化到托盘时隐藏任务栏、主窗口改为“先隐藏，再延时 3000ms 销毁，重新显示时取消旧销毁任务”，同时深链接在窗口未就绪时会缓冲并在前端 ready 后重放。相关逻辑集中在 `src-tauri/src/main_window.rs`、`src-tauri/src/lib.rs`、`src-tauri/src/tray.rs`、`src-tauri/src/store.rs`、`src/components/DeepLinkImportDialog.tsx`。
+- 自用 UI/交互增强：包括供应商卡片显示当前模型名、`ModelSuggest` 建议输入、恢复测试参数配置、测试提示词池、供应商右键置顶/置底、新增供应商默认插入第二位等。这些改动大多散落在 `src/components/providers/`、`src/config/` 与相关 hooks 中。
+
+上面不是完整清单，但已经覆盖了后续同步最容易冲突、最不适合直接“以远端为准”覆盖的区域。
+
+## 同步上游时请注意
+
+- 推荐流程：先 `git fetch`，再 fast-forward 或 merge 上游，再单独回看上面提到的 fork 热点文件，最后至少执行一次 `pnpm tauri build --no-bundle`。
+- 版本号和发布资料要一起看：`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`、`.github/workflows/release.yml`、`CHANGELOG.md`、README 徽章与版本文案最好在同一轮同步里一起调整。
+- 如果上游改到了 provider/proxy/schema 相关文件，不要只解决文本冲突；要同时检查 fork 的 `fork_` 表、路由设置、健康状态读写、前端开关和测试是否仍然对应。
+- 如果上游改到了托盘、窗口或 deep-link 逻辑，要额外检查本 fork 的隐藏后延时销毁、任务栏可见性、窗口 ready 状态与 deep-link 缓冲是否还成立。
+- 如果新增了新的 fork 专属模块，请同步更新本节和根目录 `AGENTS.md`，避免下一次同步时只能靠 `git log` 反推本仓库差异。
 ---
 
 ## ❤️赞助商

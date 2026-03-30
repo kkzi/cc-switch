@@ -110,13 +110,12 @@ impl RequestContext {
             .to_string();
 
         let model_key = if matches!(app_type, AppType::Claude) {
-            let settings = state
-                .db
-                .get_claude_model_routing_settings()
-                .unwrap_or(crate::proxy::types::ClaudeModelRoutingSettings {
+            let settings = state.db.get_claude_model_routing_settings().unwrap_or(
+                crate::proxy::types::ClaudeModelRoutingSettings {
                     route_enabled: false,
                     model_failover_enabled: false,
-                });
+                },
+            );
             if settings.route_enabled || settings.model_failover_enabled {
                 Some(classify_claude_model_key(&request_model))
             } else {

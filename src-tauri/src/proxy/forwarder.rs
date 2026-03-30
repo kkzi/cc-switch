@@ -313,7 +313,8 @@ impl RequestForwarder {
                     }
 
                     // 请求成功后清零重试计数
-                    self.emit_model_retry_status(app_type_str, model_key, 0).await;
+                    self.emit_model_retry_status(app_type_str, model_key, 0)
+                        .await;
 
                     return Ok(ForwardResult {
                         response,
@@ -1120,7 +1121,6 @@ fn extract_error_message(error: &ProxyError) -> Option<String> {
         _ => Some(error.to_string()),
     }
 }
-
 
 /// 检测 Provider 是否为 Bedrock（通过 CLAUDE_CODE_USE_BEDROCK 环境变量判断）
 fn is_bedrock_provider(provider: &Provider) -> bool {

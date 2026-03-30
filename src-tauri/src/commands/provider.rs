@@ -5,10 +5,10 @@ use crate::app_config::AppType;
 use crate::commands::copilot::CopilotAuthState;
 use crate::error::AppError;
 use crate::provider::Provider;
+use crate::services::provider::FetchOpenAiModelsResponse;
 use crate::services::{
     EndpointLatency, ProviderService, ProviderSortUpdate, SpeedtestService, SwitchResult,
 };
-use crate::services::provider::FetchOpenAiModelsResponse;
 use crate::store::AppState;
 use std::str::FromStr;
 

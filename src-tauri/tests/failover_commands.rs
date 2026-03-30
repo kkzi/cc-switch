@@ -21,8 +21,14 @@ async fn model_failover_queue_commands_round_trip() {
     let provider_a = Provider::with_id("a".to_string(), "A".to_string(), json!({}), None);
     let provider_b = Provider::with_id("b".to_string(), "B".to_string(), json!({}), None);
 
-    state.db.save_provider("claude", &provider_a).expect("save a");
-    state.db.save_provider("claude", &provider_b).expect("save b");
+    state
+        .db
+        .save_provider("claude", &provider_a)
+        .expect("save a");
+    state
+        .db
+        .save_provider("claude", &provider_b)
+        .expect("save b");
 
     let queue = vec!["b".to_string(), "a".to_string()];
     set_failover_queue_for_model_test_hook(&state, "claude", "haiku", &queue)
@@ -57,9 +63,18 @@ async fn model_failover_available_providers_command_excludes_queue_members() {
     let provider_b = Provider::with_id("b".to_string(), "B".to_string(), json!({}), None);
     let provider_c = Provider::with_id("c".to_string(), "C".to_string(), json!({}), None);
 
-    state.db.save_provider("claude", &provider_a).expect("save a");
-    state.db.save_provider("claude", &provider_b).expect("save b");
-    state.db.save_provider("claude", &provider_c).expect("save c");
+    state
+        .db
+        .save_provider("claude", &provider_a)
+        .expect("save a");
+    state
+        .db
+        .save_provider("claude", &provider_b)
+        .expect("save b");
+    state
+        .db
+        .save_provider("claude", &provider_c)
+        .expect("save c");
 
     set_failover_queue_for_model_test_hook(&state, "claude", "haiku", &["a".to_string()])
         .await

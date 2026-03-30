@@ -1248,12 +1248,19 @@ impl Database {
             "DROP INDEX IF EXISTS forkdb.idx_fork_provider_failover_queue",
             [],
         )
-        .map_err(|e| AppError::Database(format!("删除旧索引 idx_fork_provider_failover_queue 失败: {e}")))?;
+        .map_err(|e| {
+            AppError::Database(format!(
+                "删除旧索引 idx_fork_provider_failover_queue 失败: {e}"
+            ))
+        })?;
 
-        conn.execute("DROP TABLE IF EXISTS forkdb.fork_provider_failover_queue", [])
-            .map_err(|e| {
-                AppError::Database(format!("删除旧表 fork_provider_failover_queue 失败: {e}"))
-            })?;
+        conn.execute(
+            "DROP TABLE IF EXISTS forkdb.fork_provider_failover_queue",
+            [],
+        )
+        .map_err(|e| {
+            AppError::Database(format!("删除旧表 fork_provider_failover_queue 失败: {e}"))
+        })?;
 
         let settings_table_exists = conn
             .query_row(
@@ -1274,7 +1281,9 @@ impl Database {
                 [],
             )
             .map_err(|e| {
-                AppError::Database(format!("清理旧设置 fork_provider_failover_enabled_* 失败: {e}"))
+                AppError::Database(format!(
+                    "清理旧设置 fork_provider_failover_enabled_* 失败: {e}"
+                ))
             })?
         } else {
             0

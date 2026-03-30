@@ -69,6 +69,11 @@ export type ImportResult =
     }
   | { type: "skill"; key: string };
 
+export interface PendingDeepLinkError {
+  url: string;
+  error: string;
+}
+
 export const deeplinkApi = {
   /**
    * Parse a deep link URL
@@ -100,5 +105,17 @@ export const deeplinkApi = {
     request: DeepLinkImportRequest,
   ): Promise<ImportResult> => {
     return invoke("import_from_deeplink_unified", { request });
+  },
+
+  takePendingDeeplink: async (): Promise<DeepLinkImportRequest | null> => {
+    return invoke("take_pending_deeplink");
+  },
+
+  takePendingDeeplinkError: async (): Promise<PendingDeepLinkError | null> => {
+    return invoke("take_pending_deeplink_error");
+  },
+
+  setMainWindowReady: async (ready: boolean): Promise<boolean> => {
+    return invoke("set_main_window_ready", { ready });
   },
 };

@@ -184,10 +184,16 @@ impl ProviderService {
             let insert_index = if providers.is_empty() { 0 } else { 1 };
 
             for (index, (_, existing_provider)) in providers.iter_mut().enumerate() {
-                let next_sort_index = if index < insert_index { index } else { index + 1 };
+                let next_sort_index = if index < insert_index {
+                    index
+                } else {
+                    index + 1
+                };
                 if existing_provider.sort_index != Some(next_sort_index) {
                     existing_provider.sort_index = Some(next_sort_index);
-                    state.db.save_provider(app_type.as_str(), existing_provider)?;
+                    state
+                        .db
+                        .save_provider(app_type.as_str(), existing_provider)?;
                 }
             }
 
@@ -1096,7 +1102,6 @@ impl ProviderService {
     pub(crate) fn write_gemini_live(provider: &Provider) -> Result<(), AppError> {
         write_gemini_live(provider)
     }
-
 
     fn validate_provider_settings(app_type: &AppType, provider: &Provider) -> Result<(), AppError> {
         match app_type {

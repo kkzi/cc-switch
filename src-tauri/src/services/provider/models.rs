@@ -97,9 +97,7 @@ pub async fn fetch_openai_models(
                 let body = resp.text().await.unwrap_or_default();
                 let should_fallback = !is_last && (status == 404 || status == 405);
                 if should_fallback {
-                    warnings.push(format!(
-                        "地址 {url} 返回 HTTP {status}，已尝试备用地址"
-                    ));
+                    warnings.push(format!("地址 {url} 返回 HTTP {status}，已尝试备用地址"));
                     continue;
                 }
                 return Err(map_http_status_error(status, &body));

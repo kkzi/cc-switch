@@ -1,6 +1,6 @@
 use crate::deeplink::{
     import_mcp_from_deeplink, import_prompt_from_deeplink, import_provider_from_deeplink,
-    import_skill_from_deeplink, parse_deeplink_url, DeepLinkImportRequest,
+    import_skill_from_deeplink, parse_deeplink_url, DeepLinkImportRequest, PendingDeepLinkError,
 };
 use crate::store::AppState;
 use tauri::State;
@@ -86,4 +86,24 @@ pub async fn import_from_deeplink_unified(
         }
         _ => Err(format!("Unsupported resource type: {}", request.resource)),
     }
+}
+
+#[tauri::command]
+pub fn take_pending_deeplink(
+    state: State<'_, AppState>,
+) -> Result<Option<DeepLinkImportRequest>, String> {
+    Ok(state.take_pending_deeplink())
+}
+
+#[tauri::command]
+pub fn take_pending_deeplink_error(
+    state: State<'_, AppState>,
+) -> Result<Option<PendingDeepLinkError>, String> {
+    Ok(state.take_pending_deeplink_error())
+}
+
+#[tauri::command]
+pub fn set_main_window_ready(state: State<'_, AppState>, ready: bool) -> Result<bool, String> {
+    state.set_main_window_ready(ready);
+    Ok(true)
 }
