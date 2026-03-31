@@ -73,7 +73,7 @@ impl Default for StreamCheckConfig {
             max_retries: 2,
             degraded_threshold_ms: 6000,
             claude_model: "claude-haiku-4-5-20251001".to_string(),
-            codex_model: "gpt-5.1-codex@low".to_string(),
+            codex_model: "gpt-5.2".to_string(),
             gemini_model: "gemini-3-pro-preview".to_string(),
             test_prompt: default_test_prompt(),
         }
@@ -176,17 +176,11 @@ impl StreamCheckService {
                 degraded_threshold_ms: tc
                     .degraded_threshold_ms
                     .unwrap_or(global_config.degraded_threshold_ms),
-                claude_model: tc
-                    .test_model
-                    .clone()
+                claude_model: Self::trimmed_option(tc.test_model.as_deref())
                     .unwrap_or_else(|| global_config.claude_model.clone()),
-                codex_model: tc
-                    .test_model
-                    .clone()
+                codex_model: Self::trimmed_option(tc.test_model.as_deref())
                     .unwrap_or_else(|| global_config.codex_model.clone()),
-                gemini_model: tc
-                    .test_model
-                    .clone()
+                gemini_model: Self::trimmed_option(tc.test_model.as_deref())
                     .unwrap_or_else(|| global_config.gemini_model.clone()),
                 test_prompt: tc
                     .test_prompt
@@ -655,7 +649,9 @@ impl StreamCheckService {
             AppType::Claude => Self::extract_env_model(provider, "ANTHROPIC_MODEL")
                 .unwrap_or_else(|| config.claude_model.clone()),
             AppType::Codex => {
-                Self::extract_codex_model(provider).unwrap_or_else(|| config.codex_model.clone())
+                Self::extract_provider_test_model(provider)
+                    .or_else(|| Self::extract_codex_model(provider))
+                    .unwrap_or_else(|| config.codex_model.clone())
             }
             AppType::Gemini => Self::extract_env_model(provider, "GEMINI_MODEL")
                 .unwrap_or_else(|| config.gemini_model.clone()),
@@ -670,6 +666,13 @@ impl StreamCheckService {
                 Self::extract_openclaw_model(provider).unwrap_or_else(|| "gpt-4o".to_string())
             }
         }
+    }
+
+    fn trimmed_option(value: Option<&str>) -> Option<String> {
+        value
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
     }
 
     /// 从多行提示词中随机选择一条
@@ -723,8 +726,16 @@ impl StreamCheckService {
             .get("env")
             .and_then(|env| env.get(key))
             .and_then(|value| value.as_str())
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty())
+            .and_then(|value| Self::trimmed_option(Some(value)))
+    }
+
+    fn extract_provider_test_model(provider: &Provider) -> Option<String> {
+        provider
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.test_config.as_ref())
+            .filter(|test_config| test_config.enabled)
+            .and_then(|test_config| Self::trimmed_option(test_config.test_model.as_deref()))
     }
 
     fn extract_codex_model(provider: &Provider) -> Option<String> {
@@ -739,8 +750,7 @@ impl StreamCheckService {
         let re = Regex::new(r#"^model\s*=\s*["']([^"']+)["']"#).ok()?;
         re.captures(config_text)
             .and_then(|caps| caps.get(1))
-            .map(|m| m.as_str().trim().to_string())
-            .filter(|value| !value.is_empty())
+            .and_then(|m| Self::trimmed_option(Some(m.as_str())))
     }
 
     /// 获取操作系统名称（映射为 Claude CLI 使用的格式）
@@ -792,6 +802,34 @@ impl StreamCheckService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provider::{ProviderMeta, ProviderTestConfig};
+    use serde_json::json;
+
+    fn make_codex_provider(config_text: &str, test_model: Option<&str>, enabled: bool) -> Provider {
+        Provider {
+            id: "codex-test".to_string(),
+            name: "Codex Test".to_string(),
+            settings_config: json!({
+                "config": config_text
+            }),
+            website_url: None,
+            category: None,
+            created_at: None,
+            sort_index: None,
+            notes: None,
+            meta: Some(ProviderMeta {
+                test_config: Some(ProviderTestConfig {
+                    enabled,
+                    test_model: test_model.map(str::to_string),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+            icon: None,
+            icon_color: None,
+            in_failover_queue: false,
+        }
+    }
 
     #[test]
     fn test_determine_status() {
@@ -823,6 +861,40 @@ mod tests {
         assert_eq!(config.timeout_secs, 45);
         assert_eq!(config.max_retries, 2);
         assert_eq!(config.degraded_threshold_ms, 6000);
+        assert_eq!(config.codex_model, "gpt-5.2");
+    }
+
+    #[test]
+    fn test_resolve_codex_test_model_prefers_enabled_meta_test_model() {
+        let provider = make_codex_provider(r#"model = "config-model""#, Some("meta-model"), true);
+        let config = StreamCheckConfig::default();
+
+        let model = StreamCheckService::resolve_test_model(&AppType::Codex, &provider, &config);
+
+        assert_eq!(model, "meta-model");
+    }
+
+    #[test]
+    fn test_resolve_codex_test_model_falls_back_to_provider_config() {
+        let provider = make_codex_provider(r#"model = "config-model""#, None, false);
+        let config = StreamCheckConfig::default();
+
+        let model = StreamCheckService::resolve_test_model(&AppType::Codex, &provider, &config);
+
+        assert_eq!(model, "config-model");
+    }
+
+    #[test]
+    fn test_resolve_codex_test_model_falls_back_to_global_config() {
+        let provider = make_codex_provider("", None, false);
+        let config = StreamCheckConfig {
+            codex_model: "global-model".to_string(),
+            ..StreamCheckConfig::default()
+        };
+
+        let model = StreamCheckService::resolve_test_model(&AppType::Codex, &provider, &config);
+
+        assert_eq!(model, "global-model");
     }
 
     #[test]
