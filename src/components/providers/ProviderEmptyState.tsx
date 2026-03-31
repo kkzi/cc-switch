@@ -19,12 +19,12 @@ export function ProviderEmptyState({
     appId === "claude" || appId === "codex" || appId === "gemini";
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-10 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-        <Users className="h-7 w-7 text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center">
+      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+        <Users className="h-6 w-6 text-muted-foreground" />
       </div>
       <h3 className="text-lg font-semibold">{t("provider.noProviders")}</h3>
-      <p className="mt-2 max-w-lg text-sm text-muted-foreground">
+      <p className="mt-1.5 max-w-lg text-sm text-muted-foreground">
         {t("provider.noProvidersDescription")}
       </p>
       {showSnippetHint && (
@@ -32,7 +32,7 @@ export function ProviderEmptyState({
           {t("provider.noProvidersDescriptionSnippet")}
         </p>
       )}
-      <div className="mt-6 flex flex-col gap-2">
+      <div className="mt-5 flex flex-col gap-1.5">
         {onImport && (
           <Button onClick={onImport}>
             <Download className="mr-2 h-4 w-4" />

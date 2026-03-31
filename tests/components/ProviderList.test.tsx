@@ -165,10 +165,14 @@ describe("ProviderList Component", () => {
       />,
     );
 
+    expect(container.firstElementChild).toHaveClass("space-y-2.5");
     const placeholders = container.querySelectorAll(
       ".border-dashed.border-muted-foreground\\/40",
     );
     expect(placeholders).toHaveLength(3);
+    placeholders.forEach((placeholder) => {
+      expect(placeholder).toHaveClass("h-24");
+    });
   });
 
   it("should show empty state and trigger create callback when no providers exist", () => {
@@ -318,9 +322,9 @@ describe("ProviderList Component", () => {
     fireEvent.change(searchInput, { target: { value: "gamma" } });
     expect(screen.queryByTestId("provider-card-alpha")).not.toBeInTheDocument();
     expect(screen.queryByTestId("provider-card-beta")).not.toBeInTheDocument();
-    expect(
-      screen.getByText("No providers match your search."),
-    ).toBeInTheDocument();
+    const emptyNotice = screen.getByText("No providers match your search.");
+    expect(emptyNotice).toBeInTheDocument();
+    expect(emptyNotice).toHaveClass("px-5", "py-6");
   });
 
   it("auto-collapses Claude route card when switching provider while proxy is running", () => {

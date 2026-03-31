@@ -608,11 +608,11 @@ export function ProviderList({
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {[0, 1, 2].map((index) => (
           <div
             key={index}
-            className="w-full border border-dashed rounded-lg h-28 border-muted-foreground/40 bg-muted/40"
+            className="w-full border border-dashed rounded-lg h-24 border-muted-foreground/40 bg-muted/40"
           />
         ))}
       </div>
@@ -639,7 +639,7 @@ export function ProviderList({
         items={displayIds}
         strategy={verticalListSortingStrategy}
       >
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {displayIds.map((itemId) => {
             if (itemId === CLAUDE_ROUTE_MODE_NODE_ID) {
               return (
@@ -726,7 +726,7 @@ export function ProviderList({
   );
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="mt-3 space-y-3">
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div
@@ -737,7 +737,7 @@ export function ProviderList({
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="fixed left-1/2 top-[6.5rem] z-40 w-[min(90vw,26rem)] -translate-x-1/2 sm:right-6 sm:left-auto sm:translate-x-0"
           >
-            <div className="p-4 space-y-3 border shadow-md rounded-2xl border-white/10 bg-background/95 shadow-black/20 backdrop-blur-md">
+            <div className="space-y-2.5 rounded-2xl border border-white/10 bg-background/95 p-3.5 shadow-md shadow-black/20 backdrop-blur-md">
               <div className="relative flex items-center gap-2">
                 <Search className="absolute w-4 h-4 -translate-y-1/2 pointer-events-none left-3 top-1/2 text-muted-foreground" />
                 <Input
@@ -792,7 +792,7 @@ export function ProviderList({
       </AnimatePresence>
 
       {filteredProviders.length === 0 ? (
-        <div className="px-6 py-8 text-sm text-center border border-dashed rounded-lg border-border text-muted-foreground">
+        <div className="rounded-lg border border-dashed border-border px-5 py-6 text-center text-sm text-muted-foreground">
           {t("provider.noSearchResults", {
             defaultValue: "No providers match your search.",
           })}

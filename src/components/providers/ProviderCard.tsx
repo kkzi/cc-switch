@@ -250,7 +250,7 @@ export function ProviderCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border border-border p-4 transition-all duration-300",
+        "relative overflow-hidden rounded-xl border border-border p-3.5 transition-all duration-300",
         "bg-card text-card-foreground group",
         isAutoFailoverEnabled || isProxyTakeover
           ? "hover:border-emerald-500/50"
@@ -272,12 +272,12 @@ export function ProviderCard({
           isActiveProvider ? "opacity-100" : "opacity-0",
         )}
       />
-      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 items-center gap-2">
+      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 items-center gap-1.5">
           <button
             type="button"
             className={cn(
-              "-ml-1.5 flex-shrink-0 cursor-grab active:cursor-grabbing p-1.5",
+              "-ml-1 flex-shrink-0 cursor-grab active:cursor-grabbing p-1",
               "text-muted-foreground/50 hover:text-muted-foreground transition-colors",
               dragHandleProps?.isDragging && "cursor-grabbing",
             )}
@@ -297,8 +297,8 @@ export function ProviderCard({
             />
           </div>
 
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2 min-h-7">
+          <div className="space-y-0.5">
+            <div className="flex min-h-6 flex-wrap items-center gap-1.5">
               <h3 className="text-base font-semibold leading-none">
                 {provider.name}
               </h3>
@@ -369,7 +369,7 @@ export function ProviderCard({
         </div>
 
         <div
-          className="relative flex items-center ml-auto min-w-0 gap-3"
+          className="relative ml-auto flex min-w-0 items-center gap-2.5"
           style={
             {
               "--actions-width": `${actionsWidth || 320}px`,
@@ -379,7 +379,7 @@ export function ProviderCard({
           <div className="ml-auto">
             <div className="flex items-center gap-1 transition-transform duration-200 group-hover:-translate-x-[var(--actions-width)] group-focus-within:-translate-x-[var(--actions-width)]">
               {hasMultiplePlans ? (
-                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                   <span className="font-medium">
                     {t("usage.multiplePlans", {
                       count: usage?.data?.length || 0,
@@ -423,7 +423,7 @@ export function ProviderCard({
 
           <div
             ref={actionsRef}
-            className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pl-3 opacity-0 pointer-events-none group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto transition-all duration-200 translate-x-2 group-hover:translate-x-0 group-focus-within:translate-x-0"
+            className="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 translate-x-2 items-center gap-1 pl-2.5 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
           >
             <ProviderActions
               appId={appId}
@@ -459,7 +459,7 @@ export function ProviderCard({
       </div>
 
       {isExpanded && hasMultiplePlans && (
-        <div className="mt-4 pt-4 border-t border-border-default">
+        <div className="mt-3 border-t border-border-default pt-3">
           <UsageFooter
             provider={provider}
             providerId={provider.id}
