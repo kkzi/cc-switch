@@ -67,14 +67,18 @@ describe("ProviderCard compact layout", () => {
     useUsageQueryMock.mockReturnValue({ data: undefined });
   });
 
-  it("renders a compact card shell and content spacing", () => {
+  it("renders a tighter card shell and title rhythm", () => {
     const { container } = render(<ProviderCard {...baseProps} />);
 
-    expect(container.firstElementChild).toHaveClass("p-3.5");
-    expect(container.firstElementChild?.children[1]).toHaveClass("gap-3");
+    expect(container.firstElementChild).toHaveClass("p-3");
+    expect(container.firstElementChild?.children[1]).toHaveClass("gap-2.5");
+    expect(container.firstElementChild?.querySelector(".space-y-0")).toBeInTheDocument();
+    expect(
+      container.firstElementChild?.querySelector(".min-h-5"),
+    ).toBeInTheDocument();
   });
 
-  it("renders compact expanded usage spacing when multiple plans exist", async () => {
+  it("renders tighter expanded usage spacing when multiple plans exist", async () => {
     useUsageQueryMock.mockReturnValue({
       data: {
         success: true,
@@ -86,6 +90,6 @@ describe("ProviderCard compact layout", () => {
 
     expect(await screen.findByTestId("usage-footer-block")).toBeInTheDocument();
     const expandedShell = container.querySelector(".border-t.border-border-default");
-    expect(expandedShell).toHaveClass("mt-3", "pt-3");
+    expect(expandedShell).toHaveClass("mt-2.5", "pt-2.5");
   });
 });

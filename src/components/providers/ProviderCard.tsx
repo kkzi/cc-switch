@@ -250,7 +250,7 @@ export function ProviderCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border border-border p-3.5 transition-all duration-300",
+        "relative overflow-hidden rounded-xl border border-border p-3 transition-all duration-300",
         "bg-card text-card-foreground group",
         isAutoFailoverEnabled || isProxyTakeover
           ? "hover:border-emerald-500/50"
@@ -272,7 +272,7 @@ export function ProviderCard({
           isActiveProvider ? "opacity-100" : "opacity-0",
         )}
       />
-      <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 items-center gap-1.5">
           <button
             type="button"
@@ -297,8 +297,8 @@ export function ProviderCard({
             />
           </div>
 
-          <div className="space-y-0.5">
-            <div className="flex min-h-6 flex-wrap items-center gap-1.5">
+          <div className="space-y-0">
+            <div className="flex min-h-5 flex-wrap items-center gap-1.5">
               <h3 className="text-base font-semibold leading-none">
                 {provider.name}
               </h3>
@@ -459,7 +459,7 @@ export function ProviderCard({
       </div>
 
       {isExpanded && hasMultiplePlans && (
-        <div className="mt-3 border-t border-border-default pt-3">
+        <div className="mt-2.5 border-t border-border-default pt-2.5">
           <UsageFooter
             provider={provider}
             providerId={provider.id}
