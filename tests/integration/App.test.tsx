@@ -266,6 +266,12 @@ describe("App integration with MSW", () => {
       expect(screen.getByTestId("add-provider-dialog")).toBeInTheDocument(),
     );
     expect(readText).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("add-provider-initial-data").textContent).toContain(
+      "\"name\":\"api.example.com\"",
+    );
+    expect(screen.getByTestId("add-provider-initial-data").textContent).toContain(
+      "\"ANTHROPIC_BASE_URL\":\"https://api.example.com/v1\"",
+    );
   });
 
   it("does not hijack paste when focus is inside an input", async () => {

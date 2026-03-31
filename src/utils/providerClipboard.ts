@@ -6,6 +6,7 @@ export type ProviderClipboardDraft = {
 
 const URL_PATTERN = /https?:\/\/[^\s"'<>]+/gi;
 const API_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
+const TRAILING_URL_PUNCTUATION = /[),.;:!?，。；：！？、]+$/;
 
 export function extractProviderDraftFromClipboard(
   text: string,
@@ -19,12 +20,13 @@ export function extractProviderDraftFromClipboard(
 
   for (const candidate of matches) {
     try {
-      const parsed = new URL(candidate);
+      const sanitizedCandidate = candidate.replace(TRAILING_URL_PUNCTUATION, "");
+      const parsed = new URL(sanitizedCandidate);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
         continue;
       }
 
-      const baseUrl = candidate.replace(/\/+$/, "");
+      const baseUrl = sanitizedCandidate.replace(/\/+$/, "");
       const remainder = source.replace(candidate, " ");
       const apiKey =
         remainder

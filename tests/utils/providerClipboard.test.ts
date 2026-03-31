@@ -29,4 +29,16 @@ describe("extractProviderDraftFromClipboard", () => {
       apiKey: "",
     });
   });
+
+  it("strips trailing punctuation from the detected url", () => {
+    expect(
+      extractProviderDraftFromClipboard(
+        "API: https://api.example.com/v1,\nKEY: sk-test_123",
+      ),
+    ).toEqual({
+      name: "api.example.com",
+      baseUrl: "https://api.example.com/v1",
+      apiKey: "sk-test_123",
+    });
+  });
 });
