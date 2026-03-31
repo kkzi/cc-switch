@@ -41,9 +41,13 @@ import { extractErrorMessage } from "@/utils/errorUtils";
 import { isTextEditableTarget } from "@/utils/domUtils";
 import { cn } from "@/lib/utils";
 import { isWindows, isLinux } from "@/lib/platform";
+import { extractProviderDraftFromClipboard } from "@/utils/providerClipboard";
 import { AppSwitcher } from "@/components/AppSwitcher";
 import { ProviderList } from "@/components/providers/ProviderList";
-import { AddProviderDialog } from "@/components/providers/AddProviderDialog";
+import {
+  AddProviderDialog,
+  type AddProviderInitialData,
+} from "@/components/providers/AddProviderDialog";
 import { EditProviderDialog } from "@/components/providers/EditProviderDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SettingsPage } from "@/components/settings/SettingsPage";
@@ -140,6 +144,76 @@ const getInitialView = (): View => {
   return "providers";
 };
 
+const buildAddProviderInitialData = (
+  appId: AppId,
+  name: string,
+  baseUrl: string,
+  apiKey: string,
+): AddProviderInitialData => {
+  switch (appId) {
+    case "codex":
+      return {
+        name,
+        category: "custom",
+        settingsConfig: {
+          auth: {
+            OPENAI_API_KEY: apiKey,
+          },
+          config: `base_url = "${baseUrl}"`,
+        },
+      };
+    case "gemini":
+      return {
+        name,
+        category: "custom",
+        settingsConfig: {
+          env: {
+            GOOGLE_GEMINI_BASE_URL: baseUrl,
+            GEMINI_API_KEY: apiKey,
+          },
+        },
+      };
+    case "opencode":
+      return {
+        name,
+        category: "custom",
+        settingsConfig: {
+          npm: "@ai-sdk/openai-compatible",
+          options: {
+            baseURL: baseUrl,
+            apiKey,
+            setCacheKey: true,
+          },
+          models: {},
+        },
+      };
+    case "openclaw":
+      return {
+        name,
+        category: "custom",
+        settingsConfig: {
+          baseUrl,
+          apiKey,
+          api: "openai-completions",
+          models: [],
+        },
+      };
+    case "claude":
+    default:
+      return {
+        name,
+        category: "custom",
+        settingsConfig: {
+          env: {
+            ANTHROPIC_BASE_URL: baseUrl,
+            ANTHROPIC_AUTH_TOKEN: apiKey,
+          },
+          config: {},
+        },
+      };
+  }
+};
+
 function App() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -148,6 +222,8 @@ function App() {
   const [currentView, setCurrentView] = useState<View>(getInitialView);
   const [settingsDefaultTab, setSettingsDefaultTab] = useState("general");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [addProviderInitialData, setAddProviderInitialData] =
+    useState<AddProviderInitialData>();
 
   useEffect(() => {
     localStorage.setItem(VIEW_STORAGE_KEY, currentView);
@@ -496,6 +572,36 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+
+      if (key === "v" && (event.metaKey || event.ctrlKey)) {
+        if (event.defaultPrevented) return;
+        if (currentViewRef.current !== "providers") return;
+        if (isTextEditableTarget(event.target)) return;
+        if (isAddOpen || editingProvider) return;
+        if (!navigator.clipboard?.readText) return;
+
+        event.preventDefault();
+        void navigator.clipboard
+          .readText()
+          .then((text) => {
+            const draft = extractProviderDraftFromClipboard(text);
+            if (!draft) return;
+
+            setAddProviderInitialData(
+              buildAddProviderInitialData(
+                activeApp,
+                draft.name,
+                draft.baseUrl,
+                draft.apiKey,
+              ),
+            );
+            setIsAddOpen(true);
+          })
+          .catch(() => undefined);
+        return;
+      }
+
       if (event.key === "," && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         setCurrentView("settings");
@@ -519,7 +625,14 @@ function App() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [activeApp, editingProvider, isAddOpen]);
+
+  const handleAddProviderOpenChange = (open: boolean) => {
+    setIsAddOpen(open);
+    if (!open) {
+      setAddProviderInitialData(undefined);
+    }
+  };
 
   const handleOpenWebsite = async (url: string) => {
     try {
@@ -1260,8 +1373,9 @@ function App() {
 
       <AddProviderDialog
         open={isAddOpen}
-        onOpenChange={setIsAddOpen}
+        onOpenChange={handleAddProviderOpenChange}
         appId={activeApp}
+        initialData={addProviderInitialData}
         onSubmit={addProvider}
       />
 

@@ -20,11 +20,24 @@ import { geminiProviderPresets } from "@/config/geminiProviderPresets";
 import { extractCodexBaseUrl } from "@/utils/providerConfigUtils";
 import type { OpenClawSuggestedDefaults } from "@/config/openclawProviderPresets";
 import type { UniversalProviderPreset } from "@/config/universalProviderPresets";
+import type { ProviderCategory, ProviderMeta } from "@/types";
+
+export interface AddProviderInitialData {
+  name?: string;
+  websiteUrl?: string;
+  notes?: string;
+  settingsConfig?: Record<string, unknown>;
+  category?: ProviderCategory;
+  meta?: ProviderMeta;
+  icon?: string;
+  iconColor?: string;
+}
 
 interface AddProviderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   appId: AppId;
+  initialData?: AddProviderInitialData;
   onSubmit: (
     provider: Omit<Provider, "id"> & {
       providerKey?: string;
@@ -37,6 +50,7 @@ export function AddProviderDialog({
   open,
   onOpenChange,
   appId,
+  initialData,
   onSubmit,
 }: AddProviderDialogProps) {
   const { t } = useTranslation();
@@ -304,6 +318,7 @@ export function AddProviderDialog({
               onSubmit={handleSubmit}
               onCancel={() => onOpenChange(false)}
               onSubmittingChange={setIsFormSubmitting}
+              initialData={initialData}
               showButtons={false}
             />
           </TabsContent>
@@ -320,6 +335,7 @@ export function AddProviderDialog({
           onSubmit={handleSubmit}
           onCancel={() => onOpenChange(false)}
           onSubmittingChange={setIsFormSubmitting}
+          initialData={initialData}
           showButtons={false}
         />
       )}

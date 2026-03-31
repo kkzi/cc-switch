@@ -48,9 +48,18 @@ vi.mock("@/components/providers/ProviderList", () => ({
 }));
 
 vi.mock("@/components/providers/AddProviderDialog", () => ({
-  AddProviderDialog: ({ open, onOpenChange, onSubmit, appId }: any) =>
+  AddProviderDialog: ({
+    open,
+    onOpenChange,
+    onSubmit,
+    appId,
+    initialData,
+  }: any) =>
     open ? (
       <div data-testid="add-provider-dialog">
+        <pre data-testid="add-provider-initial-data">
+          {JSON.stringify(initialData ?? null)}
+        </pre>
         <button
           onClick={() =>
             onSubmit({
@@ -151,6 +160,12 @@ describe("App integration with MSW", () => {
     resetProviderState();
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
+    vi.restoreAllMocks();
+    Object.assign(navigator, {
+      clipboard: {
+        readText: vi.fn(),
+      },
+    });
   });
 
   it("covers basic provider flows via real hooks", async () => {
@@ -230,4 +245,52 @@ describe("App integration with MSW", () => {
       expect(toastErrorMock).toHaveBeenCalled();
     });
   }, 15000);
+
+  it("opens add provider dialog from clipboard paste on providers view", async () => {
+    const readText = vi
+      .spyOn(navigator.clipboard, "readText")
+      .mockResolvedValue("https://api.example.com/v1\nsk-test_123");
+
+    const { default: App } = await import("@/App");
+    renderApp(App);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("provider-list").textContent).toContain(
+        "claude-1",
+      ),
+    );
+
+    fireEvent.keyDown(window, { key: "v", ctrlKey: true });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("add-provider-dialog")).toBeInTheDocument(),
+    );
+    expect(readText).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not hijack paste when focus is inside an input", async () => {
+    const readText = vi
+      .spyOn(navigator.clipboard, "readText")
+      .mockResolvedValue("https://api.example.com/v1\nsk-test_123");
+
+    const { default: App } = await import("@/App");
+    renderApp(App);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("provider-list").textContent).toContain(
+        "claude-1",
+      ),
+    );
+
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    fireEvent.keyDown(input, { key: "v", ctrlKey: true });
+
+    expect(readText).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("add-provider-dialog")).not.toBeInTheDocument();
+
+    input.remove();
+  });
 });
