@@ -5,8 +5,23 @@ export type ProviderClipboardDraft = {
 };
 
 const URL_PATTERN = /https?:\/\/[^\s"'<>]+/gi;
-const API_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
+const API_KEY_PATTERN = /[A-Za-z0-9_-]+/g;
 const TRAILING_URL_PUNCTUATION = /[),.;:!?，。；：！？、]+$/;
+
+function extractApiKeyCandidate(text: string): string {
+  const candidates = text.match(API_KEY_PATTERN) ?? [];
+  if (candidates.length === 0) {
+    return "";
+  }
+
+  const likelyCandidate = candidates.find(
+    (candidate) =>
+      candidate.startsWith("sk-") ||
+      (candidate.length >= 8 && /[-_\d]/.test(candidate)),
+  );
+
+  return likelyCandidate ?? candidates[0] ?? "";
+}
 
 export function extractProviderDraftFromClipboard(
   text: string,
@@ -28,11 +43,7 @@ export function extractProviderDraftFromClipboard(
 
       const baseUrl = sanitizedCandidate.replace(/\/+$/, "");
       const remainder = source.replace(candidate, " ");
-      const apiKey =
-        remainder
-          .split(/\s+/)
-          .find((token) => token.length > 0 && API_KEY_PATTERN.test(token)) ??
-        "";
+      const apiKey = extractApiKeyCandidate(remainder);
 
       return {
         name: parsed.hostname,

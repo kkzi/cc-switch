@@ -41,4 +41,16 @@ describe("extractProviderDraftFromClipboard", () => {
       apiKey: "sk-test_123",
     });
   });
+
+  it("extracts api key substrings even when wrapped by labels", () => {
+    expect(
+      extractProviderDraftFromClipboard(
+        "https://api.labelled-example.test/v1\n令牌：sk-ExampleKey1234567890AbCdEfGhIjKlMnOpQrStUvWxYz",
+      ),
+    ).toEqual({
+      name: "api.labelled-example.test",
+      baseUrl: "https://api.labelled-example.test/v1",
+      apiKey: "sk-ExampleKey1234567890AbCdEfGhIjKlMnOpQrStUvWxYz",
+    });
+  });
 });
