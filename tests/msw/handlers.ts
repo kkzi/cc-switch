@@ -51,6 +51,11 @@ export const handlers = [
   http.post(`${TAURI_ENDPOINT}/get_skills_migration_result`, () =>
     success(null),
   ),
+  http.post(`${TAURI_ENDPOINT}/take_pending_deeplink`, () => success(null)),
+  http.post(`${TAURI_ENDPOINT}/take_pending_deeplink_error`, () =>
+    success(null),
+  ),
+  http.post(`${TAURI_ENDPOINT}/set_main_window_ready`, () => success(true)),
   http.post(`${TAURI_ENDPOINT}/get_providers`, async ({ request }) => {
     const { app } = await withJson<{ app: AppId }>(request);
     return success(getProviders(app));
