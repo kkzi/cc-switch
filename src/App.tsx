@@ -42,6 +42,7 @@ import { isTextEditableTarget } from "@/utils/domUtils";
 import { cn } from "@/lib/utils";
 import { isWindows, isLinux } from "@/lib/platform";
 import { extractProviderDraftFromClipboard } from "@/utils/providerClipboard";
+import { buildAddProviderInitialData } from "@/utils/addProviderInitialData";
 import { AppSwitcher } from "@/components/AppSwitcher";
 import { ProviderList } from "@/components/providers/ProviderList";
 import {
@@ -142,76 +143,6 @@ const getInitialView = (): View => {
     return saved;
   }
   return "providers";
-};
-
-const buildAddProviderInitialData = (
-  appId: AppId,
-  name: string,
-  baseUrl: string,
-  apiKey: string,
-): AddProviderInitialData => {
-  switch (appId) {
-    case "codex":
-      return {
-        name,
-        category: "custom",
-        settingsConfig: {
-          auth: {
-            OPENAI_API_KEY: apiKey,
-          },
-          config: `base_url = "${baseUrl}"`,
-        },
-      };
-    case "gemini":
-      return {
-        name,
-        category: "custom",
-        settingsConfig: {
-          env: {
-            GOOGLE_GEMINI_BASE_URL: baseUrl,
-            GEMINI_API_KEY: apiKey,
-          },
-        },
-      };
-    case "opencode":
-      return {
-        name,
-        category: "custom",
-        settingsConfig: {
-          npm: "@ai-sdk/openai-compatible",
-          options: {
-            baseURL: baseUrl,
-            apiKey,
-            setCacheKey: true,
-          },
-          models: {},
-        },
-      };
-    case "openclaw":
-      return {
-        name,
-        category: "custom",
-        settingsConfig: {
-          baseUrl,
-          apiKey,
-          api: "openai-completions",
-          models: [],
-        },
-      };
-    case "claude":
-    default:
-      return {
-        name,
-        category: "custom",
-        settingsConfig: {
-          env: {
-            ANTHROPIC_BASE_URL: baseUrl,
-            ANTHROPIC_AUTH_TOKEN: apiKey,
-          },
-          config: {},
-        },
-      };
-  }
 };
 
 function App() {

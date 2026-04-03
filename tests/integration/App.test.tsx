@@ -299,4 +299,5 @@ describe("App integration with MSW", () => {
 
     input.remove();
   });
+
 });

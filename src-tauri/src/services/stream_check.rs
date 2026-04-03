@@ -747,7 +747,7 @@ impl StreamCheckService {
             return None;
         }
 
-        let re = Regex::new(r#"^model\s*=\s*["']([^"']+)["']"#).ok()?;
+        let re = Regex::new(r#"(?m)^model\s*=\s*["']([^"']+)["']"#).ok()?;
         re.captures(config_text)
             .and_then(|caps| caps.get(1))
             .and_then(|m| Self::trimmed_option(Some(m.as_str())))
@@ -878,6 +878,23 @@ mod tests {
     fn test_resolve_codex_test_model_falls_back_to_provider_config() {
         let provider = make_codex_provider(r#"model = "config-model""#, None, false);
         let config = StreamCheckConfig::default();
+
+        let model = StreamCheckService::resolve_test_model(&AppType::Codex, &provider, &config);
+
+        assert_eq!(model, "config-model");
+    }
+
+    #[test]
+    fn test_resolve_codex_test_model_reads_multiline_provider_config() {
+        let provider = make_codex_provider(
+            "model_provider = \"custom\"\nmodel = \"config-model\"\n[model_providers.custom]\nname = \"custom\"",
+            None,
+            false,
+        );
+        let config = StreamCheckConfig {
+            codex_model: "global-model".to_string(),
+            ..StreamCheckConfig::default()
+        };
 
         let model = StreamCheckService::resolve_test_model(&AppType::Codex, &provider, &config);
 
