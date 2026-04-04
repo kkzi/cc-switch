@@ -47,6 +47,63 @@ vi.mock("@/components/JsonEditor", () => ({
 }));
 
 describe("Common config modals", () => {
+  it("renders the Codex config.toml editor before auth.json", () => {
+    render(
+      <CodexConfigEditor
+        authValue="{}"
+        configValue='model = "gpt-5"'
+        onAuthChange={() => {}}
+        onConfigChange={() => {}}
+        useCommonConfig={false}
+        onCommonConfigToggle={() => {}}
+        commonConfigSnippet=""
+        onCommonConfigSnippetChange={() => true}
+        onCommonConfigErrorClear={() => {}}
+        commonConfigError=""
+        authError=""
+        configError=""
+      />,
+    );
+
+    const configLabel = screen.getByText(/codexConfig.configToml|config\.toml/i, {
+      selector: "label",
+    });
+    const authLabel = screen.getByText(/codexConfig.authJson|auth\.json/i, {
+      selector: "label",
+    });
+
+    expect(configLabel.compareDocumentPosition(authLabel)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("formats Codex auth.json from the auth header action", () => {
+    const onAuthChange = vi.fn();
+
+    render(
+      <CodexConfigEditor
+        authValue='{"foo":"bar"}'
+        configValue='model = "gpt-5"'
+        onAuthChange={onAuthChange}
+        onConfigChange={() => {}}
+        useCommonConfig={false}
+        onCommonConfigToggle={() => {}}
+        commonConfigSnippet=""
+        onCommonConfigSnippetChange={() => true}
+        onCommonConfigErrorClear={() => {}}
+        commonConfigError=""
+        authError=""
+        configError=""
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /common.format|格式化/i }),
+    );
+
+    expect(onAuthChange).toHaveBeenCalledWith('{\n  "foo": "bar"\n}');
+  });
+
   it("keeps the Codex common config modal closed after user closes it with an error present", async () => {
     render(
       <CodexConfigEditor

@@ -22,6 +22,7 @@ interface JsonEditorProps {
   language?: "json" | "javascript";
   height?: string | number;
   showMinimap?: boolean; // 添加此属性以防未来使用
+  showFormatButton?: boolean;
 }
 
 const JsonEditor: React.FC<JsonEditorProps> = ({
@@ -33,6 +34,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
   showValidation = true,
   language = "json",
   height,
+  showFormatButton = true,
 }) => {
   const { t } = useTranslation();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -261,7 +263,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
         style={{ width: "100%", height: isFullHeight ? undefined : "auto" }}
         className={isFullHeight ? "flex-1 min-h-0" : ""}
       />
-      {language === "json" && (
+      {language === "json" && showFormatButton && (
         <button
           type="button"
           onClick={handleFormat}
