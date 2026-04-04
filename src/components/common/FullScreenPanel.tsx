@@ -1,6 +1,5 @@
 import React from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isWindows, isLinux } from "@/lib/platform";
@@ -15,7 +14,7 @@ interface FullScreenPanelProps {
 }
 
 const DRAG_BAR_HEIGHT = isWindows() || isLinux() ? 0 : 28; // px - match App.tsx
-const HEADER_HEIGHT = 64; // px - match App.tsx
+const HEADER_HEIGHT = 56; // px - compact layout
 
 /**
  * Reusable full-screen panel component
@@ -72,16 +71,11 @@ export const FullScreenPanel: React.FC<FullScreenPanelProps> = ({
   }, [isOpen]);
 
   return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[60] flex flex-col"
-          style={{ backgroundColor: "hsl(var(--background))" }}
-        >
+    isOpen ? (
+      <div
+        className="fixed inset-0 z-[60] flex flex-col"
+        style={{ backgroundColor: "hsl(var(--background))" }}
+      >
           {/* Drag region - match App.tsx */}
           <div
             data-tauri-drag-region
@@ -95,7 +89,7 @@ export const FullScreenPanel: React.FC<FullScreenPanelProps> = ({
 
           {/* Header - match App.tsx */}
           <div
-            className="flex-shrink-0 flex items-center"
+            className="flex shrink-0 items-center border-b border-border-default"
             data-tauri-drag-region
             style={
               {
@@ -106,7 +100,7 @@ export const FullScreenPanel: React.FC<FullScreenPanelProps> = ({
             }
           >
             <div
-              className="px-6 w-full flex items-center gap-4"
+              className="flex w-full items-center gap-3 px-4"
               data-tauri-drag-region
               style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
             >
@@ -115,12 +109,12 @@ export const FullScreenPanel: React.FC<FullScreenPanelProps> = ({
                 variant="outline"
                 size="icon"
                 onClick={onClose}
-                className="rounded-lg select-none"
+                className="select-none"
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <h2 className="text-lg font-semibold text-foreground select-none">
+              <h2 className="select-none text-base font-semibold text-foreground">
                 {title}
               </h2>
             </div>
@@ -128,23 +122,22 @@ export const FullScreenPanel: React.FC<FullScreenPanelProps> = ({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto scroll-overlay">
-            <div className="px-6 py-6 space-y-6 w-full">{children}</div>
+            <div className="w-full space-y-4 px-4 py-4">{children}</div>
           </div>
 
           {/* Footer */}
           {footer && (
             <div
-              className="flex-shrink-0 py-4 border-t border-border-default"
+              className="shrink-0 border-t border-border-default py-3"
               style={{ backgroundColor: "hsl(var(--background))" }}
             >
-              <div className="px-6 flex items-center justify-end gap-3">
+              <div className="flex items-center justify-end gap-2 px-4">
                 {footer}
               </div>
             </div>
           )}
-        </motion.div>
-      )}
-    </AnimatePresence>,
+      </div>
+    ) : null,
     document.body,
   );
 };

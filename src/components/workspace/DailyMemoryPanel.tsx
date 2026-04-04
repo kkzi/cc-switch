@@ -8,7 +8,6 @@ import React, {
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Calendar, Trash2, Plus, Search, X, FolderOpen } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FullScreenPanel } from "@/components/common/FullScreenPanel";
@@ -383,46 +382,38 @@ const DailyMemoryPanel: React.FC<DailyMemoryPanelProps> = ({
           </div>
 
           {/* Search bar */}
-          <AnimatePresence>
-            {isSearchOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="overflow-hidden"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                    <Input
-                      ref={searchInputRef}
-                      value={searchTerm}
-                      onChange={(e) => handleSearchChange(e.target.value)}
-                      placeholder={t("workspace.dailyMemory.searchPlaceholder")}
-                      className="pl-8 pr-8 h-8 text-sm"
-                    />
-                    {searchTerm && (
-                      <button
-                        onClick={() => handleSearchChange("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={closeSearch}
-                    className="text-xs text-muted-foreground h-8 px-2 shrink-0"
-                  >
-                    {t("workspace.dailyMemory.searchCloseHint")}
-                  </Button>
+          {isSearchOpen && (
+            <div className="overflow-hidden">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    ref={searchInputRef}
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    placeholder={t("workspace.dailyMemory.searchPlaceholder")}
+                    className="h-8 pl-8 pr-8 text-sm"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => handleSearchChange("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={closeSearch}
+                  className="h-8 shrink-0 px-2 text-xs text-muted-foreground"
+                >
+                  {t("workspace.dailyMemory.searchCloseHint")}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Content: search results or normal file list */}
           {isActiveSearch ? (

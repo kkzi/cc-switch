@@ -5,58 +5,58 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 0 0% 8%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 0 0% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 0 0% 8%;
 
-    --primary: 210 100% 56%;
+    --primary: 0 0% 10%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 12%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 38%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 12%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 210 100% 56%;
+    --border: 0 0% 84%;
+    --input: 0 0% 84%;
+    --ring: 0 0% 12%;
 
-    --radius: 0.5rem;
+    --radius: 0rem;
   }
 
   .dark {
-    --background: 240 5% 12%;
+    --background: 0 0% 6%;
     --foreground: 0 0% 98%;
-    --card: 240 5% 16%;
+    --card: 0 0% 8%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 5% 16%;
+    --popover: 0 0% 8%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 210 100% 54%;
+    --primary: 0 0% 94%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 18%;
+    --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 5% 18%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 5% 18%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 66%;
+    --accent: 0 0% 12%;
     --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5% 24%;
-    --input: 240 5% 24%;
-    --ring: 210 100% 54%;
+    --border: 0 0% 24%;
+    --input: 0 0% 24%;
+    --ring: 0 0% 88%;
   }
 }
 
@@ -126,11 +126,14 @@
   box-sizing: border-box;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  animation: none !important;
+  transition: none !important;
+  border-radius: 0 !important;
 }
 
 html {
   @apply font-sans antialiased;
-  line-height: 1.5;
+  line-height: 1.35;
   color-scheme: light;
   overscroll-behavior: none;
 }
@@ -150,7 +153,8 @@ html.dark {
 }
 
 *:focus-visible {
-  @apply outline-2 outline-blue-500 outline-offset-2;
+  @apply outline-1 outline-offset-1;
+  outline-color: hsl(var(--ring));
 }
 
 @layer utilities {
@@ -190,42 +194,4 @@ html.dark {
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none;
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-::view-transition-old(root) {
-  z-index: 1;
-}
-
-::view-transition-new(root) {
-  z-index: 9999;
-}
-
-@keyframes theme-circle-expand {
-  from {
-    clip-path: circle(
-      0% at var(--theme-transition-x, 50%) var(--theme-transition-y, 50%)
-    );
-  }
-
-  to {
-    clip-path: circle(
-      150% at var(--theme-transition-x, 50%) var(--theme-transition-y, 50%)
-    );
-  }
-}
-
-::view-transition-new(root) {
-  animation: theme-circle-expand 0.4s ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-new(root) {
-    animation: none;
-  }
 }

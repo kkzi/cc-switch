@@ -25,7 +25,6 @@ import { settingsApi } from "@/lib/api";
 import { useUpdate } from "@/contexts/UpdateContext";
 import { relaunchApp } from "@/lib/updater";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
 import appIcon from "@/assets/icons/app-icon.png";
 import { isWindows } from "@/lib/platform";
 
@@ -312,12 +311,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
   const displayVersion = version ?? t("common.unknown");
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6"
-    >
+    <section className="space-y-6">
       <header className="space-y-1">
         <h3 className="text-sm font-medium">{t("common.about")}</h3>
         <p className="text-xs text-muted-foreground">
@@ -325,12 +319,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
         </p>
       </header>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-        className="rounded-xl border border-border bg-gradient-to-br from-card/80 to-card/40 p-6 space-y-5 shadow-sm"
-      >
+      <div className="rounded-xl border border-border bg-gradient-to-br from-card/80 to-card/40 p-6 space-y-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -405,11 +394,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
         </div>
 
         {hasUpdate && updateInfo && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-sm"
-          >
+          <div className="rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-sm">
             <p className="font-medium text-primary mb-1">
               {t("settings.updateAvailable", {
                 version: updateInfo.availableVersion,
@@ -420,9 +405,9 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
                 {updateInfo.notes}
               </p>
             )}
-          </motion.div>
+          </div>
         )}
-      </motion.div>
+      </div>
 
       {!isWindows() && (
         <div className="space-y-3">
@@ -447,7 +432,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 px-1">
-            {TOOL_NAMES.map((toolName, index) => {
+            {TOOL_NAMES.map((toolName) => {
               const tool = toolVersions.find((item) => item.name === toolName);
               // Special case for OpenCode (capital C), others use capitalize
               const displayName =
@@ -457,12 +442,8 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
               const title = tool?.version || tool?.error || t("common.unknown");
 
               return (
-                <motion.div
+                <div
                   key={toolName}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.15 + index * 0.05 }}
-                  whileHover={{ scale: 1.02 }}
                   className="flex flex-col gap-2 rounded-xl border border-border bg-gradient-to-br from-card/80 to-card/40 p-4 shadow-sm transition-colors hover:border-primary/30"
                 >
                   <div className="flex items-center justify-between">
@@ -553,7 +534,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
                         ? tool.version
                         : tool?.error || t("common.notInstalled")}
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
@@ -561,12 +542,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
       )}
 
       {!isWindows() && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-          className="space-y-3"
-        >
+        <div className="space-y-3">
           <h3 className="text-sm font-medium px-1">
             {t("settings.oneClickInstall")}
           </h3>
@@ -589,8 +565,8 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
               {ONE_CLICK_INSTALL_COMMANDS}
             </pre>
           </div>
-        </motion.div>
+        </div>
       )}
-    </motion.section>
+    </section>
   );
 }

@@ -60,21 +60,16 @@ export function ProxyToggle({ className, activeApp }: ProxyToggleProps) {
 
   return (
     <div
-      className={cn(
-        "flex items-center gap-1 px-1.5 h-8 rounded-lg bg-muted/50 transition-all",
-        className,
-      )}
+      className={cn("flex h-8 items-center gap-1.5 px-1.5", className)}
       title={tooltipText}
     >
       {isPending ? (
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       ) : (
         <Radio
           className={cn(
-            "h-4 w-4 transition-colors",
-            takeoverEnabled
-              ? "text-emerald-500 animate-pulse"
-              : "text-muted-foreground",
+            "h-5 w-5",
+            takeoverEnabled ? "text-emerald-500" : "text-muted-foreground",
           )}
         />
       )}

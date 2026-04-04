@@ -45,19 +45,23 @@ export function AppSwitcher({
     if (!visibleApps) return true;
     return visibleApps[app];
   });
+  const shouldCompact = compact ?? appsToShow.length > 2;
 
   return (
-    <div className="inline-flex bg-muted rounded-xl p-1 gap-1">
+    <div className="inline-flex h-10 items-center gap-1 border border-border-default bg-muted p-1">
       {appsToShow.map((app) => (
         <button
           key={app}
           type="button"
           onClick={() => handleSwitch(app)}
+          title={appDisplayName[app]}
+          aria-label={appDisplayName[app]}
           className={cn(
-            "group inline-flex items-center px-3 h-8 rounded-md text-sm font-medium transition-all duration-200",
+            "group inline-flex h-8 items-center justify-center whitespace-nowrap border border-transparent text-sm font-medium",
+            shouldCompact ? "w-8 px-0" : "px-3",
             activeApp === app
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+              ? "border-border-default bg-foreground text-background"
+              : "text-muted-foreground opacity-70 hover:bg-background hover:text-foreground",
           )}
         >
           <ProviderIcon
@@ -67,8 +71,8 @@ export function AppSwitcher({
           />
           <span
             className={cn(
-              "transition-all duration-200 whitespace-nowrap overflow-hidden",
-              compact
+              "overflow-hidden whitespace-nowrap transition-all duration-200",
+              shouldCompact
                 ? "max-w-0 opacity-0 ml-0"
                 : "max-w-[80px] opacity-100 ml-2",
             )}

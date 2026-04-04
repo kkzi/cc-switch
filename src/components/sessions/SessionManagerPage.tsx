@@ -139,7 +139,7 @@ export function SessionManagerPage({ appId }: { appId: string }) {
   const scrollToMessage = (index: number) => {
     const el = messageRefs.current.get(index);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.scrollIntoView({ block: "center" });
       setActiveMessageIndex(index);
       setTocDialogOpen(false); // 关闭弹窗
       // 清除高亮状态

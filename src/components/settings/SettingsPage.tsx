@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import {
   Loader2,
   Save,
@@ -180,7 +179,7 @@ export function SettingsPage({
   const isBusy = useMemo(() => isLoading && !settings, [isLoading, settings]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden px-6">
+    <div className="flex h-full flex-col overflow-hidden px-4">
       {isBusy ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -191,31 +190,28 @@ export function SettingsPage({
           onValueChange={setActiveTab}
           className="flex flex-col h-full"
         >
-          <TabsList className="grid w-full grid-cols-6 mb-6 glass rounded-lg">
-            <TabsTrigger value="general">
-              {t("settings.tabGeneral")}
-            </TabsTrigger>
-            <TabsTrigger value="proxy">{t("settings.tabProxy")}</TabsTrigger>
-            <TabsTrigger value="auth">
-              {t("settings.tabAuth", { defaultValue: "认证" })}
-            </TabsTrigger>
-            <TabsTrigger value="advanced">
-              {t("settings.tabAdvanced")}
-            </TabsTrigger>
-            <TabsTrigger value="usage">{t("usage.title")}</TabsTrigger>
-            <TabsTrigger value="about">{t("common.about")}</TabsTrigger>
-          </TabsList>
+          <div className="mb-4 pt-3">
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="general">
+                {t("settings.tabGeneral")}
+              </TabsTrigger>
+              <TabsTrigger value="proxy">{t("settings.tabProxy")}</TabsTrigger>
+              <TabsTrigger value="auth">
+                {t("settings.tabAuth", { defaultValue: "认证" })}
+              </TabsTrigger>
+              <TabsTrigger value="advanced">
+                {t("settings.tabAdvanced")}
+              </TabsTrigger>
+              <TabsTrigger value="usage">{t("usage.title")}</TabsTrigger>
+              <TabsTrigger value="about">{t("common.about")}</TabsTrigger>
+            </TabsList>
+          </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex-1 overflow-y-auto overflow-x-hidden pr-2">
-              <TabsContent value="general" className="space-y-6 mt-0">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              <TabsContent value="general" className="mt-0 space-y-4">
                 {settings ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-6"
-                  >
+                  <div className="space-y-4">
                     <LanguageSettings
                       value={settings.language}
                       onChange={(lang) => handleAutoSave({ language: lang })}
@@ -241,7 +237,7 @@ export function SettingsPage({
                         handleAutoSave({ preferredTerminal: terminal })
                       }
                     />
-                  </motion.div>
+                  </div>
                 ) : null}
               </TabsContent>
 
@@ -254,13 +250,8 @@ export function SettingsPage({
                 ) : null}
               </TabsContent>
 
-              <TabsContent value="auth" className="space-y-6 mt-0 pb-4">
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-6"
-                >
+              <TabsContent value="auth" className="mt-0 space-y-4 pb-4">
+                <div className="space-y-4">
                   <div className="flex items-center gap-3 px-1">
                     <KeyRound className="h-5 w-5 text-primary" />
                     <div>
@@ -279,27 +270,22 @@ export function SettingsPage({
                   </div>
 
                   <AuthCenterPanel />
-                </motion.div>
+                </div>
               </TabsContent>
 
-              <TabsContent value="advanced" className="space-y-6 mt-0 pb-4">
+              <TabsContent value="advanced" className="mt-0 space-y-4 pb-4">
                 {settings ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="space-y-4"
-                  >
+                  <div className="space-y-4">
                     <Accordion
                       type="multiple"
                       defaultValue={[]}
-                      className="w-full space-y-4"
+                      className="w-full space-y-3"
                     >
                       <AccordionItem
                         value="directory"
-                        className="rounded-xl glass-card overflow-hidden"
+                        className="glass-card overflow-hidden border border-border-default"
                       >
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
                           <div className="flex items-center gap-3">
                             <FolderSearch className="h-5 w-5 text-primary" />
                             <div className="text-left">
@@ -312,7 +298,7 @@ export function SettingsPage({
                             </div>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-4 border-t border-border/50">
+                        <AccordionContent className="border-t border-border/50 px-4 pb-4 pt-3">
                           <DirectorySettings
                             appConfigDir={appConfigDir}
                             resolvedDirs={resolvedDirs}
@@ -332,9 +318,9 @@ export function SettingsPage({
 
                       <AccordionItem
                         value="data"
-                        className="rounded-xl glass-card overflow-hidden"
+                        className="glass-card overflow-hidden border border-border-default"
                       >
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
                           <div className="flex items-center gap-3">
                             <Database className="h-5 w-5 text-blue-500" />
                             <div className="text-left">
@@ -347,7 +333,7 @@ export function SettingsPage({
                             </div>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-4 border-t border-border/50">
+                        <AccordionContent className="border-t border-border/50 px-4 pb-4 pt-3">
                           <ImportExportSection
                             status={importStatus}
                             selectedFile={selectedFile}
@@ -364,9 +350,9 @@ export function SettingsPage({
 
                       <AccordionItem
                         value="backup"
-                        className="rounded-xl glass-card overflow-hidden"
+                        className="glass-card overflow-hidden border border-border-default"
                       >
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
                           <div className="flex items-center gap-3">
                             <HardDriveDownload className="h-5 w-5 text-amber-500" />
                             <div className="text-left">
@@ -384,7 +370,7 @@ export function SettingsPage({
                             </div>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-4 border-t border-border/50">
+                        <AccordionContent className="border-t border-border/50 px-4 pb-4 pt-3">
                           <BackupListSection
                             backupIntervalHours={settings.backupIntervalHours}
                             backupRetainCount={settings.backupRetainCount}
@@ -397,9 +383,9 @@ export function SettingsPage({
 
                       <AccordionItem
                         value="cloudSync"
-                        className="rounded-xl glass-card overflow-hidden"
+                        className="glass-card overflow-hidden border border-border-default"
                       >
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
                           <div className="flex items-center gap-3">
                             <Cloud className="h-5 w-5 text-blue-500" />
                             <div className="text-left">
@@ -412,7 +398,7 @@ export function SettingsPage({
                             </div>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-4 border-t border-border/50">
+                        <AccordionContent className="border-t border-border/50 px-4 pb-4 pt-3">
                           <WebdavSyncSection
                             config={settings?.webdavSync}
                             settings={settings}
@@ -423,9 +409,9 @@ export function SettingsPage({
 
                       <AccordionItem
                         value="test"
-                        className="rounded-xl glass-card overflow-hidden"
+                        className="glass-card overflow-hidden border border-border-default"
                       >
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
                           <div className="flex items-center gap-3">
                             <FlaskConical className="h-5 w-5 text-emerald-500" />
                             <div className="text-left">
@@ -438,16 +424,16 @@ export function SettingsPage({
                             </div>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-4 border-t border-border/50">
+                        <AccordionContent className="border-t border-border/50 px-4 pb-4 pt-3">
                           <ModelTestConfigPanel />
                         </AccordionContent>
                       </AccordionItem>
 
                       <AccordionItem
                         value="logConfig"
-                        className="rounded-xl glass-card overflow-hidden"
+                        className="glass-card overflow-hidden border border-border-default"
                       >
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50">
                           <div className="flex items-center gap-3">
                             <ScrollText className="h-5 w-5 text-cyan-500" />
                             <div className="text-left">
@@ -460,12 +446,12 @@ export function SettingsPage({
                             </div>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-4 border-t border-border/50">
+                        <AccordionContent className="border-t border-border/50 px-4 pb-4 pt-3">
                           <LogConfigPanel />
                         </AccordionContent>
                       </AccordionItem>
                     </Accordion>
-                  </motion.div>
+                  </div>
                 ) : null}
               </TabsContent>
 
