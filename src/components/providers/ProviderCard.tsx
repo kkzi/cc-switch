@@ -246,6 +246,14 @@ export function ProviderCard({
   const shouldUseBlue =
     (isAnyOmo && isActiveProvider) ||
     (!isAnyOmo && !isProxyTakeover && isActiveProvider);
+  const shouldShowHealthBadge =
+    isProxyRunning && isInFailoverQueue && Boolean(health);
+  const shouldShowFailoverPriorityBadge =
+    isAutoFailoverEnabled &&
+    isInFailoverQueue &&
+    typeof failoverPriority === "number";
+  const shouldShowStatusBadges =
+    shouldShowHealthBadge || shouldShowFailoverPriorityBadge;
 
   return (
     <div
@@ -267,7 +275,30 @@ export function ProviderCard({
         )}
       />
       <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 items-center gap-1.5">
+        {shouldShowStatusBadges && (
+          <div className="pointer-events-none absolute right-0 top-0 flex items-center gap-1">
+            {shouldShowHealthBadge && health && (
+              <ProviderHealthBadge
+                consecutiveFailures={health.consecutive_failures}
+                className="h-5 px-1.5 py-0"
+              />
+            )}
+
+            {shouldShowFailoverPriorityBadge && (
+              <FailoverPriorityBadge
+                priority={failoverPriority}
+                className="h-5 px-1.5 py-0"
+              />
+            )}
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "flex flex-1 items-center gap-1.5",
+            shouldShowStatusBadges && "pr-24 sm:pr-28",
+          )}
+        >
           <button
             type="button"
             className={cn(
@@ -290,7 +321,7 @@ export function ProviderCard({
             />
           </div>
 
-          <div className="space-y-0">
+          <div className="min-w-0 space-y-0">
             <div className="flex min-h-5 flex-wrap items-center gap-1.5">
               <h3 className="text-sm font-semibold leading-none">
                 {provider.name}
@@ -316,18 +347,6 @@ export function ProviderCard({
                   Slim
                 </span>
               )}
-
-              {isProxyRunning && isInFailoverQueue && health && (
-                <ProviderHealthBadge
-                  consecutiveFailures={health.consecutive_failures}
-                />
-              )}
-
-              {isAutoFailoverEnabled &&
-                isInFailoverQueue &&
-                failoverPriority && (
-                  <FailoverPriorityBadge priority={failoverPriority} />
-                )}
 
               {provider.category === "third_party" &&
                 provider.meta?.isPartner && (

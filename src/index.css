@@ -131,6 +131,18 @@
   border-radius: 0 !important;
 }
 
+.animate-spin {
+  animation: spin 1s linear infinite !important;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
 html {
   @apply font-sans antialiased;
   line-height: 1.35;

@@ -215,6 +215,7 @@ export function EditProviderDialog({
         onSubmittingChange={setIsFormSubmitting}
         initialData={initialData}
         showButtons={false}
+        showIconPicker={false}
       />
     </FullScreenPanel>
   );

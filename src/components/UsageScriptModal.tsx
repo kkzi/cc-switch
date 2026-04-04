@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Play, Wand2, Eye, EyeOff, Save } from "lucide-react";
+import { Play, Wand2, Eye, EyeOff, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
@@ -465,7 +465,11 @@ const UsageScriptModal: React.FC<UsageScriptModalProps> = ({
           onClick={handleTest}
           disabled={!script.enabled || testing}
         >
-          <Play size={14} className="mr-1" />
+          {testing ? (
+            <Loader2 size={14} className="mr-1 animate-spin" />
+          ) : (
+            <Play size={14} className="mr-1" />
+          )}
           {testing ? t("usageScript.testing") : t("usageScript.testScript")}
         </Button>
         <Button

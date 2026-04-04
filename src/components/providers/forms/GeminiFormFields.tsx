@@ -146,7 +146,9 @@ export function GeminiFormFields({
                   disabled={isFetchingModels}
                   className="h-8 shrink-0"
                 >
-                  {isFetchingModels && <Loader2 className="h-3.5 w-3.5" />}
+                  {isFetchingModels && (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  )}
                   {t("providerForm.autoFetchModels", {
                     defaultValue: "自动获取模型",
                   })}

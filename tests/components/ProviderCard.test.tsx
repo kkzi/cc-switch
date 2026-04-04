@@ -70,8 +70,8 @@ describe("ProviderCard compact layout", () => {
   it("renders a tighter card shell and title rhythm", () => {
     const { container } = render(<ProviderCard {...baseProps} />);
 
-    expect(container.firstElementChild).toHaveClass("p-3");
-    expect(container.firstElementChild?.children[1]).toHaveClass("gap-2.5");
+    expect(container.firstElementChild).toHaveClass("p-2.5");
+    expect(container.firstElementChild?.children[1]).toHaveClass("gap-2");
     expect(container.firstElementChild?.querySelector(".space-y-0")).toBeInTheDocument();
     expect(
       container.firstElementChild?.querySelector(".min-h-5"),
@@ -90,6 +90,29 @@ describe("ProviderCard compact layout", () => {
 
     expect(await screen.findByTestId("usage-footer-block")).toBeInTheDocument();
     const expandedShell = container.querySelector(".border-t.border-border-default");
-    expect(expandedShell).toHaveClass("mt-2.5", "pt-2.5");
+    expect(expandedShell).toHaveClass("mt-2", "pt-2");
+  });
+
+  it("renders health badges outside the title flow when proxy metadata is shown", () => {
+    useProviderHealthMock.mockReturnValue({
+      data: { consecutive_failures: 0 },
+    });
+
+    const { container } = render(
+      <ProviderCard
+        {...baseProps}
+        isProxyRunning={true}
+        isInFailoverQueue={true}
+        isAutoFailoverEnabled={true}
+        failoverPriority={1}
+      />,
+    );
+
+    expect(screen.getByTestId("provider-health-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("failover-priority-badge")).toBeInTheDocument();
+    expect(
+      container.querySelector(".pointer-events-none.absolute.right-0.top-0"),
+    ).toBeInTheDocument();
+    expect(container.querySelector(".pr-24")).toBeInTheDocument();
   });
 });

@@ -130,7 +130,7 @@ export function BasicFormFields({
           name="name"
           render={({ field }) => (
             <FormItem className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2 space-y-0">
-              <FormLabel className="pt-2 text-right">
+              <FormLabel className="pt-2 text-left">
                 {t("provider.name")}
               </FormLabel>
               <div className="space-y-1">
