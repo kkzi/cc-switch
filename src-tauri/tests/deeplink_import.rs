@@ -80,6 +80,18 @@ fn deeplink_import_codex_provider_builds_auth_and_config() {
         "config.toml content should contain endpoint"
     );
     assert!(
+        config_text.contains("model_provider = \"custom\""),
+        "config.toml content should pin model_provider to custom"
+    );
+    assert!(
+        config_text.contains("[model_providers.custom]"),
+        "config.toml content should use custom provider section"
+    );
+    assert!(
+        config_text.contains("name = \"custom\""),
+        "config.toml content should pin provider name to custom"
+    );
+    assert!(
         config_text.contains("model = \"gpt-4o\""),
         "config.toml content should contain model setting"
     );

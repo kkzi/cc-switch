@@ -537,13 +537,14 @@ impl UniversalProvider {
 
         // 生成 Codex 的 config.toml 内容
         let config_toml = format!(
-            r#"model_provider = "newapi"
+            r#"model_provider = "custom"
 model = "{model}"
 model_reasoning_effort = "{reasoning_effort}"
 disable_response_storage = true
 
-[model_providers.newapi]
-name = "NewAPI"
+[model_providers]
+[model_providers.custom]
+name = "custom"
 base_url = "{codex_base_url}"
 wire_api = "responses"
 requires_openai_auth = true"#
@@ -865,6 +866,9 @@ mod tests {
             .and_then(|item| item.as_str())
             .expect("config toml");
 
+        assert!(config.contains("model_provider = \"custom\""));
+        assert!(config.contains("[model_providers.custom]"));
+        assert!(config.contains("name = \"custom\""));
         assert!(config.contains("base_url = \"https://api.example.com/v1\""));
         assert_eq!(
             provider
@@ -893,6 +897,7 @@ mod tests {
             .and_then(|item| item.as_str())
             .expect("config toml");
 
+        assert!(config.contains("model_provider = \"custom\""));
         assert!(config.contains("base_url = \"https://api.example.com/v1\""));
     }
 
