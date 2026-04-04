@@ -33,33 +33,37 @@ export function EndpointField({
   });
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <FormLabel htmlFor={id}>{label}</FormLabel>
-        {showManageButton && onManageClick && (
-          <button
-            type="button"
-            onClick={onManageClick}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Zap className="h-3.5 w-3.5" />
-            {manageButtonLabel || defaultManageLabel}
-          </button>
-        )}
-      </div>
-      <Input
-        id={id}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        autoComplete="off"
-      />
-      {hint ? (
-        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-          <p className="text-xs text-amber-600 dark:text-amber-400">{hint}</p>
+    <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2">
+      <FormLabel htmlFor={id} className="pt-2">
+        {label}
+      </FormLabel>
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Input
+            id={id}
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            autoComplete="off"
+          />
+          {showManageButton && onManageClick && (
+            <button
+              type="button"
+              onClick={onManageClick}
+              className="inline-flex h-8 shrink-0 items-center gap-1 border border-border-default px-2.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              {manageButtonLabel || defaultManageLabel}
+            </button>
+          )}
         </div>
-      ) : null}
+        {hint ? (
+          <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+            {hint}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

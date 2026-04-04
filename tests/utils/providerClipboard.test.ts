@@ -53,4 +53,19 @@ describe("extractProviderDraftFromClipboard", () => {
       apiKey: "sk-ExampleKey1234567890AbCdEfGhIjKlMnOpQrStUvWxYz",
     });
   });
+
+  it("extracts OPENAI_API_KEY values from structured clipboard text", () => {
+    expect(
+      extractProviderDraftFromClipboard(`https://code.linzefeng.top
+cfcdn：url：url：https://code1.linzefeng.top
+key：{
+“OPENAI_API_KEY”: “sk-812b461d244d92c14ff479762a00bd9230f5e55b27a78b6b5c2c69a32522d8ba”
+}`),
+    ).toEqual({
+      name: "code.linzefeng.top",
+      baseUrl: "https://code.linzefeng.top",
+      apiKey:
+        "sk-812b461d244d92c14ff479762a00bd9230f5e55b27a78b6b5c2c69a32522d8ba",
+    });
+  });
 });

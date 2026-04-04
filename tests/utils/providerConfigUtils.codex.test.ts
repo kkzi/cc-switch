@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractCodexBaseUrl,
   extractCodexModelName,
+  normalizeCodexCustomProviderConfig,
   setCodexBaseUrl,
   setCodexModelName,
 } from "@/utils/providerConfigUtils";
@@ -147,5 +148,28 @@ describe("Codex TOML utils", () => {
 
     expect(extractCodexBaseUrl(input)).toBe("https://api.example.com/v1");
     expect(extractCodexModelName(input)).toBe("gpt-5");
+  });
+
+  it("normalizes custom codex config to the fixed custom provider section", () => {
+    const input = [
+      'model_provider = "newapi"',
+      'model = "gpt-5.4"',
+      'model_reasoning_effort = "high"',
+      "",
+      "[model_providers.newapi]",
+      'name = "NewAPI"',
+      'base_url = "https://api.example.com/v1"',
+      'wire_api = "responses"',
+      'requires_openai_auth = true',
+      "",
+    ].join("\n");
+
+    const output = normalizeCodexCustomProviderConfig(input);
+
+    expect(output).toContain('model_provider = "custom"');
+    expect(output).toContain("[model_providers.custom]");
+    expect(output).toContain('name = "custom"');
+    expect(output).toContain('base_url = "https://api.example.com/v1"');
+    expect(output).not.toContain("[model_providers.newapi]");
   });
 });

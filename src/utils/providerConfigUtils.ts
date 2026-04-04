@@ -838,6 +838,63 @@ export const setCodexModelName = (
   return finalizeTomlText(lines);
 };
 
+export const normalizeCodexCustomProviderConfig = (
+  configText: string,
+): string => {
+  const normalizedText = normalizeTomlText(configText);
+  if (!normalizedText.trim()) {
+    return normalizedText;
+  }
+
+  try {
+    const parsed = parseToml(normalizedText) as Record<string, any>;
+    const currentProviderName =
+      typeof parsed.model_provider === "string" &&
+      parsed.model_provider.trim().length > 0
+        ? parsed.model_provider.trim()
+        : "custom";
+
+    const providerTables = isPlainObject(parsed.model_providers)
+      ? (parsed.model_providers as Record<string, any>)
+      : {};
+    const currentProviderTable = isPlainObject(providerTables[currentProviderName])
+      ? { ...(providerTables[currentProviderName] as Record<string, any>) }
+      : {};
+    const customProviderTable = isPlainObject(providerTables.custom)
+      ? { ...(providerTables.custom as Record<string, any>) }
+      : {};
+
+    const nextProviderTable = {
+      ...currentProviderTable,
+      ...customProviderTable,
+      name: "custom",
+      wire_api:
+        typeof currentProviderTable.wire_api === "string" ||
+        typeof customProviderTable.wire_api === "string"
+          ? customProviderTable.wire_api ?? currentProviderTable.wire_api
+          : "responses",
+      requires_openai_auth:
+        customProviderTable.requires_openai_auth ??
+        currentProviderTable.requires_openai_auth ??
+        true,
+    } as Record<string, any>;
+
+    const extractedBaseUrl = extractCodexBaseUrl(normalizedText);
+    if (extractedBaseUrl) {
+      nextProviderTable.base_url = extractedBaseUrl;
+    }
+
+    parsed.model_provider = "custom";
+    parsed.model_providers = {
+      custom: nextProviderTable,
+    };
+
+    return stringifyToml(parsed);
+  } catch {
+    return normalizedText;
+  }
+};
+
 // ========== Codex top-level integer field utils ==========
 
 const tomlTopLevelIntPattern = (field: string) =>

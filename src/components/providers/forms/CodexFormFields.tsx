@@ -73,6 +73,19 @@ export function CodexFormFields({
 
   return (
     <>
+      {/* Codex Base URL 输入框 */}
+      {shouldShowSpeedTest && (
+        <EndpointField
+          id="codexBaseUrl"
+          label={t("codexConfig.apiUrlLabel")}
+          value={codexBaseUrl}
+          onChange={onBaseUrlChange}
+          placeholder={t("providerForm.codexApiEndpointPlaceholder")}
+          hint={t("providerForm.codexApiHint")}
+          onManageClick={() => onEndpointModalToggle(true)}
+        />
+      )}
+
       {/* Codex API Key 输入框 */}
       <ApiKeySection
         id="codexApiKey"
@@ -94,62 +107,52 @@ export function CodexFormFields({
         }}
       />
 
-      {/* Codex Base URL 输入框 */}
-      {shouldShowSpeedTest && (
-        <EndpointField
-          id="codexBaseUrl"
-          label={t("codexConfig.apiUrlLabel")}
-          value={codexBaseUrl}
-          onChange={onBaseUrlChange}
-          placeholder={t("providerForm.codexApiEndpointPlaceholder")}
-          hint={t("providerForm.codexApiHint")}
-          onManageClick={() => onEndpointModalToggle(true)}
-        />
-      )}
-
       {/* Codex Model Name 输入框 */}
       {shouldShowModelField && onModelNameChange && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <label
-              htmlFor="codexModelName"
-              className="block text-sm font-medium text-foreground"
-            >
-              {t("codexConfig.modelName", { defaultValue: "模型名称" })}
-            </label>
-            {onFetchModels && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onFetchModels}
-                disabled={isFetchingModels}
-              >
-                {isFetchingModels && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {t("providerForm.autoFetchModels", {
-                  defaultValue: "自动获取模型",
+        <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2">
+          <label
+            htmlFor="codexModelName"
+            className="pt-2 text-sm font-medium text-foreground"
+          >
+            {t("codexConfig.modelName", { defaultValue: "模型名称" })}
+          </label>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <ModelSuggest
+                id="codexModelName"
+                value={modelName}
+                onChange={(v) => onModelNameChange(v)}
+                suggestions={modelSuggestions}
+                placeholder={t("codexConfig.modelNamePlaceholder", {
+                  defaultValue: "例如: gpt-5.4",
                 })}
-              </Button>
-            )}
+              />
+              {onFetchModels && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onFetchModels}
+                  disabled={isFetchingModels}
+                  className="h-8 shrink-0"
+                >
+                  {isFetchingModels && <Loader2 className="h-3.5 w-3.5" />}
+                  {t("providerForm.autoFetchModels", {
+                    defaultValue: "自动获取模型",
+                  })}
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {modelName.trim()
+                ? t("codexConfig.modelNameHint", {
+                    defaultValue: "指定使用的模型，将自动更新到 config.toml 中",
+                  })
+                : t("providerForm.modelHint", {
+                    defaultValue: "💡 留空将使用供应商的默认模型",
+                  })}
+            </p>
           </div>
-          <ModelSuggest
-            id="codexModelName"
-            value={modelName}
-            onChange={(v) => onModelNameChange(v)}
-            suggestions={modelSuggestions}
-            placeholder={t("codexConfig.modelNamePlaceholder", {
-              defaultValue: "例如: gpt-5.4",
-            })}
-          />
-          <p className="text-xs text-muted-foreground">
-            {modelName.trim()
-              ? t("codexConfig.modelNameHint", {
-                  defaultValue: "指定使用的模型，将自动更新到 config.toml 中",
-                })
-              : t("providerForm.modelHint", {
-                  defaultValue: "💡 留空将使用供应商的默认模型",
-                })}
-          </p>
         </div>
       )}
 

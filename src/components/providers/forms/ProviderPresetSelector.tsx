@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FormLabel } from "@/components/ui/form";
 import { ClaudeIcon, CodexIcon, GeminiIcon } from "@/components/BrandIcons";
@@ -39,6 +40,75 @@ export function ProviderPresetSelector({
   category,
 }: ProviderPresetSelectorProps) {
   const { t } = useTranslation();
+  const [showAllPresets, setShowAllPresets] = useState(false);
+
+  const normalizePresetLabel = (label: string) =>
+    label.toLowerCase().replace(/\s+/g, " ").trim();
+
+  const resolvePresetName = (
+    preset: ProviderPreset | CodexProviderPreset | GeminiProviderPreset,
+  ) => (preset.nameKey ? t(preset.nameKey) : preset.name);
+
+  const allPresetEntries = useMemo(
+    () => categoryKeys.flatMap((key) => groupedPresets[key] ?? []),
+    [categoryKeys, groupedPresets],
+  );
+
+  const featuredPresetEntries = useMemo(() => {
+    const shortcuts = [
+      (label: string) =>
+        label === "zhipu glm" ||
+        label === "zhupu glm" ||
+        label.startsWith("zhipu glm "),
+      (label: string) =>
+        label === "minimax" || label.startsWith("minimax "),
+      (label: string) => label === "kimi" || label.startsWith("kimi "),
+      (label: string) => label === "nvidia" || label.startsWith("nvidia "),
+    ];
+
+    const pickedIds = new Set<string>();
+    const featured: PresetEntry[] = [];
+
+    for (const match of shortcuts) {
+      const found = allPresetEntries.find((entry) => {
+        if (pickedIds.has(entry.id)) {
+          return false;
+        }
+        return match(normalizePresetLabel(resolvePresetName(entry.preset)));
+      });
+
+      if (found) {
+        featured.push(found);
+        pickedIds.add(found.id);
+      }
+    }
+
+    return featured;
+  }, [allPresetEntries, t]);
+
+  const collapsedPresetEntries = useMemo(
+    () =>
+      allPresetEntries.filter(
+        (entry) =>
+          !featuredPresetEntries.some((visible) => visible.id === entry.id),
+      ),
+    [allPresetEntries, featuredPresetEntries],
+  );
+
+  const selectedCollapsedEntry = useMemo(() => {
+    if (!selectedPresetId || selectedPresetId === "custom" || showAllPresets) {
+      return null;
+    }
+
+    return (
+      collapsedPresetEntries.find((entry) => entry.id === selectedPresetId) ??
+      null
+    );
+  }, [collapsedPresetEntries, selectedPresetId, showAllPresets]);
+
+  const firstRowPresetEntries = selectedCollapsedEntry
+    ? [...featuredPresetEntries, selectedCollapsedEntry]
+    : featuredPresetEntries;
 
   const getCategoryHint = (): React.ReactNode => {
     switch (category) {
@@ -99,16 +169,16 @@ export function ProviderPresetSelector({
     preset: ProviderPreset | CodexProviderPreset | GeminiProviderPreset,
   ) => {
     const baseClass =
-      "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors";
+      "inline-flex h-8 items-center gap-2 border px-2.5 text-sm font-medium";
 
     if (isSelected) {
       if (preset.theme?.backgroundColor) {
         return `${baseClass} text-white`;
       }
-      return `${baseClass} bg-blue-500 text-white dark:bg-blue-600`;
+      return `${baseClass} border-foreground bg-foreground text-background`;
     }
 
-    return `${baseClass} bg-accent text-muted-foreground hover:bg-accent/80`;
+    return `${baseClass} border-border-default bg-background text-muted-foreground hover:bg-muted`;
   };
 
   const getPresetButtonStyle = (
@@ -126,25 +196,27 @@ export function ProviderPresetSelector({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <FormLabel>{t("providerPreset.label")}</FormLabel>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => onPresetChange("custom")}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            selectedPresetId === "custom"
-              ? "bg-blue-500 text-white dark:bg-blue-600"
-              : "bg-accent text-muted-foreground hover:bg-accent/80"
-          }`}
-        >
-          {t("providerPreset.custom")}
-        </button>
+      <div className="space-y-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onPresetChange("custom")}
+            className={`inline-flex h-8 items-center gap-2 border px-2.5 text-sm font-medium ${
+              selectedPresetId === "custom"
+                ? "border-foreground bg-foreground text-background"
+                : "border-border-default bg-background text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {t("providerPreset.custom")}
+          </button>
 
-        {categoryKeys.map((category) => {
-          const entries = groupedPresets[category];
-          if (!entries || entries.length === 0) return null;
-          return entries.map((entry) => {
+          {firstRowPresetEntries.map((entry) => {
+            const categoryKey =
+              categoryKeys.find((key) =>
+                (groupedPresets[key] ?? []).some((item) => item.id === entry.id),
+              ) ?? "others";
             const isSelected = selectedPresetId === entry.id;
             const isPartner = entry.preset.isPartner;
             return (
@@ -155,22 +227,63 @@ export function ProviderPresetSelector({
                 className={`${getPresetButtonClass(isSelected, entry.preset)} relative`}
                 style={getPresetButtonStyle(isSelected, entry.preset)}
                 title={
-                  presetCategoryLabels[category] ?? t("providerPreset.other")
+                  presetCategoryLabels[categoryKey] ?? t("providerPreset.other")
                 }
               >
                 {renderPresetIcon(entry.preset)}
-                {entry.preset.nameKey
-                  ? t(entry.preset.nameKey)
-                  : entry.preset.name}
+                {resolvePresetName(entry.preset)}
                 {isPartner && (
-                  <span className="absolute -top-1 -right-1 flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-md">
+                  <span className="absolute -top-1 -right-1 flex items-center gap-0.5 border border-amber-500 bg-amber-500 px-1 text-[10px] font-bold text-white">
                     <Star className="h-2.5 w-2.5 fill-current" />
                   </span>
                 )}
               </button>
             );
-          });
-        })}
+          })}
+
+          {collapsedPresetEntries.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAllPresets((prev) => !prev)}
+              className="inline-flex h-8 items-center gap-2 border border-border-default bg-background px-2.5 text-sm font-medium text-muted-foreground hover:bg-muted"
+            >
+              {showAllPresets ? t("common.collapse") : t("common.expand")}
+            </button>
+          )}
+        </div>
+
+        {showAllPresets && collapsedPresetEntries.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {collapsedPresetEntries.map((entry) => {
+              const categoryKey =
+                categoryKeys.find((key) =>
+                  (groupedPresets[key] ?? []).some((item) => item.id === entry.id),
+                ) ?? "others";
+              const isSelected = selectedPresetId === entry.id;
+              const isPartner = entry.preset.isPartner;
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  onClick={() => onPresetChange(entry.id)}
+                  className={`${getPresetButtonClass(isSelected, entry.preset)} relative`}
+                  style={getPresetButtonStyle(isSelected, entry.preset)}
+                  title={
+                    presetCategoryLabels[categoryKey] ?? t("providerPreset.other")
+                  }
+                >
+                  {renderPresetIcon(entry.preset)}
+                  {resolvePresetName(entry.preset)}
+                  {isPartner && (
+                    <span className="absolute -top-1 -right-1 flex items-center gap-0.5 border border-amber-500 bg-amber-500 px-1 text-[10px] font-bold text-white">
+                      <Star className="h-2.5 w-2.5 fill-current" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {onUniversalPresetSelect && universalProviderPresets.length > 0 && (
@@ -181,7 +294,7 @@ export function ProviderPresetSelector({
                 key={`universal-${preset.providerType}`}
                 type="button"
                 onClick={() => onUniversalPresetSelect(preset)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-accent text-muted-foreground hover:bg-accent/80 relative"
+                className="relative inline-flex h-8 items-center gap-2 border border-border-default bg-background px-2.5 text-sm font-medium text-muted-foreground hover:bg-muted"
                 title={t("universalProvider.hint", {
                   defaultValue:
                     "跨应用统一配置，自动同步到 Claude/Codex/Gemini",
@@ -189,7 +302,7 @@ export function ProviderPresetSelector({
               >
                 <ProviderIcon icon={preset.icon} name={preset.name} size={14} />
                 {preset.name}
-                <span className="absolute -top-1 -right-1 flex items-center gap-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-md">
+                <span className="absolute -top-1 -right-1 flex items-center gap-0.5 border border-foreground bg-foreground px-1 text-[10px] font-bold text-background">
                   <Layers className="h-2.5 w-2.5" />
                 </span>
               </button>
@@ -198,7 +311,7 @@ export function ProviderPresetSelector({
               <button
                 type="button"
                 onClick={onManageUniversalProviders}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-accent text-muted-foreground hover:bg-accent/80"
+                className="inline-flex h-8 items-center gap-2 border border-border-default bg-background px-2.5 text-sm font-medium text-muted-foreground hover:bg-muted"
                 title={t("universalProvider.manage", {
                   defaultValue: "管理统一供应商",
                 })}
@@ -213,7 +326,9 @@ export function ProviderPresetSelector({
         </>
       )}
 
-      <p className="text-xs text-muted-foreground">{getCategoryHint()}</p>
+      <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+        {getCategoryHint()}
+      </p>
     </div>
   );
 }

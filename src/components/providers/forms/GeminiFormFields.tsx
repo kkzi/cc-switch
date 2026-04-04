@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { FormLabel } from "@/components/ui/form";
 import { ModelSuggest } from "@/components/ui/model-suggest";
 import { Button } from "@/components/ui/button";
-import { Info } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import EndpointSpeedTest from "./EndpointSpeedTest";
 import { ApiKeySection, EndpointField } from "./shared";
@@ -83,37 +82,17 @@ export function GeminiFormFields({
     <>
       {/* Google OAuth 提示 */}
       {isGoogleOfficial && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-          <div className="flex gap-3">
-            <Info className="h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                {t("provider.form.gemini.oauthTitle", {
-                  defaultValue: "OAuth 认证模式",
-                })}
-              </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                {t("provider.form.gemini.oauthHint", {
-                  defaultValue:
-                    "Google 官方使用 OAuth 个人认证，无需填写 API Key。首次使用时会自动打开浏览器进行登录。",
-                })}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* API Key 输入框 */}
-      {shouldShowApiKey && !isGoogleOfficial && (
-        <ApiKeySection
-          value={apiKey}
-          onChange={onApiKeyChange}
-          category={category}
-          shouldShowLink={shouldShowApiKeyLink}
-          websiteUrl={websiteUrl}
-          isPartner={isPartner}
-          partnerPromotionKey={partnerPromotionKey}
-        />
+        <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+          💡{" "}
+          {t("provider.form.gemini.oauthTitle", {
+            defaultValue: "OAuth 认证模式",
+          })}
+          ：
+          {t("provider.form.gemini.oauthHint", {
+            defaultValue:
+              "Google 官方使用 OAuth 个人认证，无需填写 API Key。首次使用时会自动打开浏览器进行登录。",
+          })}
+        </p>
       )}
 
       {/* Base URL 输入框（统一使用与 Codex 相同的样式与交互） */}
@@ -130,35 +109,51 @@ export function GeminiFormFields({
         />
       )}
 
+      {/* API Key 输入框 */}
+      {shouldShowApiKey && !isGoogleOfficial && (
+        <ApiKeySection
+          value={apiKey}
+          onChange={onApiKeyChange}
+          category={category}
+          shouldShowLink={shouldShowApiKeyLink}
+          websiteUrl={websiteUrl}
+          isPartner={isPartner}
+          partnerPromotionKey={partnerPromotionKey}
+        />
+      )}
+
       {/* Model 输入框 */}
       {shouldShowModelField && (
-        <div>
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <FormLabel htmlFor="gemini-model" className="mb-0">
-              {t("provider.form.gemini.model", { defaultValue: "模型" })}
-            </FormLabel>
-            {onFetchModels && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onFetchModels}
-                disabled={isFetchingModels}
-              >
-                {isFetchingModels && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {t("providerForm.autoFetchModels", {
-                  defaultValue: "自动获取模型",
-                })}
-              </Button>
-            )}
+        <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2">
+          <FormLabel htmlFor="gemini-model" className="pt-2">
+            {t("provider.form.gemini.model", { defaultValue: "模型" })}
+          </FormLabel>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <ModelSuggest
+                id="gemini-model"
+                value={model}
+                onChange={(v) => onModelChange(v)}
+                suggestions={modelSuggestions}
+                placeholder="gemini-3-pro-preview"
+              />
+              {onFetchModels && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onFetchModels}
+                  disabled={isFetchingModels}
+                  className="h-8 shrink-0"
+                >
+                  {isFetchingModels && <Loader2 className="h-3.5 w-3.5" />}
+                  {t("providerForm.autoFetchModels", {
+                    defaultValue: "自动获取模型",
+                  })}
+                </Button>
+              )}
+            </div>
           </div>
-          <ModelSuggest
-            id="gemini-model"
-            value={model}
-            onChange={(v) => onModelChange(v)}
-            suggestions={modelSuggestions}
-            placeholder="gemini-3-pro-preview"
-          />
         </div>
       )}
 

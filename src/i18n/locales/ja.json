@@ -29,6 +29,8 @@
     "formatError": "整形に失敗しました: {{error}}",
     "copy": "コピー",
     "view": "表示",
+    "expand": "展開",
+    "collapse": "折りたたむ",
     "back": "戻る",
     "refresh": "更新",
     "refreshing": "更新中...",

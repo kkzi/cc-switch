@@ -320,6 +320,7 @@ export function AddProviderDialog({
               onSubmittingChange={setIsFormSubmitting}
               initialData={initialData}
               showButtons={false}
+              showIconPicker={false}
             />
           </TabsContent>
 
@@ -337,6 +338,7 @@ export function AddProviderDialog({
           onSubmittingChange={setIsFormSubmitting}
           initialData={initialData}
           showButtons={false}
+          showIconPicker={false}
         />
       )}
 

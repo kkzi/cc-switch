@@ -43,6 +43,7 @@ import type { UniversalProviderPreset } from "@/config/universalProviderPresets"
 import {
   applyTemplateValues,
   hasApiKeyField,
+  normalizeCodexCustomProviderConfig,
 } from "@/utils/providerConfigUtils";
 import { providersApi } from "@/lib/api/providers";
 import { mergeProviderMeta } from "@/utils/providerMetaUtils";
@@ -93,6 +94,26 @@ import {
 } from "./helpers/opencodeFormUtils";
 import { resolveManagedAccountId } from "@/lib/authBinding";
 
+function deriveProviderNameFromEndpoint(endpoint: string): string {
+  const trimmed = endpoint.trim();
+  if (!trimmed) return "";
+
+  const normalized = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    return new URL(normalized).hostname.replace(/^www\./i, "");
+  } catch {
+    return trimmed
+      .replace(/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//, "")
+      .split("/")[0]
+      .replace(/:\d+$/, "")
+      .replace(/^www\./i, "")
+      .trim();
+  }
+}
+
 type PresetEntry = {
   id: string;
   preset:
@@ -123,6 +144,7 @@ interface ProviderFormProps {
     iconColor?: string;
   };
   showButtons?: boolean;
+  showIconPicker?: boolean;
 }
 
 export function ProviderForm({
@@ -136,6 +158,7 @@ export function ProviderForm({
   onSubmittingChange,
   initialData,
   showButtons = true,
+  showIconPicker = true,
 }: ProviderFormProps) {
   const { t } = useTranslation();
   const isEditMode = Boolean(initialData);
@@ -786,15 +809,6 @@ export function ProviderForm({
       }
     }
 
-    if (!values.name.trim()) {
-      toast.error(
-        t("providerForm.fillSupplierName", {
-          defaultValue: "请填写供应商名称",
-        }),
-      );
-      return;
-    }
-
     if (appId === "opencode" && !isAnyOmoCategory) {
       const keyPattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
       if (!opencodeForm.opencodeProviderKey.trim()) {
@@ -916,9 +930,12 @@ export function ProviderForm({
     if (appId === "codex") {
       try {
         const authJson = JSON.parse(codexAuth);
+        const normalizedCodexConfig = normalizeCodexCustomProviderConfig(
+          codexConfig ?? "",
+        );
         const configObj = {
           auth: authJson,
-          config: codexConfig ?? "",
+          config: normalizedCodexConfig,
         };
         settingsConfig = JSON.stringify(configObj);
       } catch (err) {
@@ -981,9 +998,26 @@ export function ProviderForm({
       settingsConfig = values.settingsConfig.trim();
     }
 
+    const resolvedProviderBaseUrl =
+      appId === "claude"
+        ? baseUrl.trim()
+        : appId === "codex"
+          ? codexBaseUrl.trim()
+          : appId === "gemini"
+            ? geminiBaseUrl.trim()
+            : appId === "openclaw"
+              ? openclawForm.openclawBaseUrl.trim()
+              : opencodeForm.opencodeBaseUrl.trim();
+
+    const resolvedProviderName =
+      values.name.trim() ||
+      (isEditMode ? initialData?.name?.trim() : "") ||
+      deriveProviderNameFromEndpoint(resolvedProviderBaseUrl) ||
+      "Provider";
+
     const payload: ProviderFormValues = {
       ...values,
-      name: values.name.trim(),
+      name: resolvedProviderName,
       websiteUrl: values.websiteUrl?.trim() ?? "",
       settingsConfig,
     };
@@ -1373,7 +1407,7 @@ export function ProviderForm({
       <form
         id="provider-form"
         onSubmit={form.handleSubmit(handleSubmit)}
-        className="space-y-6 glass rounded-xl p-6 border border-white/10"
+        className="space-y-4 border border-border-default bg-card p-4"
       >
         {!initialData && (
           <ProviderPresetSelector
@@ -1390,6 +1424,7 @@ export function ProviderForm({
 
         <BasicFormFields
           form={form}
+          showIconPicker={showIconPicker}
           beforeNameSlot={
             appId === "opencode" && !isAnyOmoCategory ? (
               <div className="space-y-2">

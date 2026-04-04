@@ -304,18 +304,6 @@ export function ClaudeFormFields({
         />
       )}
 
-      {shouldShowApiKey && !usesOAuth && (
-        <ApiKeySection
-          value={apiKey}
-          onChange={onApiKeyChange}
-          category={category}
-          shouldShowLink={shouldShowApiKeyLink}
-          websiteUrl={websiteUrl}
-          isPartner={isPartner}
-          partnerPromotionKey={partnerPromotionKey}
-        />
-      )}
-
       {templateValueEntries.length > 0 && (
         <div className="space-y-3">
           <FormLabel>
@@ -382,6 +370,18 @@ export function ClaudeFormFields({
           autoSelect={autoSelect}
           onAutoSelectChange={onAutoSelectChange}
           onCustomEndpointsChange={onCustomEndpointsChange}
+        />
+      )}
+
+      {shouldShowApiKey && !usesOAuth && (
+        <ApiKeySection
+          value={apiKey}
+          onChange={onApiKeyChange}
+          category={category}
+          shouldShowLink={shouldShowApiKeyLink}
+          websiteUrl={websiteUrl}
+          isPartner={isPartner}
+          partnerPromotionKey={partnerPromotionKey}
         />
       )}
 
@@ -493,6 +493,7 @@ export function ClaudeFormFields({
                     size="sm"
                     onClick={onFetchModels}
                     disabled={isFetchingModels}
+                    className="h-8"
                   >
                     {isFetchingModels && (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />

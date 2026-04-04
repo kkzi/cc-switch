@@ -153,6 +153,35 @@ export function OpenClawFormFields({
 
   return (
     <>
+      {/* Base URL */}
+      <div className="space-y-2">
+        <FormLabel htmlFor="openclaw-baseurl">
+          {t("openclaw.baseUrl", { defaultValue: "API 端点" })}
+        </FormLabel>
+        <Input
+          id="openclaw-baseurl"
+          value={baseUrl}
+          onChange={(e) => onBaseUrlChange(e.target.value)}
+          placeholder="https://api.example.com/v1"
+        />
+        <p className="text-xs text-muted-foreground">
+          {t("openclaw.baseUrlHint", {
+            defaultValue: "供应商的 API 端点地址。",
+          })}
+        </p>
+      </div>
+
+      {/* API Key */}
+      <ApiKeySection
+        value={apiKey}
+        onChange={onApiKeyChange}
+        category={category}
+        shouldShowLink={shouldShowApiKeyLink}
+        websiteUrl={websiteUrl}
+        isPartner={isPartner}
+        partnerPromotionKey={partnerPromotionKey}
+      />
+
       {/* API Protocol Selector */}
       <div className="space-y-2">
         <FormLabel htmlFor="openclaw-api">
@@ -183,35 +212,6 @@ export function OpenClawFormFields({
           })}
         </p>
       </div>
-
-      {/* Base URL */}
-      <div className="space-y-2">
-        <FormLabel htmlFor="openclaw-baseurl">
-          {t("openclaw.baseUrl", { defaultValue: "API 端点" })}
-        </FormLabel>
-        <Input
-          id="openclaw-baseurl"
-          value={baseUrl}
-          onChange={(e) => onBaseUrlChange(e.target.value)}
-          placeholder="https://api.example.com/v1"
-        />
-        <p className="text-xs text-muted-foreground">
-          {t("openclaw.baseUrlHint", {
-            defaultValue: "供应商的 API 端点地址。",
-          })}
-        </p>
-      </div>
-
-      {/* API Key */}
-      <ApiKeySection
-        value={apiKey}
-        onChange={onApiKeyChange}
-        category={category}
-        shouldShowLink={shouldShowApiKeyLink}
-        websiteUrl={websiteUrl}
-        isPartner={isPartner}
-        partnerPromotionKey={partnerPromotionKey}
-      />
 
       {/* User-Agent */}
       <div className="flex items-center justify-between">

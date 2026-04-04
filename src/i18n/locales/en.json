@@ -29,6 +29,8 @@
     "formatError": "Format failed: {{error}}",
     "copy": "Copy",
     "view": "View",
+    "expand": "Expand",
+    "collapse": "Collapse",
     "back": "Back",
     "refresh": "Refresh",
     "refreshing": "Refreshing...",

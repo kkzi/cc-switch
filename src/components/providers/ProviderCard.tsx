@@ -250,35 +250,28 @@ export function ProviderCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border border-border p-3 transition-all duration-300",
-        "bg-card text-card-foreground group",
+        "group relative overflow-hidden border border-border-default bg-card p-2.5 text-card-foreground",
         isAutoFailoverEnabled || isProxyTakeover
-          ? "hover:border-emerald-500/50"
-          : "hover:border-border-active",
-        shouldUseGreen &&
-          "border-emerald-500/60 shadow-sm shadow-emerald-500/10",
-        shouldUseBlue && "border-blue-500/60 shadow-sm shadow-blue-500/10",
-        !isActiveProvider && "hover:shadow-sm",
+          ? "hover:border-foreground/40"
+          : "hover:border-foreground/40",
+        shouldUseGreen && "border-foreground bg-muted/40",
+        shouldUseBlue && "border-foreground bg-muted/40",
         dragHandleProps?.isDragging &&
-          "cursor-grabbing border-primary shadow-lg scale-105 z-10",
+          "z-10 cursor-grabbing border-foreground",
       )}
     >
       <div
         className={cn(
-          "absolute inset-0 bg-gradient-to-r to-transparent transition-opacity duration-500 pointer-events-none",
-          shouldUseGreen && "from-emerald-500/10",
-          shouldUseBlue && "from-blue-500/10",
-          !isActiveProvider && "from-primary/10",
+          "pointer-events-none absolute inset-0 bg-muted/60",
           isActiveProvider ? "opacity-100" : "opacity-0",
         )}
       />
-      <div className="relative flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 items-center gap-1.5">
           <button
             type="button"
             className={cn(
-              "-ml-1 flex-shrink-0 cursor-grab active:cursor-grabbing p-1",
-              "text-muted-foreground/50 hover:text-muted-foreground transition-colors",
+              "-ml-1 shrink-0 cursor-grab p-1 text-muted-foreground/50 hover:text-muted-foreground active:cursor-grabbing",
               dragHandleProps?.isDragging && "cursor-grabbing",
             )}
             aria-label={t("provider.dragHandle")}
@@ -288,24 +281,24 @@ export function ProviderCard({
             <GripVertical className="h-4 w-4" />
           </button>
 
-          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center border border-border group-hover:scale-105 transition-transform duration-300">
+          <div className="flex h-7 w-7 items-center justify-center border border-border-default bg-muted">
             <ProviderIcon
               icon={provider.icon}
               name={provider.name}
               color={provider.iconColor}
-              size={20}
+              size={18}
             />
           </div>
 
           <div className="space-y-0">
             <div className="flex min-h-5 flex-wrap items-center gap-1.5">
-              <h3 className="text-base font-semibold leading-none">
+              <h3 className="text-sm font-semibold leading-none">
                 {provider.name}
               </h3>
 
               {modelName && (
                 <span
-                  className="inline-flex items-center text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded"
+                  className="inline-flex items-center bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground"
                   title={modelName}
                 >
                   <span className="truncate max-w-[200px]">{modelName}</span>
@@ -354,10 +347,10 @@ export function ProviderCard({
                 type="button"
                 onClick={handleOpenWebsite}
                 className={cn(
-                  "inline-flex items-center text-sm max-w-[280px]",
+                  "inline-flex max-w-[280px] items-center text-xs",
                   isClickableUrl
-                    ? "text-blue-500 transition-colors hover:underline dark:text-blue-400 cursor-pointer"
-                    : "text-muted-foreground cursor-default",
+                    ? "cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+                    : "cursor-default text-muted-foreground",
                 )}
                 title={displayUrl}
                 disabled={!isClickableUrl}
@@ -369,7 +362,7 @@ export function ProviderCard({
         </div>
 
         <div
-          className="relative ml-auto flex min-w-0 items-center gap-2.5"
+          className="relative ml-auto flex min-w-0 items-center gap-2"
           style={
             {
               "--actions-width": `${actionsWidth || 320}px`,
@@ -379,7 +372,7 @@ export function ProviderCard({
           <div className="ml-auto">
             <div className="flex items-center gap-1 transition-transform duration-200 group-hover:-translate-x-[var(--actions-width)] group-focus-within:-translate-x-[var(--actions-width)]">
               {hasMultiplePlans ? (
-                <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
                   <span className="font-medium">
                     {t("usage.multiplePlans", {
                       count: usage?.data?.length || 0,
@@ -404,7 +397,7 @@ export function ProviderCard({
                     e.stopPropagation();
                     setIsExpanded(!isExpanded);
                   }}
-                  className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400 flex-shrink-0"
+                  className="shrink-0 p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
                   title={
                     isExpanded
                       ? t("usage.collapse", { defaultValue: "收起" })
@@ -423,7 +416,7 @@ export function ProviderCard({
 
           <div
             ref={actionsRef}
-            className="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 translate-x-2 items-center gap-1 pl-2.5 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
+            className="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 translate-x-2 items-center gap-1 pl-2 opacity-0 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
           >
             <ProviderActions
               appId={appId}
@@ -459,7 +452,7 @@ export function ProviderCard({
       </div>
 
       {isExpanded && hasMultiplePlans && (
-        <div className="mt-2.5 border-t border-border-default pt-2.5">
+        <div className="mt-2 border-t border-border-default pt-2">
           <UsageFooter
             provider={provider}
             providerId={provider.id}

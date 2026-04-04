@@ -28,15 +28,15 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
     setShowKey(!showKey);
   };
 
-  const inputClass = `w-full px-3 py-2 pr-10 border rounded-lg text-sm transition-colors ${
+  const inputClass = `h-8 w-full border border-border-default bg-background px-2.5 py-1 pr-9 text-sm ${
     disabled
       ? "bg-muted border-border-default text-muted-foreground cursor-not-allowed"
-      : "border-border-default bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
+      : "text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
   }`;
 
   return (
-    <div className="space-y-2">
-      <label htmlFor={id} className="block text-sm font-medium text-foreground">
+    <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2">
+      <label htmlFor={id} className="pt-2 text-sm font-medium text-foreground">
         {label} {required && "*"}
       </label>
       <div className="relative">
@@ -55,10 +55,10 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
           <button
             type="button"
             onClick={toggleShowKey}
-            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute inset-y-0 right-0 flex items-center pr-2 text-muted-foreground hover:text-foreground"
             aria-label={showKey ? t("apiKeyInput.hide") : t("apiKeyInput.show")}
           >
-            {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+            {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
         )}
       </div>

@@ -75,14 +75,12 @@ export function ApiKeySection({
 
           {/* 合作伙伴促销信息 */}
           {isPartner && partnerPromotionKey && (
-            <div className="rounded-md bg-blue-50 dark:bg-blue-950/30 p-2.5 border border-blue-200 dark:border-blue-800">
-              <p className="text-xs leading-relaxed text-blue-700 dark:text-blue-300">
-                💡{" "}
-                {t(`providerForm.partnerPromotion.${partnerPromotionKey}`, {
-                  defaultValue: "",
-                })}
-              </p>
-            </div>
+            <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+              💡{" "}
+              {t(`providerForm.partnerPromotion.${partnerPromotionKey}`, {
+                defaultValue: "",
+              })}
+            </p>
           )}
         </div>
       )}

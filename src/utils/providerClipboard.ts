@@ -6,9 +6,21 @@ export type ProviderClipboardDraft = {
 
 const URL_PATTERN = /https?:\/\/[^\s"'<>]+/gi;
 const API_KEY_PATTERN = /[A-Za-z0-9_-]+/g;
+const STRUCTURED_API_KEY_PATTERNS = [
+  /OPENAI_API_KEY["'“”]?\s*[:=：]\s*["'“”]?(sk-[A-Za-z0-9_-]+)["'“”]?/i,
+  /API_KEY["'“”]?\s*[:=：]\s*["'“”]?(sk-[A-Za-z0-9_-]+)["'“”]?/i,
+  /KEY["'“”]?\s*[:=：]\s*["'“”]?(sk-[A-Za-z0-9_-]+)["'“”]?/i,
+] as const;
 const TRAILING_URL_PUNCTUATION = /[),.;:!?，。；：！？、]+$/;
 
 function extractApiKeyCandidate(text: string): string {
+  for (const pattern of STRUCTURED_API_KEY_PATTERNS) {
+    const match = text.match(pattern);
+    if (match?.[1]) {
+      return match[1];
+    }
+  }
+
   const candidates = text.match(API_KEY_PATTERN) ?? [];
   if (candidates.length === 0) {
     return "";
