@@ -252,8 +252,6 @@ export function ProviderCard({
     isAutoFailoverEnabled &&
     isInFailoverQueue &&
     typeof failoverPriority === "number";
-  const shouldShowStatusBadges =
-    shouldShowHealthBadge || shouldShowFailoverPriorityBadge;
 
   return (
     <div
@@ -275,30 +273,7 @@ export function ProviderCard({
         )}
       />
       <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        {shouldShowStatusBadges && (
-          <div className="pointer-events-none absolute right-0 top-0 flex items-center gap-1">
-            {shouldShowHealthBadge && health && (
-              <ProviderHealthBadge
-                consecutiveFailures={health.consecutive_failures}
-                className="h-5 px-1.5 py-0"
-              />
-            )}
-
-            {shouldShowFailoverPriorityBadge && (
-              <FailoverPriorityBadge
-                priority={failoverPriority}
-                className="h-5 px-1.5 py-0"
-              />
-            )}
-          </div>
-        )}
-
-        <div
-          className={cn(
-            "flex flex-1 items-center gap-1.5",
-            shouldShowStatusBadges && "pr-24 sm:pr-28",
-          )}
-        >
+        <div className="flex flex-1 items-center gap-1.5">
           <button
             type="button"
             className={cn(
@@ -348,6 +323,20 @@ export function ProviderCard({
                 </span>
               )}
 
+              {shouldShowHealthBadge && health && (
+                <ProviderHealthBadge
+                  consecutiveFailures={health.consecutive_failures}
+                  className="h-4 shrink-0 gap-1 px-1 py-0 text-[10px] leading-none"
+                />
+              )}
+
+              {shouldShowFailoverPriorityBadge && (
+                <FailoverPriorityBadge
+                  priority={failoverPriority}
+                  className="h-4 shrink-0 px-1 py-0 text-[10px] leading-none"
+                />
+              )}
+
               {provider.category === "third_party" &&
                 provider.meta?.isPartner && (
                   <span
@@ -362,20 +351,22 @@ export function ProviderCard({
             </div>
 
             {displayUrl && (
-              <button
-                type="button"
-                onClick={handleOpenWebsite}
-                className={cn(
-                  "inline-flex max-w-[280px] items-center text-xs",
-                  isClickableUrl
-                    ? "cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
-                    : "cursor-default text-muted-foreground",
-                )}
-                title={displayUrl}
-                disabled={!isClickableUrl}
-              >
-                <span className="truncate">{displayUrl}</span>
-              </button>
+              <div className="flex min-w-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleOpenWebsite}
+                  className={cn(
+                    "inline-flex min-w-0 max-w-[280px] items-center text-xs",
+                    isClickableUrl
+                      ? "cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+                      : "cursor-default text-muted-foreground",
+                  )}
+                  title={displayUrl}
+                  disabled={!isClickableUrl}
+                >
+                  <span className="truncate">{displayUrl}</span>
+                </button>
+              </div>
             )}
           </div>
         </div>

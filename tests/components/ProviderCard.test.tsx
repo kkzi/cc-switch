@@ -93,7 +93,7 @@ describe("ProviderCard compact layout", () => {
     expect(expandedShell).toHaveClass("mt-2", "pt-2");
   });
 
-  it("renders health badges outside the title flow when proxy metadata is shown", () => {
+  it("renders health badges back in the title row without reserving top-right space", () => {
     useProviderHealthMock.mockReturnValue({
       data: { consecutive_failures: 0 },
     });
@@ -112,7 +112,10 @@ describe("ProviderCard compact layout", () => {
     expect(screen.getByTestId("failover-priority-badge")).toBeInTheDocument();
     expect(
       container.querySelector(".pointer-events-none.absolute.right-0.top-0"),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector(".min-h-5 [data-testid='provider-health-badge']"),
     ).toBeInTheDocument();
-    expect(container.querySelector(".pr-24")).toBeInTheDocument();
+    expect(container.querySelector(".pr-24")).not.toBeInTheDocument();
   });
 });
