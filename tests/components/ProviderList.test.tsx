@@ -327,6 +327,34 @@ describe("ProviderList Component", () => {
     expect(emptyNotice).toHaveClass("px-5", "py-6");
   });
 
+  it("hides the Claude virtual provider card when proxy is not running", () => {
+    const providerA = createProvider({ id: "alpha", name: "Alpha Labs" });
+
+    useDragSortMock.mockReturnValue({
+      sortedProviders: [providerA],
+      sensors: [],
+      handleDragEnd: vi.fn(),
+    });
+
+    renderWithQueryClient(
+      <ProviderList
+        providers={{ alpha: providerA }}
+        currentProviderId=""
+        appId="claude"
+        onSwitch={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onDuplicate={vi.fn()}
+        onOpenWebsite={vi.fn()}
+        isProxyRunning={false}
+      />,
+    );
+
+    expect(
+      screen.queryByTestId("provider-card-__claude_route_mode_virtual__"),
+    ).not.toBeInTheDocument();
+  });
+
   it("auto-collapses Claude route card when switching provider while proxy is running", () => {
     const providerA = createProvider({ id: "a", name: "A" });
     const providerB = createProvider({ id: "b", name: "B" });

@@ -262,6 +262,7 @@ export function ProviderList({
   const isFailoverModeActive =
     isProxyTakeover === true && isAutoFailoverEnabled === true;
   const isClaudeVirtualMode = appId === "claude";
+  const shouldShowClaudeVirtualCard = isClaudeVirtualMode && isProxyRunning;
   const isClaudeRouteModeEnabled =
     claudeRoutingSettings?.routeEnabled === true &&
     claudeRoutingSettings?.modelFailoverEnabled === true;
@@ -444,15 +445,17 @@ export function ProviderList({
   }, [sortedProviders]);
 
   const claudeMixedIds = useMemo(() => {
-    if (!isClaudeVirtualMode) return sortedProviders.map((provider) => provider.id);
+    if (!shouldShowClaudeVirtualCard) {
+      return sortedProviders.map((provider) => provider.id);
+    }
     return [
       CLAUDE_ROUTE_MODE_NODE_ID,
       ...sortedProviders.map((provider) => provider.id),
     ];
-  }, [isClaudeVirtualMode, sortedProviders, CLAUDE_ROUTE_MODE_NODE_ID]);
+  }, [shouldShowClaudeVirtualCard, sortedProviders, CLAUDE_ROUTE_MODE_NODE_ID]);
 
   const displayIds = useMemo(() => {
-    if (!isClaudeVirtualMode) {
+    if (!shouldShowClaudeVirtualCard) {
       return filteredProviders.map((provider) => provider.id);
     }
     const filteredSet = new Set(filteredProviders.map((provider) => provider.id));
@@ -463,7 +466,7 @@ export function ProviderList({
     CLAUDE_ROUTE_MODE_NODE_ID,
     claudeMixedIds,
     filteredProviders,
-    isClaudeVirtualMode,
+    shouldShowClaudeVirtualCard,
   ]);
 
   const claudeRoutePriority = useMemo(() => {
