@@ -153,6 +153,7 @@ export function ProviderCard({
   // OMO and OMO Slim share the same card behavior
   const isAnyOmo = isOmo || isOmoSlim;
   const handleDisableAnyOmo = isOmoSlim ? onDisableOmoSlim : onDisableOmo;
+  const isAdditiveMode = appId === "opencode" && !isAnyOmo;
 
   const { data: health } = useProviderHealth(provider.id, appId);
 
@@ -243,9 +244,12 @@ export function ProviderCard({
           : isCurrent;
 
   const shouldUseGreen = !isAnyOmo && isProxyTakeover && isActiveProvider;
+  const hasPersistentConfigHighlight = isAdditiveMode && isInConfig;
   const shouldUseBlue =
     (isAnyOmo && isActiveProvider) ||
-    (!isAnyOmo && !isProxyTakeover && isActiveProvider);
+    (!isAnyOmo &&
+      !isProxyTakeover &&
+      (isActiveProvider || hasPersistentConfigHighlight));
   const shouldShowHealthBadge =
     isProxyRunning && isInFailoverQueue && Boolean(health);
   const shouldShowFailoverPriorityBadge =
@@ -258,18 +262,26 @@ export function ProviderCard({
       className={cn(
         "group relative overflow-hidden border border-border-default bg-card p-2.5 text-card-foreground",
         isAutoFailoverEnabled || isProxyTakeover
-          ? "hover:border-foreground/40"
-          : "hover:border-foreground/40",
-        shouldUseGreen && "border-foreground bg-muted/40",
-        shouldUseBlue && "border-foreground bg-muted/40",
+          ? "hover:border-emerald-500/50"
+          : "hover:border-border-active",
+        shouldUseGreen &&
+          "border-emerald-500/60 shadow-sm shadow-emerald-500/10",
+        shouldUseBlue && "border-blue-500/60 shadow-sm shadow-blue-500/10",
+        !(isActiveProvider || hasPersistentConfigHighlight) &&
+          "hover:shadow-sm",
         dragHandleProps?.isDragging &&
           "z-10 cursor-grabbing border-foreground",
       )}
     >
       <div
         className={cn(
-          "pointer-events-none absolute inset-0 bg-muted/60",
-          isActiveProvider ? "opacity-100" : "opacity-0",
+          "absolute inset-0 bg-gradient-to-r to-transparent transition-opacity duration-500 pointer-events-none",
+          shouldUseGreen && "from-emerald-500/10",
+          shouldUseBlue && "from-blue-500/10",
+          !shouldUseGreen && !shouldUseBlue && "from-primary/10",
+          isActiveProvider || hasPersistentConfigHighlight
+            ? "opacity-100"
+            : "opacity-0",
         )}
       />
       <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

@@ -13,6 +13,7 @@ mod gemini_config;
 mod gemini_mcp;
 mod init_status;
 mod main_window;
+mod lightweight;
 mod mcp;
 mod openclaw_config;
 mod opencode_config;
@@ -261,6 +262,12 @@ pub fn run() {
             log::debug!("Args count: {}", args.len());
             for (i, arg) in args.iter().enumerate() {
                 log::debug!("  arg[{i}]: {}", redact_url_for_log(arg));
+            }
+
+            if crate::lightweight::is_lightweight_mode() {
+                if let Err(e) = crate::lightweight::exit_lightweight_mode(app) {
+                    log::error!("退出轻量模式重建窗口失败: {e}");
+                }
             }
 
             // Check for deep link URL in args (mainly for Windows/Linux command line)
@@ -674,6 +681,12 @@ pub fn run() {
                     let urls = event.urls();
                     log::info!("Received {} URL(s)", urls.len());
 
+                    if crate::lightweight::is_lightweight_mode() {
+                        if let Err(e) = crate::lightweight::exit_lightweight_mode(&app_handle) {
+                            log::error!("退出轻量模式重建窗口失败: {e}");
+                        }
+                    }
+
                     for (i, url) in urls.iter().enumerate() {
                         let url_str = url.as_str();
                         log::debug!("  URL[{i}]: {}", redact_url_for_log(url_str));
@@ -903,6 +916,7 @@ pub fn run() {
             commands::restart_app,
             commands::check_for_updates,
             commands::is_portable_mode,
+            commands::copy_text_to_clipboard,
             commands::get_claude_plugin_status,
             commands::read_claude_plugin_config,
             commands::apply_claude_plugin_config,
@@ -1066,6 +1080,7 @@ pub fn run() {
             commands::list_sessions,
             commands::get_session_messages,
             commands::delete_session,
+            commands::delete_sessions,
             commands::launch_session_terminal,
             commands::get_tool_versions,
             // Provider terminal
@@ -1143,6 +1158,10 @@ pub fn run() {
             commands::delete_daily_memory_file,
             commands::search_daily_memory_files,
             commands::open_workspace_directory,
+            // lightweight mode (for testing or low-resource environments)
+            commands::enter_lightweight_mode,
+            commands::exit_lightweight_mode,
+            commands::is_lightweight_mode,
         ]);
 
     let app = builder
@@ -1184,7 +1203,13 @@ pub fn run() {
             match event {
                 // macOS 在 Dock 图标被点击并重新激活应用时会触发 Reopen 事件，这里手动恢复主窗口
                 RunEvent::Reopen { .. } => {
-                    spawn_show_main_window(app_handle.clone());
+                    if crate::lightweight::is_lightweight_mode() {
+                        if let Err(e) = crate::lightweight::exit_lightweight_mode(app_handle) {
+                            log::error!("退出轻量模式重建窗口失败: {e}");
+                        }
+                    } else {
+                        spawn_show_main_window(app_handle.clone());
+                    }
                 }
                 // 处理通过自定义 URL 协议触发的打开事件（例如 ccswitch://...）
                 RunEvent::Opened { urls } => {
@@ -1193,6 +1218,13 @@ pub fn run() {
                         log::info!("RunEvent::Opened with URL: {url_str}");
 
                         if url_str.starts_with("ccswitch://") {
+                            if crate::lightweight::is_lightweight_mode() {
+                                if let Err(e) =
+                                    crate::lightweight::exit_lightweight_mode(app_handle)
+                                {
+                                    log::error!("退出轻量模式重建窗口失败: {e}");
+                                }
+                            }
                             let _ =
                                 handle_deeplink_url(app_handle, &url_str, true, "RunEvent::Opened");
                         }

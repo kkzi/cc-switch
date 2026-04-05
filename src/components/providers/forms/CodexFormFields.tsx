@@ -25,6 +25,8 @@ interface CodexFormFieldsProps {
   shouldShowSpeedTest: boolean;
   codexBaseUrl: string;
   onBaseUrlChange: (url: string) => void;
+  isFullUrl: boolean;
+  onFullUrlChange: (value: boolean) => void;
   isEndpointModalOpen: boolean;
   onEndpointModalToggle: (open: boolean) => void;
   onCustomEndpointsChange?: (endpoints: string[]) => void;
@@ -56,6 +58,8 @@ export function CodexFormFields({
   shouldShowSpeedTest,
   codexBaseUrl,
   onBaseUrlChange,
+  isFullUrl,
+  onFullUrlChange,
   isEndpointModalOpen,
   onEndpointModalToggle,
   onCustomEndpointsChange,
@@ -82,6 +86,9 @@ export function CodexFormFields({
           onChange={onBaseUrlChange}
           placeholder={t("providerForm.codexApiEndpointPlaceholder")}
           hint={t("providerForm.codexApiHint")}
+          showFullUrlToggle
+          isFullUrl={isFullUrl}
+          onFullUrlChange={onFullUrlChange}
           onManageClick={() => onEndpointModalToggle(true)}
         />
       )}
@@ -106,7 +113,6 @@ export function CodexFormFields({
           }),
         }}
       />
-
       {/* Codex Model Name 输入框 */}
       {shouldShowModelField && onModelNameChange && (
         <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2">

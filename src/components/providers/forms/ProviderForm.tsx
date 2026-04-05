@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { providerSchema, type ProviderFormData } from "@/lib/schemas/provider";
-import type { AppId } from "@/lib/api";
+import { providersApi, type AppId } from "@/lib/api";
 import type {
   ProviderCategory,
   ProviderMeta,
@@ -45,7 +46,6 @@ import {
   hasApiKeyField,
   normalizeCodexCustomProviderConfig,
 } from "@/utils/providerConfigUtils";
-import { providersApi } from "@/lib/api/providers";
 import { mergeProviderMeta } from "@/utils/providerMetaUtils";
 import { getCodexCustomTemplate } from "@/config/codexTemplates";
 import CodexConfigEditor from "./CodexConfigEditor";
@@ -93,6 +93,7 @@ import {
   normalizePricingSource,
 } from "./helpers/opencodeFormUtils";
 import { resolveManagedAccountId } from "@/lib/authBinding";
+import { useOpenClawLiveProviderIds } from "@/hooks/useOpenClaw";
 
 function deriveProviderNameFromEndpoint(endpoint: string): string {
   const trimmed = endpoint.trim();
@@ -186,6 +187,11 @@ export function ProviderForm({
   const [endpointAutoSelect, setEndpointAutoSelect] = useState<boolean>(
     () => initialData?.meta?.endpointAutoSelect ?? true,
   );
+  const supportsFullUrl = appId === "claude" || appId === "codex";
+  const [localIsFullUrl, setLocalIsFullUrl] = useState<boolean>(() => {
+    if (!supportsFullUrl) return false;
+    return initialData?.meta?.isFullUrl ?? false;
+  });
 
   const [testConfig, setTestConfig] = useState<ProviderTestConfig>(
     () => initialData?.meta?.testConfig ?? { enabled: false },
@@ -225,6 +231,9 @@ export function ProviderForm({
       setDraftCustomEndpoints([]);
     }
     setEndpointAutoSelect(initialData?.meta?.endpointAutoSelect ?? true);
+    setLocalIsFullUrl(
+      supportsFullUrl ? (initialData?.meta?.isFullUrl ?? false) : false,
+    );
     setTestConfig(initialData?.meta?.testConfig ?? { enabled: false });
     setProxyConfig(initialData?.meta?.proxyConfig ?? { enabled: false });
     setPricingConfig({
@@ -236,7 +245,7 @@ export function ProviderForm({
         initialData?.meta?.pricingModelSource,
       ),
     });
-  }, [appId, initialData]);
+  }, [appId, initialData, supportsFullUrl]);
 
   const defaultValues: ProviderFormData = useMemo(
     () => ({
@@ -440,10 +449,12 @@ export function ProviderForm({
         preset,
       }));
     }
-    return providerPresets.map<PresetEntry>((preset, index) => ({
-      id: `claude-${index}`,
-      preset,
-    }));
+    return providerPresets
+      .filter((p) => !p.hidden)
+      .map<PresetEntry>((preset, index) => ({
+        id: `claude-${index}`,
+        preset,
+      }));
   }, [appId]);
 
   const {
@@ -590,6 +601,15 @@ export function ProviderForm({
     existingOpencodeKeys,
   } = useOmoModelSource({ isOmoCategory: isAnyOmoCategory, providerId });
 
+  const {
+    data: opencodeLiveProviderIds = [],
+    isLoading: isOpencodeLiveProviderIdsLoading,
+  } = useQuery({
+    queryKey: ["opencodeLiveProviderIds"],
+    queryFn: () => providersApi.getOpenCodeLiveProviderIds(),
+    enabled: appId === "opencode" && !isAnyOmoCategory,
+  });
+
   const opencodeForm = useOpencodeFormState({
     initialData,
     appId,
@@ -618,6 +638,78 @@ export function ProviderForm({
     onSettingsConfigChange: (config) => form.setValue("settingsConfig", config),
     getSettingsConfig: () => form.getValues("settingsConfig"),
   });
+  const {
+    data: openclawLiveProviderIds = [],
+    isLoading: isOpenclawLiveProviderIdsLoading,
+  } = useOpenClawLiveProviderIds(appId === "openclaw");
+
+  const additiveExistingProviderKeys = useMemo(() => {
+    if (appId === "opencode" && !isAnyOmoCategory) {
+      return Array.from(
+        new Set(
+          [...existingOpencodeKeys, ...opencodeLiveProviderIds].filter(
+            (key) => key !== providerId,
+          ),
+        ),
+      );
+    }
+
+    if (appId === "openclaw") {
+      return Array.from(
+        new Set(
+          [
+            ...openclawForm.existingOpenclawKeys,
+            ...openclawLiveProviderIds,
+          ].filter((key) => key !== providerId),
+        ),
+      );
+    }
+
+    return [];
+  }, [
+    appId,
+    existingOpencodeKeys,
+    isAnyOmoCategory,
+    openclawForm.existingOpenclawKeys,
+    openclawLiveProviderIds,
+    opencodeLiveProviderIds,
+    providerId,
+  ]);
+
+  const isProviderKeyLockStateLoading = useMemo(() => {
+    if (!isEditMode) return false;
+    if (appId === "opencode" && !isAnyOmoCategory) {
+      return isOpencodeLiveProviderIdsLoading;
+    }
+    if (appId === "openclaw") {
+      return isOpenclawLiveProviderIdsLoading;
+    }
+    return false;
+  }, [
+    appId,
+    isAnyOmoCategory,
+    isEditMode,
+    isOpenclawLiveProviderIdsLoading,
+    isOpencodeLiveProviderIdsLoading,
+  ]);
+
+  const isProviderKeyLocked = useMemo(() => {
+    if (!isEditMode || !providerId) return false;
+    if (appId === "opencode" && !isAnyOmoCategory) {
+      return opencodeLiveProviderIds.includes(providerId);
+    }
+    if (appId === "openclaw") {
+      return openclawLiveProviderIds.includes(providerId);
+    }
+    return false;
+  }, [
+    appId,
+    isAnyOmoCategory,
+    isEditMode,
+    openclawLiveProviderIds,
+    opencodeLiveProviderIds,
+    providerId,
+  ]);
 
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [fetchedModelOptions, setFetchedModelOptions] = useState<string[]>([]);
@@ -819,9 +911,17 @@ export function ProviderForm({
         toast.error(t("opencode.providerKeyInvalid"));
         return;
       }
+      if (isProviderKeyLockStateLoading) {
+        toast.error(
+          t("providerForm.providerKeyStatusLoading", {
+            defaultValue: "正在加载供应商标识状态，请稍后再试",
+          }),
+        );
+        return;
+      }
       if (
-        !isEditMode &&
-        existingOpencodeKeys.includes(opencodeForm.opencodeProviderKey)
+        !isProviderKeyLocked &&
+        additiveExistingProviderKeys.includes(opencodeForm.opencodeProviderKey)
       ) {
         toast.error(t("opencode.providerKeyDuplicate"));
         return;
@@ -843,11 +943,17 @@ export function ProviderForm({
         toast.error(t("openclaw.providerKeyInvalid"));
         return;
       }
+      if (isProviderKeyLockStateLoading) {
+        toast.error(
+          t("providerForm.providerKeyStatusLoading", {
+            defaultValue: "正在加载供应商标识状态，请稍后再试",
+          }),
+        );
+        return;
+      }
       if (
-        !isEditMode &&
-        openclawForm.existingOpenclawKeys.includes(
-          openclawForm.openclawProviderKey,
-        )
+        !isProviderKeyLocked &&
+        additiveExistingProviderKeys.includes(openclawForm.openclawProviderKey)
       ) {
         toast.error(t("openclaw.providerKeyDuplicate"));
         return;
@@ -1141,6 +1247,10 @@ export function ProviderForm({
         localApiKeyField !== "ANTHROPIC_AUTH_TOKEN"
           ? localApiKeyField
           : undefined,
+      isFullUrl:
+        supportsFullUrl && category !== "official" && localIsFullUrl
+          ? true
+          : undefined,
     };
 
     await onSubmit(payload);
@@ -1380,6 +1490,7 @@ export function ProviderForm({
     }
 
     setLocalApiKeyField(preset.apiKeyField ?? "ANTHROPIC_AUTH_TOKEN");
+    setLocalIsFullUrl(false);
 
     form.reset({
       name: preset.nameKey ? t(preset.nameKey) : preset.name,
@@ -1441,12 +1552,14 @@ export function ProviderForm({
                     )
                   }
                   placeholder={t("opencode.providerKeyPlaceholder")}
-                  disabled={isEditMode}
+                  disabled={
+                    isProviderKeyLocked || isProviderKeyLockStateLoading
+                  }
                   className={
-                    (existingOpencodeKeys.includes(
+                    (additiveExistingProviderKeys.includes(
                       opencodeForm.opencodeProviderKey,
                     ) &&
-                      !isEditMode) ||
+                      !isProviderKeyLocked) ||
                     (opencodeForm.opencodeProviderKey.trim() !== "" &&
                       !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(
                         opencodeForm.opencodeProviderKey,
@@ -1455,10 +1568,10 @@ export function ProviderForm({
                       : ""
                   }
                 />
-                {existingOpencodeKeys.includes(
+                {additiveExistingProviderKeys.includes(
                   opencodeForm.opencodeProviderKey,
                 ) &&
-                  !isEditMode && (
+                  !isProviderKeyLocked && (
                     <p className="text-xs text-destructive">
                       {t("opencode.providerKeyDuplicate")}
                     </p>
@@ -1472,16 +1585,21 @@ export function ProviderForm({
                     </p>
                   )}
                 {!(
-                  existingOpencodeKeys.includes(
+                  additiveExistingProviderKeys.includes(
                     opencodeForm.opencodeProviderKey,
-                  ) && !isEditMode
+                  ) && !isProviderKeyLocked
                 ) &&
                   (opencodeForm.opencodeProviderKey.trim() === "" ||
                     /^[a-z0-9]+(-[a-z0-9]+)*$/.test(
                       opencodeForm.opencodeProviderKey,
                     )) && (
                     <p className="text-xs text-muted-foreground">
-                      {t("opencode.providerKeyHint")}
+                      {isProviderKeyLocked
+                        ? t("opencode.providerKeyLockedHint", {
+                            defaultValue:
+                              "该供应商已添加到应用配置中，供应商标识不可修改",
+                          })
+                        : t("opencode.providerKeyHint")}
                     </p>
                   )}
               </div>
@@ -1500,12 +1618,14 @@ export function ProviderForm({
                     )
                   }
                   placeholder={t("openclaw.providerKeyPlaceholder")}
-                  disabled={isEditMode}
+                  disabled={
+                    isProviderKeyLocked || isProviderKeyLockStateLoading
+                  }
                   className={
-                    (openclawForm.existingOpenclawKeys.includes(
+                    (additiveExistingProviderKeys.includes(
                       openclawForm.openclawProviderKey,
                     ) &&
-                      !isEditMode) ||
+                      !isProviderKeyLocked) ||
                     (openclawForm.openclawProviderKey.trim() !== "" &&
                       !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(
                         openclawForm.openclawProviderKey,
@@ -1514,10 +1634,10 @@ export function ProviderForm({
                       : ""
                   }
                 />
-                {openclawForm.existingOpenclawKeys.includes(
+                {additiveExistingProviderKeys.includes(
                   openclawForm.openclawProviderKey,
                 ) &&
-                  !isEditMode && (
+                  !isProviderKeyLocked && (
                     <p className="text-xs text-destructive">
                       {t("openclaw.providerKeyDuplicate")}
                     </p>
@@ -1531,16 +1651,21 @@ export function ProviderForm({
                     </p>
                   )}
                 {!(
-                  openclawForm.existingOpenclawKeys.includes(
+                  additiveExistingProviderKeys.includes(
                     openclawForm.openclawProviderKey,
-                  ) && !isEditMode
+                  ) && !isProviderKeyLocked
                 ) &&
                   (openclawForm.openclawProviderKey.trim() === "" ||
                     /^[a-z0-9]+(-[a-z0-9]+)*$/.test(
                       openclawForm.openclawProviderKey,
                     )) && (
                     <p className="text-xs text-muted-foreground">
-                      {t("openclaw.providerKeyHint")}
+                      {isProviderKeyLocked
+                        ? t("openclaw.providerKeyLockedHint", {
+                            defaultValue:
+                              "该供应商已添加到应用配置中，供应商标识不可修改",
+                          })
+                        : t("openclaw.providerKeyHint")}
                     </p>
                   )}
               </div>
@@ -1606,6 +1731,8 @@ export function ProviderForm({
             modelSuggestions={fetchedModelOptions}
             apiKeyField={localApiKeyField}
             onApiKeyFieldChange={handleApiKeyFieldChange}
+            isFullUrl={localIsFullUrl}
+            onFullUrlChange={setLocalIsFullUrl}
           />
         )}
 
@@ -1622,6 +1749,8 @@ export function ProviderForm({
             shouldShowSpeedTest={shouldShowSpeedTest}
             codexBaseUrl={codexBaseUrl}
             onBaseUrlChange={handleCodexBaseUrlChange}
+            isFullUrl={localIsFullUrl}
+            onFullUrlChange={setLocalIsFullUrl}
             isEndpointModalOpen={isCodexEndpointModalOpen}
             onEndpointModalToggle={setIsCodexEndpointModalOpen}
             onCustomEndpointsChange={

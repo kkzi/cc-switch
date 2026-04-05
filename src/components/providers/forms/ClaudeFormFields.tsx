@@ -95,6 +95,10 @@ interface ClaudeFormFieldsProps {
   modelSuggestions?: string[];
   apiKeyField: ClaudeApiKeyField;
   onApiKeyFieldChange: (field: ClaudeApiKeyField) => void;
+
+  // Full URL mode
+  isFullUrl: boolean;
+  onFullUrlChange: (value: boolean) => void;
 }
 
 export function ClaudeFormFields({
@@ -139,6 +143,8 @@ export function ClaudeFormFields({
   modelSuggestions = [],
   apiKeyField,
   onApiKeyFieldChange,
+  isFullUrl,
+  onFullUrlChange,
 }: ClaudeFormFieldsProps) {
   const { t } = useTranslation();
   const hasAnyAdvancedValue = !!(
@@ -355,6 +361,9 @@ export function ClaudeFormFields({
                 : t("providerForm.apiHint")
           }
           onManageClick={() => onEndpointModalToggle(true)}
+          showFullUrlToggle={true}
+          isFullUrl={isFullUrl}
+          onFullUrlChange={onFullUrlChange}
         />
       )}
 
@@ -386,10 +395,7 @@ export function ClaudeFormFields({
       )}
 
       {shouldShowModelSelector && (
-        <Collapsible
-          open={advancedExpanded}
-          onOpenChange={setAdvancedExpanded}
-        >
+        <Collapsible open={advancedExpanded} onOpenChange={setAdvancedExpanded}>
           <CollapsibleTrigger asChild>
             <Button
               type="button"
