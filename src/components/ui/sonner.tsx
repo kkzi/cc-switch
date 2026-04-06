@@ -11,6 +11,7 @@ export function Toaster() {
   return (
     <SonnerToaster
       position="bottom-center"
+      hotkey={["Escape"]}
       richColors
       theme={sonnerTheme}
       toastOptions={{
