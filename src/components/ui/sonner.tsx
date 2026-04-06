@@ -10,7 +10,7 @@ export function Toaster() {
 
   return (
     <SonnerToaster
-      position="top-center"
+      position="bottom-center"
       richColors
       theme={sonnerTheme}
       toastOptions={{
