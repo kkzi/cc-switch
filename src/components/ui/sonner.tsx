@@ -1,4 +1,5 @@
 import { Toaster as SonnerToaster } from "sonner";
+import type { CSSProperties } from "react";
 import { useTheme } from "@/components/theme-provider";
 
 export function Toaster() {
@@ -14,8 +15,20 @@ export function Toaster() {
       hotkey={["Escape"]}
       richColors
       theme={sonnerTheme}
+      style={
+        {
+          "--width": "calc(100vw - 40px)",
+        } as CSSProperties
+      }
       toastOptions={{
         duration: 2000,
+        style: {
+          minHeight: "20px",
+          maxHeight: "100px",
+          height: "auto",
+          padding: "6px 12px",
+          overflowY: "auto",
+        },
         classNames: {
           toast:
             "group rounded-md border bg-background text-foreground shadow-lg",
