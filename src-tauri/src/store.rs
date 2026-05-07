@@ -1,6 +1,6 @@
 use crate::database::Database;
 use crate::deeplink::{DeepLinkImportRequest, PendingDeepLinkError};
-use crate::services::ProxyService;
+use crate::services::{ProxyService, UsageCache};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -12,6 +12,7 @@ pub struct AppState {
     main_window_destroy_generation: AtomicU64,
     pending_deeplink: Mutex<Option<DeepLinkImportRequest>>,
     pending_deeplink_error: Mutex<Option<PendingDeepLinkError>>,
+    pub usage_cache: Arc<UsageCache>,
 }
 
 impl AppState {
@@ -26,6 +27,7 @@ impl AppState {
             main_window_destroy_generation: AtomicU64::new(0),
             pending_deeplink: Mutex::new(None),
             pending_deeplink_error: Mutex::new(None),
+            usage_cache: Arc::new(UsageCache::new()),
         }
     }
 

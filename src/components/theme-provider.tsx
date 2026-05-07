@@ -17,7 +17,7 @@ interface ThemeProviderProps {
 
 interface ThemeContextValue {
   theme: Theme;
-  setTheme: (theme: Theme, event?: React.MouseEvent) => void;
+  setTheme: (theme: Theme) => void;
 }
 
 const ThemeProviderContext = createContext<ThemeContextValue | undefined>(
@@ -131,7 +131,6 @@ export function ThemeProvider({
     () => ({
       theme,
       setTheme: (nextTheme: Theme) => {
-        // Skip if same theme
         if (nextTheme === theme) return;
         setThemeState(nextTheme);
       },

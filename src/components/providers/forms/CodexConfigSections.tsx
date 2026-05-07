@@ -1,20 +1,17 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+// NOTE: Codex 1M 上下文 UI 已暂时隐藏（详见下方 CodexConfigSection 内 JSX 注释）。
+// 如需恢复，请同时：
+//   - 在下方 React import 中加回 `useMemo`
+//   - 取消下面 `@/utils/providerConfigUtils` import 的注释
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Wand2 } from "lucide-react";
-import { toast } from "sonner";
 import JsonEditor from "@/components/JsonEditor";
-import { formatJSON } from "@/utils/formatters";
+/*
 import {
   extractCodexTopLevelInt,
   setCodexTopLevelInt,
   removeCodexTopLevelField,
 } from "@/utils/providerConfigUtils";
+*/
 
 interface CodexAuthSectionProps {
   value: string;
@@ -57,47 +54,14 @@ export const CodexAuthSection: React.FC<CodexAuthSectionProps> = ({
     }
   };
 
-  const handleFormat = useCallback(() => {
-    if (!value.trim()) return;
-
-    try {
-      onChange(formatJSON(value));
-      if (onBlur) {
-        onBlur();
-      }
-      toast.success(t("common.formatSuccess", { defaultValue: "格式化成功" }), {
-        closeButton: true,
-      });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      toast.error(
-        t("common.formatError", {
-          defaultValue: "格式化失败：{{error}}",
-          error: errorMessage,
-        }),
-      );
-    }
-  }, [value, onChange, onBlur, t]);
-
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <label
-          htmlFor="codexAuth"
-          className="block text-sm font-medium text-foreground"
-        >
-          {t("codexConfig.authJson")}
-        </label>
-        <button
-          type="button"
-          onClick={handleFormat}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
-        >
-          <Wand2 className="w-3.5 h-3.5" />
-          {t("common.format", { defaultValue: "格式化" })}
-        </button>
-      </div>
+      <label
+        htmlFor="codexAuth"
+        className="block text-sm font-medium text-foreground"
+      >
+        {t("codexConfig.authJson")}
+      </label>
 
       <JsonEditor
         value={value}
@@ -107,11 +71,16 @@ export const CodexAuthSection: React.FC<CodexAuthSectionProps> = ({
         rows={6}
         showValidation={true}
         language="json"
-        showFormatButton={false}
       />
 
       {error && (
         <p className="text-xs text-red-500 dark:text-red-400">{error}</p>
+      )}
+
+      {!error && (
+        <p className="text-xs text-muted-foreground">
+          {t("codexConfig.authJsonHint")}
+        </p>
       )}
     </div>
   );
@@ -175,6 +144,8 @@ export const CodexConfigSection: React.FC<CodexConfigSectionProps> = ({
     [onChange],
   );
 
+  // Codex 1M 上下文相关状态/回调暂时禁用——见同文件下方 JSX 注释处的恢复说明。
+  /*
   // Parse toggle states from TOML text
   const toggleStates = useMemo(() => {
     const contextWindow = extractCodexTopLevelInt(
@@ -242,16 +213,37 @@ export const CodexConfigSection: React.FC<CodexConfigSectionProps> = ({
   useEffect(() => {
     return () => clearTimeout(compactTimerRef.current);
   }, []);
+  */
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
         <label
           htmlFor="codexConfig"
           className="block text-sm font-medium text-foreground"
         >
           {t("codexConfig.configToml")}
         </label>
+
+        <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={useCommonConfig}
+            onChange={(e) => onCommonConfigToggle(e.target.checked)}
+            className="w-4 h-4 text-blue-500 bg-white dark:bg-gray-800 border-border-default  rounded focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-2"
+          />
+          {t("codexConfig.writeCommonConfig")}
+        </label>
+      </div>
+
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={onEditCommonConfig}
+          className="text-xs text-blue-500 dark:text-blue-400 hover:underline"
+        >
+          {t("codexConfig.editCommonConfig")}
+        </button>
       </div>
 
       {commonConfigError && (
@@ -260,52 +252,33 @@ export const CodexConfigSection: React.FC<CodexConfigSectionProps> = ({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              checked={toggleStates.contextWindow1M}
-              onChange={(e) => handleContextWindowToggle(e.target.checked)}
-              className="w-4 h-4 text-blue-500 bg-white dark:bg-gray-800 border-border-default rounded focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-2"
-            />
-            <span>{t("codexConfig.contextWindow1M")}</span>
-          </label>
-          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{t("codexConfig.autoCompactLimit")}:</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              key={toggleStates.compactLimit}
-              defaultValue={toggleStates.compactLimit}
-              disabled={!toggleStates.contextWindow1M}
-              onChange={(e) => handleCompactLimitChange(e.target.value)}
-              className="w-28 h-7 px-2 text-sm rounded border border-border bg-background text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </label>
-        </div>
-
-        <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-x-4 gap-y-1 sm:w-auto">
-          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useCommonConfig}
-              onChange={(e) => onCommonConfigToggle(e.target.checked)}
-              className="w-4 h-4 text-blue-500 bg-white dark:bg-gray-800 border-border-default rounded focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-2"
-            />
-            {t("codexConfig.writeCommonConfig")}
-          </label>
-
-          <button
-            type="button"
-            onClick={onEditCommonConfig}
-            className="text-xs text-blue-500 dark:text-blue-400 hover:underline"
-          >
-            {t("codexConfig.editCommonConfig")}
-          </button>
-        </div>
+      {/* Codex 1M 上下文 UI 已隐藏：模型不再支持该字段。
+          恢复方法：(1) 取消本段 JSX 注释；(2) 取消文件顶部 import 中 useMemo / extractCodexTopLevelInt / setCodexTopLevelInt / removeCodexTopLevelField 的注释；(3) 取消下方 toggleStates / compactTimerRef / handleContextWindowToggle / handleCompactLimitChange / cleanup useEffect 的注释。
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={toggleStates.contextWindow1M}
+            onChange={(e) => handleContextWindowToggle(e.target.checked)}
+            className="w-4 h-4 text-blue-500 bg-white dark:bg-gray-800 border-border-default rounded focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-2"
+          />
+          <span>{t("codexConfig.contextWindow1M")}</span>
+        </label>
+        <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <span>{t("codexConfig.autoCompactLimit")}:</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            key={toggleStates.compactLimit}
+            defaultValue={toggleStates.compactLimit}
+            disabled={!toggleStates.contextWindow1M}
+            onChange={(e) => handleCompactLimitChange(e.target.value)}
+            className="w-28 h-7 px-2 text-sm rounded border border-border bg-background text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+        </label>
       </div>
+      */}
 
       <JsonEditor
         value={localValue}
@@ -319,6 +292,12 @@ export const CodexConfigSection: React.FC<CodexConfigSectionProps> = ({
 
       {configError && (
         <p className="text-xs text-red-500 dark:text-red-400">{configError}</p>
+      )}
+
+      {!configError && (
+        <p className="text-xs text-muted-foreground">
+          {t("codexConfig.configTomlHint")}
+        </p>
       )}
     </div>
   );

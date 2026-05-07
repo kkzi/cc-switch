@@ -48,6 +48,7 @@ export interface ProxyTakeoverStatus {
   gemini: boolean;
   opencode: boolean;
   openclaw: boolean;
+  hermes: boolean;
 }
 
 export interface ProviderHealth {
@@ -110,6 +111,7 @@ export interface ProxyUsageRecord {
 export interface FailoverQueueItem {
   providerId: string;
   providerName: string;
+  providerNotes?: string;
   sortIndex?: number;
 }
 

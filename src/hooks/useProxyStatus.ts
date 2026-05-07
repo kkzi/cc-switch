@@ -131,6 +131,7 @@ export function useProxyStatus() {
         t("common.unknown", { defaultValue: "未知错误" });
       toast.error(
         t("proxy.takeover.failed", {
+          detail,
           defaultValue: `操作失败: ${detail}`,
         }),
       );
