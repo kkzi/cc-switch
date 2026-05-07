@@ -46,6 +46,7 @@ impl Database {
                     provider_id: row.get(0)?,
                     provider_name: row.get(1)?,
                     sort_index: row.get(2)?,
+                    provider_notes: None,
                 })
             })
             .map_err(|e| AppError::Database(e.to_string()))?

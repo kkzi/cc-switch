@@ -3,7 +3,7 @@
 //! 使用流式 API 进行快速健康检查，只需接收首个 chunk 即判定成功。
 
 use futures::StreamExt;
->>>>>>> upstream/main
+use rand::prelude::IndexedRandom;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;

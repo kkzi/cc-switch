@@ -126,12 +126,13 @@ fn build_client_for_fetch(
 ) -> Result<reqwest::Client, AppError> {
     let provider_id = provider_id.map(|s| s.trim()).filter(|s| !s.is_empty());
     if let Some(pid) = provider_id {
-        let provider = state
+        let _provider = state
             .db
             .get_provider_by_id(pid, app_type.as_str())?
             .ok_or_else(|| AppError::Message(format!("供应商 {pid} 不存在")))?;
-        let proxy_config = provider.meta.as_ref().and_then(|m| m.proxy_config.as_ref());
-        return Ok(crate::proxy::http_client::get_for_provider(proxy_config));
+        // proxy_config was removed from ProviderMeta in upstream v3.14.1;
+        // fall back to the global HTTP client (which may or may not use a proxy).
+        return Ok(crate::proxy::http_client::get());
     }
 
     Ok(crate::proxy::http_client::get())
