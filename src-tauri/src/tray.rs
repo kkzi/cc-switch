@@ -63,6 +63,13 @@ pub struct TrayAppSection {
 /// Auto 菜单项后缀
 pub const AUTO_SUFFIX: &str = "auto";
 
+/// Upstream exposes an explicit "Lightweight Mode" tray entry.
+/// This fork already provides similar UX by hiding the main window first and
+/// only destroying the webview later via `hide_then_schedule_main_window_destroy`,
+/// so we keep the underlying lightweight-mode implementation for compatibility
+/// but intentionally do not expose a second tray concept in the UI.
+const EXPOSE_LIGHTWEIGHT_MODE_MENU: bool = false;
+
 pub const TRAY_SECTIONS: [TrayAppSection; 3] = [
     TrayAppSection {
         app_type: AppType::Claude,
@@ -358,17 +365,19 @@ pub fn create_tray_menu(
         menu_builder = menu_builder.separator();
     }
 
-    let lightweight_item = CheckMenuItem::with_id(
-        app,
-        "lightweight_mode",
-        tray_texts.lightweight_mode,
-        true,
-        crate::lightweight::is_lightweight_mode(),
-        None::<&str>,
-    )
-    .map_err(|e| AppError::Message(format!("创建轻量模式菜单失败: {e}")))?;
+    if should_expose_lightweight_mode_menu() {
+        let lightweight_item = CheckMenuItem::with_id(
+            app,
+            "lightweight_mode",
+            tray_texts.lightweight_mode,
+            true,
+            crate::lightweight::is_lightweight_mode(),
+            None::<&str>,
+        )
+        .map_err(|e| AppError::Message(format!("创建轻量模式菜单失败: {e}")))?;
 
-    menu_builder = menu_builder.item(&lightweight_item).separator();
+        menu_builder = menu_builder.item(&lightweight_item).separator();
+    }
 
     // 退出菜单（分隔符已在上面的 section 循环中添加）
     let quit_item = MenuItem::with_id(app, "quit", tray_texts.quit, true, None::<&str>)
@@ -492,5 +501,22 @@ pub fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             }
             log::warn!("未处理的菜单事件: {event_id}");
         }
+    }
+}
+
+fn should_expose_lightweight_mode_menu() -> bool {
+    EXPOSE_LIGHTWEIGHT_MODE_MENU
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_expose_lightweight_mode_menu;
+
+    #[test]
+    fn tray_menu_does_not_expose_lightweight_mode_entry() {
+        assert!(
+            !should_expose_lightweight_mode_menu(),
+            "fork tray menu should hide the explicit lightweight mode entry"
+        );
     }
 }

@@ -6,7 +6,7 @@
 
 **个人自用修改版，主打能用就行。** 新增或修改的功能未经充分测试，**可能存在 bug 或与上游不兼容**，介意请使用[官方版](https://github.com/farion1231/cc-switch)。
 
-[![Version](https://img.shields.io/badge/version-3.12.3--fork.1-blue.svg)](https://github.com/kongkongyo/cc-switch/releases)
+[![Version](https://img.shields.io/badge/version-3.13.0--fork.1-blue.svg)](https://github.com/kongkongyo/cc-switch/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/kongkongyo/cc-switch/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-orange.svg)](https://tauri.app/)
 
@@ -124,7 +124,7 @@ Exclusive benefit for CC Switch users: Register via <a href="https://ddshub.shor
 
 ## 功能特性
 
-### 当前版本：v3.12.3-fork.1 | [完整更新日志](CHANGELOG.md) | [发布说明](docs/release-notes/v3.12.3-zh.md)
+### 当前版本：v3.13.0-fork.1 | [完整更新日志](CHANGELOG.md) | [发布说明](docs/release-notes/v3.13.0-zh.md)
 
 **相对 upstream 的长期差异**
 
@@ -134,7 +134,7 @@ Exclusive benefit for CC Switch users: Register via <a href="https://ddshub.shor
 - **供应商 UI 与交互偏自用优化**：列表更紧凑、表单更偏高频操作、剪贴板导入和模型获取交互更多，和 upstream 的视觉与交互节奏不完全相同。
 - **同步策略是长期 merge，不是一次性魔改**：仓库会持续合并 upstream/main，但不会主动抹平 fork 自己的代理、认证、窗口生命周期和部分表单交互差异。
 
-**v3.12.3-fork.1 版本亮点**
+**v3.13.0-fork.1 版本亮点**
 
 - **GitHub Copilot 反向代理 + Auth Center**：在供应商体系内接入 Copilot，支持 OAuth Device Flow、多账号选择、自动刷新 Token、模型列表和用量查询。
 - **macOS 代码签名、公证与 DMG 安装**：release 工作流新增 Apple 签名、公证和装订校验，macOS 用户可直接安装，无需再处理 `xattr` 等绕过步骤。

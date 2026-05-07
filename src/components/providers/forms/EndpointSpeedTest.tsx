@@ -368,6 +368,30 @@ const EndpointSpeedTest: React.FC<EndpointSpeedTestProps> = ({
           onChange(best.url);
         }
       }
+
+      // 编辑模式：保存测速结果到 provider.meta
+      if (providerId) {
+        const successful = results
+          .filter(
+            (item) => typeof item.latency === "number" && item.latency !== null,
+          )
+          .sort((a, b) => (a.latency! || 0) - (b.latency! || 0));
+        const best = successful[0] ?? results[0];
+        if (best) {
+          try {
+            await vscodeApi.saveSpeedtestResult(appId, providerId, {
+              bestUrl: normalizeEndpointUrl(best.url),
+              latencyMs:
+                typeof best.latency === "number" ? Math.round(best.latency) : null,
+              status: best.error ? "error" : "success",
+              error: best.error ?? undefined,
+              testedAt: Date.now(),
+            });
+          } catch {
+            // 保存失败不影响 UI
+          }
+        }
+      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -377,7 +401,7 @@ const EndpointSpeedTest: React.FC<EndpointSpeedTestProps> = ({
     } finally {
       setIsTesting(false);
     }
-  }, [entries, autoSelect, appId, normalizedSelected, onChange, t]);
+  }, [entries, autoSelect, appId, providerId, normalizedSelected, onChange, t]);
 
   const handleSelect = useCallback(
     (url: string) => {
@@ -611,8 +635,11 @@ const EndpointSpeedTest: React.FC<EndpointSpeedTestProps> = ({
                     ) : isTesting ? (
                       <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                     ) : entry.error ? (
-                      <div className="text-xs text-gray-400">
-                        {t("endpointTest.failed")}
+                      <div
+                        className="text-xs text-red-500 dark:text-red-400 truncate max-w-[200px]"
+                        title={entry.error}
+                      >
+                        {entry.error}
                       </div>
                     ) : (
                       <div className="text-xs text-gray-400">—</div>

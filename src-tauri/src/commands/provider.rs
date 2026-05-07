@@ -418,6 +418,33 @@ pub fn update_endpoint_last_used(
         .map_err(|e| e.to_string())
 }
 
+#[allow(non_snake_case)]
+#[tauri::command]
+pub fn save_speedtest_result(
+    state: State<'_, AppState>,
+    app: String,
+    providerId: String,
+    bestUrl: String,
+    latencyMs: Option<u64>,
+    status: String,
+    error: Option<String>,
+    testedAt: i64,
+) -> Result<(), String> {
+    let app_type = AppType::from_str(&app).map_err(|e| e.to_string())?;
+    let result = crate::provider::SpeedtestResult {
+        best_url: bestUrl,
+        latency_ms: latencyMs,
+        status,
+        error,
+        tested_at: testedAt,
+    };
+    state
+        .inner()
+        .db
+        .update_speedtest_result(app_type.as_str(), &providerId, &result)
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn update_providers_sort_order(
     state: State<'_, AppState>,

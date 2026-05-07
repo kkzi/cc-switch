@@ -80,12 +80,35 @@ impl SpeedtestService {
                 // 第二次请求开始计时，并将其作为结果返回。
                 let start = Instant::now();
                 let latency = match client.get(parsed_url).timeout(request_timeout).send().await {
-                    Ok(resp) => EndpointLatency {
-                        url: trimmed,
-                        latency: Some(start.elapsed().as_millis()),
-                        status: Some(resp.status().as_u16()),
-                        error: None,
-                    },
+                    Ok(resp) => {
+                        let status = resp.status();
+                        if status.is_success() {
+                            EndpointLatency {
+                                url: trimmed,
+                                latency: Some(start.elapsed().as_millis()),
+                                status: Some(status.as_u16()),
+                                error: None,
+                            }
+                        } else {
+                            let status_code = status.as_u16();
+                            let body = resp.text().await.unwrap_or_default();
+                            let error_msg = if body.is_empty() {
+                                format!("HTTP {}", status_code)
+                            } else {
+                                format!(
+                                    "HTTP {}: {}",
+                                    status_code,
+                                    body.chars().take(200).collect::<String>()
+                                )
+                            };
+                            EndpointLatency {
+                                url: trimmed,
+                                latency: None,
+                                status: Some(status_code),
+                                error: Some(error_msg),
+                            }
+                        }
+                    }
                     Err(err) => {
                         let status = err.status().map(|s| s.as_u16());
                         let error_message = if err.is_timeout() {

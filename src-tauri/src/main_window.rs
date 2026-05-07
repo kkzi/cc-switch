@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager, WebviewUrl};
+use tauri::{image::Image, AppHandle, Manager, Runtime, WebviewUrl};
 
 #[cfg(target_os = "macos")]
 use crate::tray;
@@ -6,6 +6,31 @@ use crate::{error::AppError, store::AppState};
 
 pub const MAIN_WINDOW_LABEL: &str = "main";
 const MAIN_WINDOW_DESTROY_DELAY_MS: u64 = 3_000;
+
+fn main_window_title() -> &'static str {
+    "cc-switch"
+}
+
+trait MainWindowIconBuilder: Sized {
+    fn icon(self, icon: Image<'static>) -> Result<Self, AppError>;
+}
+
+impl<'a, R: Runtime, M: Manager<R>> MainWindowIconBuilder for tauri::WebviewWindowBuilder<'a, R, M> {
+    fn icon(self, icon: Image<'static>) -> Result<Self, AppError> {
+        self.icon(icon)
+            .map_err(|e| AppError::Message(format!("设置主窗口图标失败: {e}")))
+    }
+}
+
+fn apply_default_window_icon<B: MainWindowIconBuilder>(
+    builder: B,
+    icon: Option<Image<'static>>,
+) -> Result<B, AppError> {
+    match icon {
+        Some(icon) => builder.icon(icon),
+        None => Ok(builder),
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToggleMainWindowAction {
@@ -41,13 +66,17 @@ pub fn ensure_main_window(
     }
 
     let builder = tauri::WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::default())
-        .title("")
+        .title(main_window_title())
         .inner_size(1000.0, 650.0)
         .min_inner_size(900.0, 600.0)
         .visible(false)
         .resizable(true)
         .fullscreen(false)
         .center();
+    let builder = apply_default_window_icon(
+        builder,
+        app.default_window_icon().cloned().map(|icon| icon.to_owned()),
+    )?;
     #[cfg(target_os = "macos")]
     let builder = builder.title_bar_style(tauri::TitleBarStyle::Overlay);
 
@@ -191,7 +220,23 @@ fn apply_linux_webview_workaround(_window: &tauri::WebviewWindow) {
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve_toggle_main_window_action, ToggleMainWindowAction};
+    use super::{
+        apply_default_window_icon, main_window_title, resolve_toggle_main_window_action,
+        MainWindowIconBuilder, ToggleMainWindowAction,
+    };
+    use crate::AppError;
+    use tauri::image::Image;
+
+    #[derive(Default)]
+    struct RecordingBuilder {
+        icon_called: bool,
+    }
+
+    impl MainWindowIconBuilder for RecordingBuilder {
+        fn icon(self, _icon: Image<'static>) -> Result<Self, AppError> {
+            Ok(Self { icon_called: true })
+        }
+    }
 
     #[test]
     fn toggle_action_creates_when_window_absent() {
@@ -215,5 +260,29 @@ mod tests {
             resolve_toggle_main_window_action(true, false),
             ToggleMainWindowAction::RevealExisting
         );
+    }
+
+    #[test]
+    fn apply_default_icon_calls_builder_when_icon_exists() {
+        let builder = RecordingBuilder::default();
+        let icon = Image::new_owned(Vec::new(), 1, 1);
+
+        let result = apply_default_window_icon(builder, Some(icon)).unwrap();
+
+        assert!(result.icon_called);
+    }
+
+    #[test]
+    fn apply_default_icon_skips_builder_when_icon_missing() {
+        let builder = RecordingBuilder::default();
+
+        let result = apply_default_window_icon(builder, None).unwrap();
+
+        assert!(!result.icon_called);
+    }
+
+    #[test]
+    fn main_window_uses_cc_switch_title() {
+        assert_eq!(main_window_title(), "cc-switch");
     }
 }

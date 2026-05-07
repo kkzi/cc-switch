@@ -70,6 +70,28 @@ export const vscodeApi = {
     });
   },
 
+  async saveSpeedtestResult(
+    appId: AppId,
+    providerId: string,
+    result: {
+      bestUrl: string;
+      latencyMs: number | null;
+      status: "success" | "error";
+      error?: string;
+      testedAt: number;
+    },
+  ): Promise<void> {
+    await invoke("save_speedtest_result", {
+      app: appId,
+      providerId,
+      bestUrl: result.bestUrl,
+      latencyMs: result.latencyMs,
+      status: result.status,
+      error: result.error,
+      testedAt: result.testedAt,
+    });
+  },
+
   async exportConfigToFile(filePath: string) {
     return await invoke("export_config_to_file", {
       filePath,

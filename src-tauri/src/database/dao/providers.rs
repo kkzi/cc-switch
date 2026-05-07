@@ -427,6 +427,44 @@ impl Database {
         Ok(())
     }
 
+    pub fn update_speedtest_result(
+        &self,
+        app_type: &str,
+        provider_id: &str,
+        result: &crate::provider::SpeedtestResult,
+    ) -> Result<(), AppError> {
+        let conn = lock_conn!(self.conn);
+
+        let patch_meta = |table: &str| -> Result<(), AppError> {
+            let meta_str: String = conn
+                .query_row(
+                    &format!("SELECT meta FROM {table} WHERE id = ?1 AND app_type = ?2"),
+                    params![provider_id, app_type],
+                    |row| row.get(0),
+                )
+                .map_err(|e| AppError::Database(e.to_string()))?;
+
+            let mut meta: serde_json::Value =
+                serde_json::from_str(&meta_str).unwrap_or(serde_json::json!({}));
+            meta["lastSpeedtest"] = serde_json::to_value(result).map_err(|e| {
+                AppError::Database(format!("Failed to serialize speedtest result: {e}"))
+            })?;
+            let new_meta_str = serde_json::to_string(&meta)
+                .map_err(|e| AppError::Database(format!("Failed to serialize meta: {e}")))?;
+
+            conn.execute(
+                &format!("UPDATE {table} SET meta = ?1 WHERE id = ?2 AND app_type = ?3"),
+                params![new_meta_str, provider_id, app_type],
+            )
+            .map_err(|e| AppError::Database(e.to_string()))?;
+            Ok(())
+        };
+
+        patch_meta("providers")?;
+        let _ = patch_meta("forkdb.providers");
+        Ok(())
+    }
+
     pub fn add_custom_endpoint(
         &self,
         app_type: &str,

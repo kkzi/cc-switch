@@ -299,6 +299,28 @@ pub struct ProviderMeta {
     /// 用于多账号支持，关联到特定的 GitHub 账号
     #[serde(rename = "githubAccountId", skip_serializing_if = "Option::is_none")]
     pub github_account_id: Option<String>,
+    /// 最近一次端点测速结果
+    #[serde(rename = "lastSpeedtest", skip_serializing_if = "Option::is_none")]
+    pub last_speedtest: Option<SpeedtestResult>,
+}
+
+/// 最近一次端点测速结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpeedtestResult {
+    /// 最优/被测 endpoint URL
+    #[serde(rename = "bestUrl")]
+    pub best_url: String,
+    /// 最优延迟（毫秒），失败时为 null
+    #[serde(rename = "latencyMs")]
+    pub latency_ms: Option<u64>,
+    /// success 或 error
+    pub status: String,
+    /// 错误信息（失败时有值）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    /// 测试时间戳（毫秒）
+    #[serde(rename = "testedAt")]
+    pub tested_at: i64,
 }
 
 impl ProviderMeta {

@@ -5,7 +5,7 @@ import type {
   DraggableAttributes,
   DraggableSyntheticListeners,
 } from "@dnd-kit/core";
-import type { Provider } from "@/types";
+import type { Provider, ProviderMeta } from "@/types";
 import type { AppId } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ProviderActions } from "@/components/providers/ProviderActions";
@@ -16,6 +16,12 @@ import { FailoverPriorityBadge } from "@/components/providers/FailoverPriorityBa
 import { extractCodexBaseUrl } from "@/utils/providerConfigUtils";
 import { useProviderHealth } from "@/lib/query/failover";
 import { useUsageQuery } from "@/lib/query/queries";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DragHandleProps {
   attributes: DraggableAttributes;
@@ -54,6 +60,51 @@ interface ProviderCardProps {
   isDefaultModel?: boolean;
   onSetAsDefault?: () => void;
 }
+
+function formatTestedAt(ts: number): string {
+  const diff = Date.now() - ts;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  return `${days} 天前`;
+}
+
+const ProviderSpeedtestTooltip: React.FC<{ meta?: ProviderMeta }> = ({
+  meta,
+}) => {
+  const { t } = useTranslation();
+  const result = meta?.lastSpeedtest;
+  if (!result) {
+    return <span className="text-muted-foreground">{t("endpointTest.notTested")}</span>;
+  }
+  return (
+    <div className="flex flex-col gap-0.5">
+      {result.status === "success" && result.latencyMs !== null ? (
+        <span className={cn(
+          "font-mono font-medium",
+          result.latencyMs < 300
+            ? "text-emerald-600 dark:text-emerald-400"
+            : result.latencyMs < 500
+              ? "text-yellow-600 dark:text-yellow-400"
+              : result.latencyMs < 800
+                ? "text-orange-600 dark:text-orange-400"
+                : "text-red-600 dark:text-red-400",
+        )}>
+          {result.latencyMs}ms
+        </span>
+      ) : (
+        <span className="text-red-500 dark:text-red-400">
+          {result.error ?? t("endpointTest.failed")}
+        </span>
+      )}
+      <span className="text-muted-foreground truncate max-w-[200px]">{result.bestUrl}</span>
+      <span className="text-muted-foreground">{formatTestedAt(result.testedAt)}</span>
+    </div>
+  );
+};
 
 const extractModelName = (
   provider: Provider,
@@ -299,14 +350,23 @@ export function ProviderCard({
             <GripVertical className="h-4 w-4" />
           </button>
 
-          <div className="flex h-7 w-7 items-center justify-center border border-border-default bg-muted">
-            <ProviderIcon
-              icon={provider.icon}
-              name={provider.name}
-              color={provider.iconColor}
-              size={18}
-            />
-          </div>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex h-7 w-7 items-center justify-center border border-border-default bg-muted">
+                  <ProviderIcon
+                    icon={provider.icon}
+                    name={provider.name}
+                    color={provider.iconColor}
+                    size={18}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                <ProviderSpeedtestTooltip meta={provider.meta} />
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <div className="min-w-0 space-y-0">
             <div className="flex min-h-5 flex-wrap items-center gap-1.5">
