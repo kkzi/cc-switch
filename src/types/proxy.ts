@@ -56,6 +56,7 @@ export interface ProviderHealth {
   app_type: string;
   is_healthy: boolean;
   consecutive_failures: number;
+  last_check_status: string | null;
   last_success_at: string | null;
   last_failure_at: string | null;
   last_error: string | null;

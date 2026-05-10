@@ -5,16 +5,13 @@ import type {
   DraggableAttributes,
   DraggableSyntheticListeners,
 } from "@dnd-kit/core";
-import type { Provider, ProviderMeta } from "@/types";
+import type { Provider } from "@/types";
 import type { AppId } from "@/lib/api";
+import type { StreamCheckResult } from "@/lib/api/model-test";
 import { cn } from "@/lib/utils";
 import { ProviderActions } from "@/components/providers/ProviderActions";
 import { ProviderIcon } from "@/components/ProviderIcon";
 import UsageFooter from "@/components/UsageFooter";
-import SubscriptionQuotaFooter from "@/components/SubscriptionQuotaFooter";
-import CopilotQuotaFooter from "@/components/CopilotQuotaFooter";
-import CodexOauthQuotaFooter from "@/components/CodexOauthQuotaFooter";
-import { PROVIDER_TYPES } from "@/config/constants";
 import { isHermesReadOnlyProvider } from "@/config/hermesProviderPresets";
 import { ProviderHealthBadge } from "@/components/providers/ProviderHealthBadge";
 import { FailoverPriorityBadge } from "@/components/providers/FailoverPriorityBadge";
@@ -53,6 +50,7 @@ interface ProviderCardProps {
   onTest?: (provider: Provider) => void;
   onOpenTerminal?: (provider: Provider) => void;
   isTesting?: boolean;
+  recentTestResult?: StreamCheckResult | null;
   isProxyRunning: boolean;
   isProxyTakeover?: boolean; // 代理接管模式（Live配置已被接管，切换为热切换）
   dragHandleProps?: DragHandleProps;
@@ -64,52 +62,8 @@ interface ProviderCardProps {
   // OpenClaw: default model
   isDefaultModel?: boolean;
   onSetAsDefault?: () => void;
+  onPrimaryAction?: (provider: Provider) => void;
 }
-
-function formatTestedAt(ts: number): string {
-  const diff = Date.now() - ts;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  return `${days} 天前`;
-}
-
-const ProviderSpeedtestTooltip: React.FC<{ meta?: ProviderMeta }> = ({
-  meta,
-}) => {
-  const { t } = useTranslation();
-  const result = meta?.lastSpeedtest;
-  if (!result) {
-    return <span className="text-muted-foreground">{t("endpointTest.notTested")}</span>;
-  }
-  return (
-    <div className="flex flex-col gap-0.5">
-      {result.status === "success" && result.latencyMs !== null ? (
-        <span className={cn(
-          "font-mono font-medium",
-          result.latencyMs < 300
-            ? "text-emerald-600 dark:text-emerald-400"
-            : result.latencyMs < 500
-              ? "text-yellow-600 dark:text-yellow-400"
-              : result.latencyMs < 800
-                ? "text-orange-600 dark:text-orange-400"
-                : "text-red-600 dark:text-red-400",
-        )}>
-          {result.latencyMs}ms
-        </span>
-      ) : (
-        <span className="text-red-500 dark:text-red-400">
-          {result.error ?? t("endpointTest.failed")}
-        </span>
-      )}
-      <span className="text-muted-foreground truncate max-w-[200px]">{result.bestUrl}</span>
-      <span className="text-muted-foreground">{formatTestedAt(result.testedAt)}</span>
-    </div>
-  );
-};
 
 const extractModelName = (
   provider: Provider,
@@ -140,6 +94,28 @@ const extractModelName = (
 
   return null;
 };
+
+/** 判断是否为官方供应商（无自定义 base URL / API key，直连官方 API） */
+function isOfficialProvider(provider: Provider, appId: AppId): boolean {
+  const config = provider.settingsConfig as Record<string, any>;
+  if (appId === "claude") {
+    const baseUrl = config?.env?.ANTHROPIC_BASE_URL;
+    return !baseUrl || (typeof baseUrl === "string" && baseUrl.trim() === "");
+  }
+  if (appId === "codex") {
+    const apiKey = config?.auth?.OPENAI_API_KEY;
+    return !apiKey || (typeof apiKey === "string" && apiKey.trim() === "");
+  }
+  if (appId === "gemini") {
+    const apiKey = config?.env?.GEMINI_API_KEY;
+    const baseUrl = config?.env?.GOOGLE_GEMINI_BASE_URL;
+    return (
+      (!apiKey || (typeof apiKey === "string" && apiKey.trim() === "")) &&
+      (!baseUrl || (typeof baseUrl === "string" && baseUrl.trim() === ""))
+    );
+  }
+  return false;
+}
 
 const extractApiUrl = (provider: Provider, fallbackText: string) => {
   if (provider.notes?.trim()) {
@@ -173,6 +149,18 @@ const extractApiUrl = (provider: Provider, fallbackText: string) => {
   return fallbackText;
 };
 
+const extractHealthTooltipMessage = (message: string) => {
+  const trimmed = message.trim();
+  if (!trimmed) return "";
+
+  const structuredMatch = trimmed.match(/(?:^|\n)message=([^\n]+)/);
+  if (structuredMatch?.[1]) {
+    return structuredMatch[1].trim();
+  }
+
+  return trimmed;
+};
+
 export function ProviderCard({
   provider,
   isCurrent,
@@ -192,6 +180,7 @@ export function ProviderCard({
   onTest,
   onOpenTerminal,
   isTesting,
+  recentTestResult,
   isProxyRunning,
   isProxyTakeover = false,
   dragHandleProps,
@@ -203,6 +192,7 @@ export function ProviderCard({
   // OpenClaw: default model
   isDefaultModel,
   onSetAsDefault,
+  onPrimaryAction,
 }: ProviderCardProps) {
   const { t } = useTranslation();
 
@@ -234,20 +224,37 @@ export function ProviderCard({
     }
     return true;
   }, [provider.notes, displayUrl, fallbackUrlText]);
+  const latestHealthError = health?.last_error?.trim() || "";
+  const latestHealthTooltip = useMemo(
+    () => extractHealthTooltipMessage(latestHealthError),
+    [latestHealthError],
+  );
+  const recentTestTooltip = useMemo(
+    () => extractHealthTooltipMessage(recentTestResult?.message ?? ""),
+    [recentTestResult?.message],
+  );
+  const lastCheckStatus = isTesting
+    ? null
+    : recentTestResult?.status ?? health?.last_check_status;
+  const iconBorderClass = useMemo(() => {
+    if (lastCheckStatus === "operational") return "border-green-500";
+    if (lastCheckStatus === "degraded") return "border-yellow-500";
+    if (lastCheckStatus === "failed") return "border-red-500";
+    return "border-border-default";
+  }, [lastCheckStatus]);
+  const tooltipMessage = recentTestTooltip || latestHealthTooltip;
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
+  const [isRecentTooltipActive, setIsRecentTooltipActive] = useState(false);
+  const hideTooltipTimerRef = useRef<number | null>(null);
 
   const usageEnabled = provider.meta?.usage_script?.enabled ?? false;
   const isOfficial = isOfficialProvider(provider, appId);
   const isOfficialBlockedByProxy =
     isProxyTakeover && (provider.category === "official" || isOfficial);
-  const isCopilot =
-    provider.meta?.providerType === PROVIDER_TYPES.GITHUB_COPILOT ||
-    provider.meta?.usage_script?.templateType === "github_copilot";
   // Hermes v12+ overlay entries live under the `providers:` dict and are
   // read-only here — writes have to go through Hermes Web UI.
   const isHermesReadOnly =
     appId === "hermes" && isHermesReadOnlyProvider(provider.settingsConfig);
-  const isCodexOauth =
-    provider.meta?.providerType === PROVIDER_TYPES.CODEX_OAUTH;
 
   // 获取用量数据以判断是否有多套餐
   // 累加模式应用（OpenCode/OpenClaw/Hermes）：使用 isInConfig 代替 isCurrent
@@ -272,6 +279,22 @@ export function ProviderCard({
   const actionsRef = useRef<HTMLDivElement>(null);
   const [actionsWidth, setActionsWidth] = useState(0);
 
+  const clearHideTooltipTimer = () => {
+    if (hideTooltipTimerRef.current !== null) {
+      window.clearTimeout(hideTooltipTimerRef.current);
+      hideTooltipTimerRef.current = null;
+    }
+  };
+
+  const scheduleHideTooltip = (delayMs: number) => {
+    clearHideTooltipTimer();
+    hideTooltipTimerRef.current = window.setTimeout(() => {
+      setIsTooltipOpen(false);
+      setIsRecentTooltipActive(false);
+      hideTooltipTimerRef.current = null;
+    }, delayMs);
+  };
+
   useEffect(() => {
     if (hasMultiplePlans) {
       setIsExpanded(true);
@@ -289,6 +312,40 @@ export function ProviderCard({
       return () => window.removeEventListener("resize", updateWidth);
     }
   }, [onTest, onOpenTerminal]); // 按钮数量可能变化时重新计算
+
+  useEffect(() => {
+    if (isTesting || !recentTestTooltip) {
+      clearHideTooltipTimer();
+      setIsTooltipOpen(false);
+      setIsRecentTooltipActive(false);
+      return;
+    }
+
+    clearHideTooltipTimer();
+    setIsTooltipOpen(true);
+    setIsRecentTooltipActive(true);
+    scheduleHideTooltip(5000);
+
+    return () => {
+      clearHideTooltipTimer();
+    };
+  }, [isTesting, recentTestTooltip]);
+
+  useEffect(() => {
+    return () => {
+      clearHideTooltipTimer();
+    };
+  }, []);
+
+  const handleTooltipRegionEnter = () => {
+    if (!isRecentTooltipActive) return;
+    clearHideTooltipTimer();
+  };
+
+  const handleTooltipRegionLeave = () => {
+    if (!isRecentTooltipActive) return;
+    scheduleHideTooltip(60);
+  };
 
   const handleOpenWebsite = () => {
     if (!isClickableUrl) {
@@ -327,8 +384,22 @@ export function ProviderCard({
     isInFailoverQueue &&
     typeof failoverPriority === "number";
 
+  const handleCardDoubleClick = (
+    event: React.MouseEvent<HTMLDivElement>,
+  ) => {
+    if (!onPrimaryAction) return;
+
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, a, input, textarea, select, [role='button']")) {
+      return;
+    }
+
+    onPrimaryAction(provider);
+  };
+
   return (
     <div
+      onDoubleClick={handleCardDoubleClick}
       className={cn(
         "group relative overflow-hidden border border-border-default bg-card p-2.5 text-card-foreground",
         isAutoFailoverEnabled || isProxyTakeover
@@ -369,21 +440,50 @@ export function ProviderCard({
             <GripVertical className="h-4 w-4" />
           </button>
 
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip
+              open={tooltipMessage ? isTooltipOpen : false}
+              onOpenChange={(open) => {
+                if (!tooltipMessage) {
+                  clearHideTooltipTimer();
+                  setIsTooltipOpen(false);
+                  setIsRecentTooltipActive(false);
+                  return;
+                }
+                if (isRecentTooltipActive && !open) {
+                  return;
+                }
+                setIsTooltipOpen(open);
+              }}
+            >
               <TooltipTrigger asChild>
-                <div className="flex h-7 w-7 items-center justify-center border border-border-default bg-muted">
+                <div
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center border bg-muted",
+                    iconBorderClass,
+                  )}
+                  onPointerEnter={handleTooltipRegionEnter}
+                  onPointerLeave={handleTooltipRegionLeave}
+                >
                   <ProviderIcon
                     icon={provider.icon}
                     name={provider.name}
                     color={provider.iconColor}
                     size={18}
+                    showTitle={false}
                   />
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                <ProviderSpeedtestTooltip meta={provider.meta} />
-              </TooltipContent>
+              {tooltipMessage && (
+                <TooltipContent
+                  side="top"
+                  className="max-w-[420px] whitespace-pre-wrap break-all"
+                  onPointerEnter={handleTooltipRegionEnter}
+                  onPointerLeave={handleTooltipRegionLeave}
+                >
+                  {tooltipMessage}
+                </TooltipContent>
+              )}
             </Tooltip>
           </TooltipProvider>
 

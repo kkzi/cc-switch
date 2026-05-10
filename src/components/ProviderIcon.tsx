@@ -15,6 +15,7 @@ interface ProviderIconProps {
   size?: number | string; // 尺寸
   className?: string;
   showFallback?: boolean; // 是否显示 fallback
+  showTitle?: boolean;
 }
 
 export const ProviderIcon: React.FC<ProviderIconProps> = ({
@@ -24,6 +25,7 @@ export const ProviderIcon: React.FC<ProviderIconProps> = ({
   size = 32,
   className,
   showFallback = true,
+  showTitle = true,
 }) => {
   // 获取内联 SVG 字符串
   const iconSvg = useMemo(() => {
@@ -74,7 +76,7 @@ export const ProviderIcon: React.FC<ProviderIconProps> = ({
           "inline-flex items-center justify-center flex-shrink-0",
           className,
         )}
-        title={name}
+        title={showTitle ? name : undefined}
         style={{ ...sizeStyle, color: effectiveColor }}
         dangerouslySetInnerHTML={{ __html: iconSvg }}
       />
@@ -87,11 +89,11 @@ export const ProviderIcon: React.FC<ProviderIconProps> = ({
       <img
         src={iconUrl}
         alt={name}
-        title={name}
         className={cn(
           "inline-flex items-center justify-center flex-shrink-0 object-contain",
           className,
         )}
+        title={showTitle ? name : undefined}
         style={{ width: sizeStyle.width, height: sizeStyle.height }}
         loading="lazy"
       />
@@ -115,7 +117,7 @@ export const ProviderIcon: React.FC<ProviderIconProps> = ({
           "bg-muted text-muted-foreground font-semibold",
           className,
         )}
-        title={name}
+        title={showTitle ? name : undefined}
         style={sizeStyle}
       >
         <span

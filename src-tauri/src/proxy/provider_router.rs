@@ -249,6 +249,7 @@ impl ProviderRouter {
                         model_key,
                         success,
                         error_msg.clone(),
+                        None,
                         failure_threshold,
                     )
                     .await?;
@@ -259,6 +260,7 @@ impl ProviderRouter {
                         app_type,
                         success,
                         error_msg.clone(),
+                        None,
                         failure_threshold,
                     )
                     .await?;
@@ -270,6 +272,7 @@ impl ProviderRouter {
                     app_type,
                     success,
                     error_msg.clone(),
+                    None,
                     failure_threshold,
                 )
                 .await?;

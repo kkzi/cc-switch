@@ -135,6 +135,7 @@ pub struct ProviderHealth {
     pub app_type: String,
     pub is_healthy: bool,
     pub consecutive_failures: u32,
+    pub last_check_status: Option<String>,
     pub last_success_at: Option<String>,
     pub last_failure_at: Option<String>,
     pub last_error: Option<String>,

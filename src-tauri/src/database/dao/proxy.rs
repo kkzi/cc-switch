@@ -483,7 +483,7 @@ impl Database {
 
             conn.query_row(
                 "SELECT provider_id, app_type, is_healthy, consecutive_failures,
-                        last_success_at, last_failure_at, last_error, updated_at
+                        last_check_status, last_success_at, last_failure_at, last_error, updated_at
                  FROM provider_health
                  WHERE provider_id = ?1 AND app_type = ?2",
                 rusqlite::params![provider_id, app_type],
@@ -493,10 +493,11 @@ impl Database {
                         app_type: row.get(1)?,
                         is_healthy: row.get::<_, i64>(2)? != 0,
                         consecutive_failures: row.get::<_, i64>(3)? as u32,
-                        last_success_at: row.get(4)?,
-                        last_failure_at: row.get(5)?,
-                        last_error: row.get(6)?,
-                        updated_at: row.get(7)?,
+                        last_check_status: row.get(4)?,
+                        last_success_at: row.get(5)?,
+                        last_failure_at: row.get(6)?,
+                        last_error: row.get(7)?,
+                        updated_at: row.get(8)?,
                     })
                 },
             )
@@ -510,6 +511,7 @@ impl Database {
                 app_type: app_type.to_string(),
                 is_healthy: true,
                 consecutive_failures: 0,
+                last_check_status: None,
                 last_success_at: None,
                 last_failure_at: None,
                 last_error: None,
@@ -530,7 +532,14 @@ impl Database {
         error_msg: Option<String>,
     ) -> Result<(), AppError> {
         // 默认阈值与 CircuitBreakerConfig::default() 保持一致
-        self.update_provider_health_with_threshold(provider_id, app_type, success, error_msg, 5)
+        self.update_provider_health_with_threshold(
+            provider_id,
+            app_type,
+            success,
+            error_msg,
+            None,
+            5,
+        )
             .await
     }
 
@@ -544,6 +553,7 @@ impl Database {
         app_type: &str,
         success: bool,
         error_msg: Option<String>,
+        last_check_status: Option<&str>,
         failure_threshold: u32,
     ) -> Result<(), AppError> {
         let conn = lock_conn!(self.conn);
@@ -579,18 +589,19 @@ impl Database {
         conn.execute(
             "INSERT OR REPLACE INTO provider_health
              (provider_id, app_type, is_healthy, consecutive_failures,
-              last_success_at, last_failure_at, last_error, updated_at)
-             VALUES (?1, ?2, ?3, ?4,
-                     COALESCE(?5, (SELECT last_success_at FROM provider_health
+              last_check_status, last_success_at, last_failure_at, last_error, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5,
+                     COALESCE(?6, (SELECT last_success_at FROM provider_health
                                    WHERE provider_id = ?1 AND app_type = ?2)),
-                     COALESCE(?6, (SELECT last_failure_at FROM provider_health
+                     COALESCE(?7, (SELECT last_failure_at FROM provider_health
                                    WHERE provider_id = ?1 AND app_type = ?2)),
-                     ?7, ?8)",
+                     ?8, ?9)",
             rusqlite::params![
                 provider_id,
                 app_type,
                 is_healthy,
                 consecutive_failures as i64,
+                last_check_status,
                 last_success_at,
                 last_failure_at,
                 error_msg,
@@ -613,14 +624,14 @@ impl Database {
 
         conn.execute(
             "UPDATE provider_health SET is_healthy = 1, consecutive_failures = 0,
-             last_failure_at = NULL, last_error = NULL, updated_at = ?1
+             last_check_status = NULL, last_failure_at = NULL, last_error = NULL, updated_at = ?1
              WHERE provider_id = ?2 AND app_type = ?3",
             rusqlite::params![&now, provider_id, app_type],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
         conn.execute(
             "UPDATE forkdb.fork_provider_health_model SET is_healthy = 1, consecutive_failures = 0,
-             last_failure_at = NULL, last_error = NULL, updated_at = ?1
+             last_check_status = NULL, last_failure_at = NULL, last_error = NULL, updated_at = ?1
              WHERE provider_id = ?2 AND app_type = ?3",
             rusqlite::params![&now, provider_id, app_type],
         )
@@ -638,14 +649,14 @@ impl Database {
 
         conn.execute(
             "UPDATE provider_health SET is_healthy = 1, consecutive_failures = 0,
-             last_failure_at = NULL, last_error = NULL, updated_at = ?1
+             last_check_status = NULL, last_failure_at = NULL, last_error = NULL, updated_at = ?1
              WHERE app_type = ?2",
             rusqlite::params![&now, app_type],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
         conn.execute(
             "UPDATE forkdb.fork_provider_health_model SET is_healthy = 1, consecutive_failures = 0,
-             last_failure_at = NULL, last_error = NULL, updated_at = ?1
+             last_check_status = NULL, last_failure_at = NULL, last_error = NULL, updated_at = ?1
              WHERE app_type = ?2",
             rusqlite::params![&now, app_type],
         )
@@ -662,13 +673,13 @@ impl Database {
 
         conn.execute(
             "UPDATE provider_health SET is_healthy = 1, consecutive_failures = 0,
-             last_failure_at = NULL, last_error = NULL, updated_at = ?1",
+             last_check_status = NULL, last_failure_at = NULL, last_error = NULL, updated_at = ?1",
             [&now],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
         conn.execute(
             "UPDATE forkdb.fork_provider_health_model SET is_healthy = 1, consecutive_failures = 0,
-             last_failure_at = NULL, last_error = NULL, updated_at = ?1",
+             last_check_status = NULL, last_failure_at = NULL, last_error = NULL, updated_at = ?1",
             [&now],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;

@@ -8,6 +8,7 @@ import { ProviderList } from "@/components/providers/ProviderList";
 const useDragSortMock = vi.fn();
 const useSortableMock = vi.fn();
 const providerCardRenderSpy = vi.fn();
+const copyTextMock = vi.fn();
 
 vi.mock("@/hooks/useDragSort", () => ({
   useDragSort: (...args: unknown[]) => useDragSortMock(...args),
@@ -80,6 +81,10 @@ vi.mock("@/components/UsageFooter", () => ({
   default: () => <div data-testid="usage-footer" />,
 }));
 
+vi.mock("@/lib/clipboard", () => ({
+  copyText: (...args: unknown[]) => copyTextMock(...args),
+}));
+
 vi.mock("@dnd-kit/sortable", async () => {
   const actual = await vi.importActual<any>("@dnd-kit/sortable");
 
@@ -94,6 +99,7 @@ vi.mock("@/hooks/useStreamCheck", () => ({
   useStreamCheck: () => ({
     checkProvider: vi.fn(),
     isChecking: () => false,
+    getRecentResult: () => null,
   }),
 }));
 
@@ -132,6 +138,7 @@ beforeEach(() => {
   useDragSortMock.mockReset();
   useSortableMock.mockReset();
   providerCardRenderSpy.mockClear();
+  copyTextMock.mockReset();
 
   useSortableMock.mockImplementation(({ id }: { id: string }) => ({
     setNodeRef: vi.fn(),
@@ -165,13 +172,13 @@ describe("ProviderList Component", () => {
       />,
     );
 
-    expect(container.firstElementChild).toHaveClass("space-y-2.5");
+    expect(container.firstElementChild).toHaveClass("space-y-3");
     const placeholders = container.querySelectorAll(
       ".border-dashed.border-muted-foreground\\/40",
     );
     expect(placeholders).toHaveLength(3);
     placeholders.forEach((placeholder) => {
-      expect(placeholder).toHaveClass("h-24");
+      expect(placeholder).toHaveClass("h-28");
     });
   });
 
@@ -355,56 +362,78 @@ describe("ProviderList Component", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("auto-collapses Claude route card when switching provider while proxy is running", () => {
-    const providerA = createProvider({ id: "a", name: "A" });
-    const providerB = createProvider({ id: "b", name: "B" });
+  it("shows context menu edit and copy actions for providers", async () => {
+    const providerA = createProvider({
+      id: "alpha",
+      name: "Alpha Labs",
+      settingsConfig: {
+        env: {
+          ANTHROPIC_BASE_URL: "https://api.alpha.dev",
+          ANTHROPIC_AUTH_TOKEN: "sk-alpha",
+        },
+      },
+    });
+    const handleEdit = vi.fn();
 
     useDragSortMock.mockReturnValue({
-      sortedProviders: [providerA, providerB],
+      sortedProviders: [providerA],
+      sensors: [],
+      handleDragEnd: vi.fn(),
+    });
+    copyTextMock.mockResolvedValue(undefined);
+
+    renderWithQueryClient(
+      <ProviderList
+        providers={{ alpha: providerA }}
+        currentProviderId=""
+        appId="claude"
+        onSwitch={vi.fn()}
+        onEdit={handleEdit}
+        onDelete={vi.fn()}
+        onDuplicate={vi.fn()}
+        onOpenWebsite={vi.fn()}
+      />,
+    );
+
+    fireEvent.contextMenu(screen.getByTestId("provider-card-alpha"));
+
+    fireEvent.click(screen.getByRole("button", { name: "编辑" }));
+    expect(handleEdit).toHaveBeenCalledWith(providerA);
+
+    fireEvent.contextMenu(screen.getByTestId("provider-card-alpha"));
+    fireEvent.click(screen.getByRole("button", { name: "复制" }));
+    expect(copyTextMock).toHaveBeenCalledWith(
+      "https://api.alpha.dev\r\nsk-alpha",
+    );
+  });
+
+  it("passes primary action handler to provider cards for double click behavior", () => {
+    const providerA = createProvider({ id: "alpha", name: "Alpha Labs" });
+    const handleSwitch = vi.fn();
+
+    useDragSortMock.mockReturnValue({
+      sortedProviders: [providerA],
       sensors: [],
       handleDragEnd: vi.fn(),
     });
 
-    function Harness() {
-      const [currentProviderId, setCurrentProviderId] = useState("a");
+    renderWithQueryClient(
+      <ProviderList
+        providers={{ alpha: providerA }}
+        currentProviderId=""
+        appId="claude"
+        onSwitch={handleSwitch}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onDuplicate={vi.fn()}
+        onOpenWebsite={vi.fn()}
+      />,
+    );
 
-      return (
-        <>
-          <button
-            data-testid="change-provider"
-            onClick={() => setCurrentProviderId("b")}
-          >
-            change
-          </button>
-          <ProviderList
-            providers={{ a: providerA, b: providerB }}
-            currentProviderId={currentProviderId}
-            appId="claude"
-            onSwitch={vi.fn()}
-            onEdit={vi.fn()}
-            onDelete={vi.fn()}
-            onDuplicate={vi.fn()}
-            onOpenWebsite={vi.fn()}
-            isProxyRunning
-            isProxyTakeover
-          />
-        </>
-      );
-    }
+    const providerCardProps = providerCardRenderSpy.mock.calls[0][0];
+    expect(typeof providerCardProps.onPrimaryAction).toBe("function");
 
-    renderWithQueryClient(<Harness />);
-
-    const collapsedLabel =
-      screen.getByTestId("website-__claude_route_mode_virtual__").textContent ?? "";
-
-    fireEvent.click(screen.getByTestId("open-__claude_route_mode_virtual__"));
-    expect(
-      screen.getByTestId("website-__claude_route_mode_virtual__").textContent,
-    ).not.toBe(collapsedLabel);
-
-    fireEvent.click(screen.getByTestId("change-provider"));
-    expect(
-      screen.getByTestId("website-__claude_route_mode_virtual__").textContent,
-    ).toBe(collapsedLabel);
+    providerCardProps.onPrimaryAction(providerA);
+    expect(handleSwitch).toHaveBeenCalledWith(providerA);
   });
 });

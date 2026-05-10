@@ -12,7 +12,6 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +46,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { settingsApi } from "@/lib/api/settings";
+import type { StreamCheckResult } from "@/lib/api/model-test";
+import { copyText } from "@/lib/clipboard";
+import { extractProviderConnectionInfo } from "@/utils/providerConfigUtils";
 
 interface ProviderListProps {
   providers: Record<string, Provider>;
@@ -92,11 +94,17 @@ export function ProviderList({
   onSetAsDefault,
 }: ProviderListProps) {
   const { t } = useTranslation();
-  const { checkProvider, isChecking } = useStreamCheck(appId);
+  const { checkProvider, isChecking, getRecentResult } = useStreamCheck(appId);
   const { sortedProviders, sensors, handleDragEnd } = useDragSort(
     providers,
     appId,
   );
+  const [isSortMutating, setIsSortMutating] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    providerId: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const { data: opencodeLiveIds } = useQuery({
     queryKey: ["opencodeLiveProviderIds"],
@@ -233,6 +241,169 @@ export function ProviderList({
 
   // Import current live config as default provider
   const queryClient = useQueryClient();
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleWindowPointerDown = () => closeContextMenu();
+    const handleWindowResize = () => closeContextMenu();
+    const handleWindowScroll = () => closeContextMenu();
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeContextMenu();
+    };
+    window.addEventListener("pointerdown", handleWindowPointerDown);
+    window.addEventListener("resize", handleWindowResize);
+    window.addEventListener("scroll", handleWindowScroll, true);
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handleWindowPointerDown);
+      window.removeEventListener("resize", handleWindowResize);
+      window.removeEventListener("scroll", handleWindowScroll, true);
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [closeContextMenu, contextMenu]);
+
+  const applyQuickSort = useCallback(
+    async (reordered: Provider[]) => {
+      const updates = reordered.map((item, index) => ({
+        id: item.id,
+        sortIndex: index,
+      }));
+      try {
+        setIsSortMutating(true);
+        await providersApi.updateSortOrder(updates, appId);
+        await queryClient.invalidateQueries({
+          queryKey: ["providers", appId],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["failoverQueue", appId],
+        });
+        try {
+          await providersApi.updateTrayMenu();
+        } catch (trayError) {
+          console.error("Failed to update tray menu after quick sort", trayError);
+        }
+        toast.success(
+          t("provider.sortUpdated", { defaultValue: "排序已更新" }),
+          { closeButton: true },
+        );
+      } catch (error) {
+        console.error("Failed to quick sort providers", error);
+        toast.error(
+          t("provider.sortUpdateFailed", { defaultValue: "排序更新失败" }),
+        );
+      } finally {
+        setIsSortMutating(false);
+      }
+    },
+    [appId, queryClient, t],
+  );
+
+  const moveProviderToTopQuick = useCallback(
+    async (providerId: string) => {
+      if (isSortMutating) return;
+      const list = [...sortedProviders];
+      const currentIndex = list.findIndex((item) => item.id === providerId);
+      if (currentIndex < 0) return;
+      if (currentIndex === 0) {
+        toast.info(
+          t("provider.quickMoveAlreadyTop", {
+            defaultValue: "该供应商已在目标位置",
+          }),
+        );
+        return;
+      }
+      const [item] = list.splice(currentIndex, 1);
+      list.unshift(item);
+      await applyQuickSort(list);
+    },
+    [applyQuickSort, isSortMutating, sortedProviders, t],
+  );
+
+  const moveProviderToBottomQuick = useCallback(
+    async (providerId: string) => {
+      if (isSortMutating) return;
+      const list = [...sortedProviders];
+      const currentIndex = list.findIndex((item) => item.id === providerId);
+      if (currentIndex < 0) return;
+      if (currentIndex === list.length - 1) {
+        toast.info(
+          t("provider.quickMoveAlreadyBottom", {
+            defaultValue: "该供应商已在末尾",
+          }),
+        );
+        return;
+      }
+      const [item] = list.splice(currentIndex, 1);
+      list.push(item);
+      await applyQuickSort(list);
+    },
+    [applyQuickSort, isSortMutating, sortedProviders, t],
+  );
+
+  const handleProviderContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>, providerId: string) => {
+      event.preventDefault();
+      setContextMenu({ providerId, x: event.clientX, y: event.clientY });
+    },
+    [],
+  );
+
+  const handlePrimaryAction = useCallback(
+    (provider: Provider) => {
+      const isOmo = provider.category === "omo";
+      const isOmoSlim = provider.category === "omo-slim";
+      const isAnyOmo = isOmo || isOmoSlim;
+      const additiveMode = appId === "opencode" && !isAnyOmo;
+
+      if (isAnyOmo) {
+        onSwitch(provider);
+        return;
+      }
+
+      if (additiveMode) {
+        if (isProviderInConfig(provider.id)) {
+          onRemoveFromConfig?.(provider);
+        } else {
+          onSwitch(provider);
+        }
+        return;
+      }
+
+      if (isFailoverModeActive) {
+        handleToggleFailover(provider.id, !isInFailoverQueue(provider.id));
+        return;
+      }
+
+      onSwitch(provider);
+    },
+    [
+      appId,
+      handleToggleFailover,
+      isFailoverModeActive,
+      isInFailoverQueue,
+      isProviderInConfig,
+      onRemoveFromConfig,
+      onSwitch,
+    ],
+  );
+
+  const handleCopyProviderConnection = useCallback(
+    async (provider: Provider) => {
+      const { baseUrl, apiKey } = extractProviderConnectionInfo(provider, appId);
+      await copyText(`${baseUrl}\r\n${apiKey}`);
+      toast.success(
+        t("provider.copyConnectionSuccess", {
+          defaultValue: "已复制 Base URL 和 API Key",
+        }),
+        { closeButton: true },
+      );
+    },
+    [appId, t],
+  );
   const importMutation = useMutation({
     mutationFn: async (): Promise<boolean> => {
       if (appId === "opencode") {
@@ -372,6 +543,7 @@ export function ProviderList({
                 onOpenTerminal={onOpenTerminal}
                 onTest={handleTest}
                 isTesting={isChecking(provider.id)}
+                recentTestResult={getRecentResult(provider.id)}
                 isProxyRunning={isProxyRunning}
                 isProxyTakeover={isProxyTakeover}
                 isAutoFailoverEnabled={isFailoverModeActive}
@@ -390,6 +562,10 @@ export function ProviderList({
                 onSetAsDefault={
                   onSetAsDefault ? () => onSetAsDefault(provider) : undefined
                 }
+                onPrimaryAction={handlePrimaryAction}
+                onContextMenu={(event) =>
+                  handleProviderContextMenu(event, provider.id)
+                }
               />
             );
           })}
@@ -399,79 +575,132 @@ export function ProviderList({
   );
 
   return (
-    <div className="mt-4 space-y-4">
-      <AnimatePresence>
-        {isSearchOpen && (
-          <motion.div
-            key="provider-search"
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="fixed left-1/2 top-[6.5rem] z-40 w-[min(90vw,26rem)] -translate-x-1/2 sm:right-6 sm:left-auto sm:translate-x-0"
-          >
-            <div className="p-4 space-y-3 border shadow-md rounded-2xl border-white/10 bg-background/95 shadow-black/20 backdrop-blur-md">
-              <div className="relative flex items-center gap-2">
-                <Search className="absolute w-4 h-4 -translate-y-1/2 pointer-events-none left-3 top-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder={t("provider.searchPlaceholder", {
-                    defaultValue: "Search name, notes, or URL...",
-                  })}
-                  aria-label={t("provider.searchAriaLabel", {
-                    defaultValue: "Search providers",
-                  })}
-                  className="pr-16 pl-9"
-                />
-                {searchTerm && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute text-xs -translate-y-1/2 right-11 top-1/2"
-                    onClick={() => setSearchTerm("")}
-                  >
-                    {t("common.clear", { defaultValue: "Clear" })}
-                  </Button>
-                )}
+    <div className="mt-3 space-y-3">
+      {isSearchOpen && (
+        <div className="fixed left-1/2 top-[6rem] z-40 w-[min(90vw,26rem)] -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0">
+          <div className="space-y-2 border border-border-default bg-background p-3 shadow-md">
+            <div className="relative flex items-center gap-2">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder={t("provider.searchPlaceholder", {
+                  defaultValue: "Search name, notes, or URL...",
+                })}
+                aria-label={t("provider.searchAriaLabel", {
+                  defaultValue: "Search providers",
+                })}
+                className="pl-9 pr-16"
+              />
+              {searchTerm && (
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="ml-auto"
-                  onClick={() => setIsSearchOpen(false)}
-                  aria-label={t("provider.searchCloseAriaLabel", {
-                    defaultValue: "Close provider search",
-                  })}
+                  size="sm"
+                  className="absolute right-10 top-1/2 -translate-y-1/2 text-xs"
+                  onClick={() => setSearchTerm("")}
                 >
-                  <X className="w-4 h-4" />
+                  {t("common.clear", { defaultValue: "Clear" })}
                 </Button>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                <span>
-                  {t("provider.searchScopeHint", {
-                    defaultValue: "Matches provider name, notes, and URL.",
-                  })}
-                </span>
-                <span>
-                  {t("provider.searchCloseHint", {
-                    defaultValue: "Press Esc to close",
-                  })}
-                </span>
-              </div>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-auto"
+                onClick={() => setIsSearchOpen(false)}
+                aria-label={t("provider.searchCloseAriaLabel", {
+                  defaultValue: "Close provider search",
+                })}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+              <span>
+                {t("provider.searchScopeHint", {
+                  defaultValue: "Matches provider name, notes, and URL.",
+                })}
+              </span>
+              <span>
+                {t("provider.searchCloseHint", {
+                  defaultValue: "Press Esc to close",
+                })}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {filteredProviders.length === 0 ? (
-        <div className="px-6 py-8 text-sm text-center border border-dashed rounded-lg border-border text-muted-foreground">
+        <div className="rounded-lg border border-dashed border-border px-5 py-6 text-center text-sm text-muted-foreground">
           {t("provider.noSearchResults", {
             defaultValue: "No providers match your search.",
           })}
         </div>
       ) : (
         renderProviderList()
+      )}
+
+      {contextMenu && (
+        <div
+          className="fixed z-[1200] min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-lg"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+            onClick={() => {
+              const provider = providers[contextMenu.providerId];
+              closeContextMenu();
+              if (provider) {
+                onEdit(provider);
+              }
+            }}
+          >
+            {t("common.edit", { defaultValue: "编辑" })}
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+            onClick={async () => {
+              const provider = providers[contextMenu.providerId];
+              closeContextMenu();
+              if (!provider) return;
+              try {
+                await handleCopyProviderConnection(provider);
+              } catch (error) {
+                toast.error(
+                  error instanceof Error ? error.message : String(error),
+                );
+              }
+            }}
+          >
+            {t("common.copy", { defaultValue: "复制" })}
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isSortMutating}
+            onClick={async () => {
+              closeContextMenu();
+              await moveProviderToTopQuick(contextMenu.providerId);
+            }}
+          >
+            {t("provider.quickMoveTop", { defaultValue: "一键置顶" })}
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isSortMutating}
+            onClick={async () => {
+              closeContextMenu();
+              await moveProviderToBottomQuick(contextMenu.providerId);
+            }}
+          >
+            {t("provider.quickMoveBottom", { defaultValue: "一键置底" })}
+          </button>
+        </div>
       )}
 
       <ConfirmDialog
@@ -509,6 +738,7 @@ interface SortableProviderCardProps {
   onOpenTerminal?: (provider: Provider) => void;
   onTest?: (provider: Provider) => void;
   isTesting: boolean;
+  recentTestResult: StreamCheckResult | null;
   isProxyRunning: boolean;
   isProxyTakeover: boolean;
   isAutoFailoverEnabled: boolean;
@@ -519,6 +749,8 @@ interface SortableProviderCardProps {
   // OpenClaw: default model
   isDefaultModel?: boolean;
   onSetAsDefault?: () => void;
+  onPrimaryAction?: (provider: Provider) => void;
+  onContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
 
 function SortableProviderCard({
@@ -540,6 +772,7 @@ function SortableProviderCard({
   onOpenTerminal,
   onTest,
   isTesting,
+  recentTestResult,
   isProxyRunning,
   isProxyTakeover,
   isAutoFailoverEnabled,
@@ -549,6 +782,8 @@ function SortableProviderCard({
   activeProviderId,
   isDefaultModel,
   onSetAsDefault,
+  onPrimaryAction,
+  onContextMenu,
 }: SortableProviderCardProps) {
   const {
     setNodeRef,
@@ -565,7 +800,7 @@ function SortableProviderCard({
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} onContextMenu={onContextMenu}>
       <ProviderCard
         provider={provider}
         isCurrent={isCurrent}
@@ -587,6 +822,7 @@ function SortableProviderCard({
         onOpenTerminal={onOpenTerminal}
         onTest={onTest}
         isTesting={isTesting}
+        recentTestResult={recentTestResult}
         isProxyRunning={isProxyRunning}
         isProxyTakeover={isProxyTakeover}
         dragHandleProps={{
@@ -602,6 +838,7 @@ function SortableProviderCard({
         // OpenClaw: default model
         isDefaultModel={isDefaultModel}
         onSetAsDefault={onSetAsDefault}
+        onPrimaryAction={onPrimaryAction}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Provider } from "@/types";
 import { ProviderCard } from "@/components/providers/ProviderCard";
+import type { StreamCheckResult } from "@/lib/api/model-test";
 
 const useProviderHealthMock = vi.fn();
 const useUsageQueryMock = vi.fn();
@@ -26,6 +27,15 @@ vi.mock("@/components/providers/ProviderHealthBadge", () => ({
 
 vi.mock("@/components/providers/FailoverPriorityBadge", () => ({
   FailoverPriorityBadge: () => <div data-testid="failover-priority-badge" />,
+}));
+
+vi.mock("@/components/ui/tooltip", () => ({
+  TooltipProvider: ({ children }: any) => <div>{children}</div>,
+  Tooltip: ({ children }: any) => <div>{children}</div>,
+  TooltipTrigger: ({ children }: any) => <div>{children}</div>,
+  TooltipContent: ({ children }: any) => (
+    <div data-testid="provider-card-tooltip">{children}</div>
+  ),
 }));
 
 vi.mock("@/lib/query/failover", () => ({
@@ -117,5 +127,94 @@ describe("ProviderCard compact layout", () => {
       container.querySelector(".min-h-5 [data-testid='provider-health-badge']"),
     ).toBeInTheDocument();
     expect(container.querySelector(".pr-24")).not.toBeInTheDocument();
+  });
+
+  it("does not render a tooltip for the provider logo", () => {
+    render(<ProviderCard {...baseProps} />);
+
+    expect(screen.queryByTestId("provider-card-tooltip")).not.toBeInTheDocument();
+  });
+
+  it("renders tooltip content on the provider icon and removes inline error UI", () => {
+    const longError =
+      "503 upstream timeout while contacting a very long upstream error message for provider health diagnostics";
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 3,
+        last_check_status: "failed",
+        last_error: longError,
+      },
+    });
+
+    const { container } = render(<ProviderCard {...baseProps} />);
+
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      longError,
+    );
+    expect(container.querySelector(".border-red-500")).toBeInTheDocument();
+    expect(screen.queryByText("最近错误:")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "查看详情" })).not.toBeInTheDocument();
+  });
+
+  it("resets icon border to default while testing is running", () => {
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 3,
+        last_check_status: "failed",
+        last_error: "old failure",
+      },
+    });
+
+    const { container } = render(
+      <ProviderCard
+        {...baseProps}
+        isTesting={true}
+        recentTestResult={
+          {
+            status: "operational",
+            success: true,
+            message: "ok",
+            modelUsed: "test-model",
+            testedAt: Date.now(),
+            retryCount: 0,
+          } satisfies StreamCheckResult
+        }
+      />,
+    );
+
+    expect(container.querySelector(".border-border-default")).toBeInTheDocument();
+    expect(container.querySelector(".border-red-500")).not.toBeInTheDocument();
+    expect(container.querySelector(".border-green-500")).not.toBeInTheDocument();
+  });
+
+  it("prefers recent test result for border color and tooltip message", () => {
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 3,
+        last_check_status: "failed",
+        last_error: "old failure",
+      },
+    });
+
+    const recentResult = {
+      status: "degraded",
+      success: true,
+      message: "temporary slowdown",
+      modelUsed: "test-model",
+      testedAt: Date.now(),
+      retryCount: 0,
+    } satisfies StreamCheckResult;
+
+    const { container } = render(
+      <ProviderCard
+        {...baseProps}
+        recentTestResult={recentResult}
+      />,
+    );
+
+    expect(container.querySelector(".border-yellow-500")).toBeInTheDocument();
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "temporary slowdown",
+    );
   });
 });

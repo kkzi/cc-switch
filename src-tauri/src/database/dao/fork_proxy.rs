@@ -257,7 +257,7 @@ impl Database {
 
             conn.query_row(
                 "SELECT provider_id, app_type, is_healthy, consecutive_failures,
-                        last_success_at, last_failure_at, last_error, updated_at
+                        last_check_status, last_success_at, last_failure_at, last_error, updated_at
                  FROM forkdb.fork_provider_health_model
                  WHERE provider_id = ?1 AND app_type = ?2 AND model_key = ?3",
                 rusqlite::params![provider_id, app_type, model_key],
@@ -267,10 +267,11 @@ impl Database {
                         app_type: row.get(1)?,
                         is_healthy: row.get::<_, i64>(2)? != 0,
                         consecutive_failures: row.get::<_, i64>(3)? as u32,
-                        last_success_at: row.get(4)?,
-                        last_failure_at: row.get(5)?,
-                        last_error: row.get(6)?,
-                        updated_at: row.get(7)?,
+                        last_check_status: row.get(4)?,
+                        last_success_at: row.get(5)?,
+                        last_failure_at: row.get(6)?,
+                        last_error: row.get(7)?,
+                        updated_at: row.get(8)?,
                     })
                 },
             )
@@ -283,6 +284,7 @@ impl Database {
                 app_type: app_type.to_string(),
                 is_healthy: true,
                 consecutive_failures: 0,
+                last_check_status: None,
                 last_success_at: None,
                 last_failure_at: None,
                 last_error: None,
@@ -300,6 +302,7 @@ impl Database {
         model_key: &str,
         success: bool,
         error_msg: Option<String>,
+        last_check_status: Option<&str>,
         failure_threshold: u32,
     ) -> Result<(), AppError> {
         let conn = lock_conn!(self.conn);
@@ -329,19 +332,20 @@ impl Database {
         conn.execute(
             "INSERT OR REPLACE INTO forkdb.fork_provider_health_model
              (provider_id, app_type, model_key, is_healthy, consecutive_failures,
-              last_success_at, last_failure_at, last_error, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5,
-                     COALESCE(?6, (SELECT last_success_at FROM forkdb.fork_provider_health_model
+              last_check_status, last_success_at, last_failure_at, last_error, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6,
+                     COALESCE(?7, (SELECT last_success_at FROM forkdb.fork_provider_health_model
                                    WHERE provider_id = ?1 AND app_type = ?2 AND model_key = ?3)),
-                     COALESCE(?7, (SELECT last_failure_at FROM forkdb.fork_provider_health_model
+                     COALESCE(?8, (SELECT last_failure_at FROM forkdb.fork_provider_health_model
                                    WHERE provider_id = ?1 AND app_type = ?2 AND model_key = ?3)),
-                     ?8, ?9)",
+                     ?9, ?10)",
             rusqlite::params![
                 provider_id,
                 app_type,
                 model_key,
                 is_healthy,
                 consecutive_failures as i64,
+                last_check_status,
                 last_success_at,
                 last_failure_at,
                 error_msg,

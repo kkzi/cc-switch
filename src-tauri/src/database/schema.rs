@@ -200,7 +200,7 @@ impl Database {
         // 9. Provider Health 表
         conn.execute("CREATE TABLE IF NOT EXISTS provider_health (
             provider_id TEXT NOT NULL, app_type TEXT NOT NULL, is_healthy INTEGER NOT NULL DEFAULT 1,
-            consecutive_failures INTEGER NOT NULL DEFAULT 0, last_success_at TEXT, last_failure_at TEXT,
+            consecutive_failures INTEGER NOT NULL DEFAULT 0, last_check_status TEXT, last_success_at TEXT, last_failure_at TEXT,
             last_error TEXT, updated_at TEXT NOT NULL,
             PRIMARY KEY (provider_id, app_type),
             FOREIGN KEY (provider_id, app_type) REFERENCES providers(id, app_type) ON DELETE CASCADE
@@ -298,6 +298,7 @@ impl Database {
                 model_key TEXT NOT NULL,
                 is_healthy INTEGER NOT NULL DEFAULT 1,
                 consecutive_failures INTEGER NOT NULL DEFAULT 0,
+                last_check_status TEXT,
                 last_success_at TEXT,
                 last_failure_at TEXT,
                 last_error TEXT,
@@ -622,6 +623,11 @@ impl Database {
                         log::info!("迁移数据库从 v9 到 v10（添加 Hermes Agent 支持）");
                         Self::migrate_v9_to_v10(conn)?;
                         Self::set_user_version(conn, 10)?;
+                    }
+                    10 => {
+                        log::info!("迁移数据库从 v10 到 v11（记录 provider 最后测试状态）");
+                        Self::migrate_v10_to_v11(conn)?;
+                        Self::set_user_version(conn, 11)?;
                     }
                     _ => {
                         return Err(AppError::Database(format!(
@@ -2294,5 +2300,14 @@ impl Database {
             .map_err(|e| AppError::Database(format!("为表 {table} 添加列 {column} 失败: {e}")))?;
         log::info!("已为表 {table} 添加缺失列 {column}");
         Ok(true)
+    }
+
+    fn migrate_v10_to_v11(conn: &Connection) -> Result<(), AppError> {
+        Self::add_column_if_missing(conn, "provider_health", "last_check_status", "TEXT")?;
+        let _ = conn.execute(
+            "ALTER TABLE forkdb.fork_provider_health_model ADD COLUMN last_check_status TEXT",
+            [],
+        );
+        Ok(())
     }
 }

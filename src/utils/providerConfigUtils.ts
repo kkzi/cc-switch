@@ -1,6 +1,8 @@
 // 供应商配置处理工具函数
 
 import type { TemplateValueConfig } from "../config/claudeProviderPresets";
+import type { Provider } from "@/types";
+import type { AppId } from "@/lib/api";
 import { normalizeTomlText } from "@/utils/textNormalization";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 
@@ -660,6 +662,135 @@ export const getCodexBaseUrl = (
   } catch {
     return undefined;
   }
+};
+
+export interface ProviderConnectionInfo {
+  apiKey: string;
+  baseUrl: string;
+}
+
+const readStringValue = (...values: unknown[]): string => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+};
+
+export const extractProviderConnectionInfo = (
+  provider: Pick<Provider, "settingsConfig"> | undefined | null,
+  appId: AppId,
+): ProviderConnectionInfo => {
+  const config =
+    provider?.settingsConfig && typeof provider.settingsConfig === "object"
+      ? (provider.settingsConfig as Record<string, any>)
+      : {};
+  const env =
+    config.env && typeof config.env === "object"
+      ? (config.env as Record<string, any>)
+      : {};
+  const auth =
+    config.auth && typeof config.auth === "object"
+      ? (config.auth as Record<string, any>)
+      : {};
+  const options =
+    config.options && typeof config.options === "object"
+      ? (config.options as Record<string, any>)
+      : {};
+
+  if (appId === "claude") {
+    return {
+      baseUrl: readStringValue(
+        env.ANTHROPIC_BASE_URL,
+        config.baseUrl,
+        config.base_url,
+      ),
+      apiKey: readStringValue(
+        env.ANTHROPIC_AUTH_TOKEN,
+        env.ANTHROPIC_API_KEY,
+        config.apiKey,
+      ),
+    };
+  }
+
+  if (appId === "codex") {
+    return {
+      baseUrl: readStringValue(
+        extractCodexBaseUrl(config.config),
+        config.baseUrl,
+        config.base_url,
+      ),
+      apiKey: readStringValue(
+        auth.OPENAI_API_KEY,
+        env.OPENAI_API_KEY,
+        env.CODEX_API_KEY,
+        config.apiKey,
+      ),
+    };
+  }
+
+  if (appId === "gemini") {
+    return {
+      baseUrl: readStringValue(
+        env.GOOGLE_GEMINI_BASE_URL,
+        config.baseUrl,
+        config.base_url,
+      ),
+      apiKey: readStringValue(env.GEMINI_API_KEY, config.apiKey),
+    };
+  }
+
+  if (appId === "opencode") {
+    return {
+      baseUrl: readStringValue(options.baseURL, options.baseUrl, config.baseUrl),
+      apiKey: readStringValue(options.apiKey, config.apiKey),
+    };
+  }
+
+  if (appId === "openclaw") {
+    return {
+      baseUrl: readStringValue(config.baseUrl, config.base_url),
+      apiKey: readStringValue(config.apiKey),
+    };
+  }
+
+  if (appId === "hermes") {
+    return {
+      baseUrl: readStringValue(
+        config.base_url,
+        config.baseUrl,
+        env.ANTHROPIC_BASE_URL,
+      ),
+      apiKey: readStringValue(
+        config.api_key,
+        config.apiKey,
+        env.ANTHROPIC_AUTH_TOKEN,
+        env.ANTHROPIC_API_KEY,
+      ),
+    };
+  }
+
+  return {
+    baseUrl: readStringValue(
+      env.ANTHROPIC_BASE_URL,
+      env.GOOGLE_GEMINI_BASE_URL,
+      options.baseURL,
+      config.baseUrl,
+      config.base_url,
+    ),
+    apiKey: readStringValue(
+      env.ANTHROPIC_AUTH_TOKEN,
+      env.ANTHROPIC_API_KEY,
+      env.GEMINI_API_KEY,
+      auth.OPENAI_API_KEY,
+      env.OPENAI_API_KEY,
+      env.CODEX_API_KEY,
+      options.apiKey,
+      config.apiKey,
+      config.api_key,
+    ),
+  };
 };
 
 // 在 Codex 的 TOML 配置文本中写入或更新 base_url 字段
