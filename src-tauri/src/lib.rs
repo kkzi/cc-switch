@@ -99,79 +99,6 @@ fn redact_url_for_log(url_str: &str) -> String {
     }
 }
 
-fn buffer_pending_deeplink(app: &tauri::AppHandle, request: DeepLinkImportRequest) {
-    if let Some(state) = app.try_state::<AppState>() {
-        state.set_pending_deeplink(request);
-        state.clear_pending_deeplink_error();
-    } else {
-        log::warn!("AppState unavailable; pending deep link was not buffered");
-    }
-}
-
-fn buffer_pending_deeplink_error(app: &tauri::AppHandle, url: &str, error: &str) {
-    if let Some(state) = app.try_state::<AppState>() {
-        state.set_pending_deeplink_error(crate::deeplink::PendingDeepLinkError {
-            url: url.to_string(),
-            error: error.to_string(),
-        });
-        state.clear_pending_deeplink();
-    } else {
-        log::warn!("AppState unavailable; pending deep link error was not buffered");
-    }
-}
-
-fn emit_deeplink_or_buffer(app: &tauri::AppHandle, request: DeepLinkImportRequest) {
-    let can_emit_live = app
-        .try_state::<AppState>()
-        .map(|state| state.is_main_window_ready())
-        .unwrap_or(false)
-        && app.get_webview_window(MAIN_WINDOW_LABEL).is_some();
-
-    if can_emit_live {
-        if let Err(err) = app.emit("deeplink-import", &request) {
-            log::error!("✗ Failed to emit deeplink-import event: {err}");
-            buffer_pending_deeplink(app, request);
-        } else {
-            if let Some(state) = app.try_state::<AppState>() {
-                state.clear_pending_deeplink();
-                state.clear_pending_deeplink_error();
-            }
-            log::info!("✓ Emitted deeplink-import event to frontend");
-        }
-    } else {
-        log::info!("主窗口尚未就绪，已缓存 deeplink-import 事件");
-        buffer_pending_deeplink(app, request);
-    }
-}
-
-fn emit_deeplink_error_or_buffer(app: &tauri::AppHandle, url: &str, error: &str) {
-    let payload = serde_json::json!({
-        "url": url,
-        "error": error,
-    });
-    let can_emit_live = app
-        .try_state::<AppState>()
-        .map(|state| state.is_main_window_ready())
-        .unwrap_or(false)
-        && app.get_webview_window(MAIN_WINDOW_LABEL).is_some();
-
-    if can_emit_live {
-        if let Err(err) = app.emit("deeplink-error", payload) {
-            log::error!("✗ Failed to emit deeplink-error event: {err}");
-            buffer_pending_deeplink_error(app, url, error);
-        } else {
-            if let Some(state) = app.try_state::<AppState>() {
-                state.clear_pending_deeplink();
-                state.clear_pending_deeplink_error();
-            }
-            log::info!("✓ Emitted deeplink-error event to frontend");
-        }
-    } else {
-        log::info!("主窗口尚未就绪，已缓存 deeplink-error 事件");
-        buffer_pending_deeplink_error(app, url, error);
-    }
-}
-
 /// 统一处理 ccswitch:// 深链接 URL
 ///
 /// - 解析 URL
@@ -200,18 +127,38 @@ fn handle_deeplink_url(
                 request.name
             );
 
-            emit_deeplink_or_buffer(app, request);
+            if let Err(e) = app.emit("deeplink-import", &request) {
+                log::error!("✗ Failed to emit deeplink-import event: {e}");
+            } else {
+                log::info!("✓ Emitted deeplink-import event to frontend");
+            }
+
+            if focus_main_window {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.unminimize();
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                    #[cfg(target_os = "linux")]
+                    {
+                        linux_fix::nudge_main_window(window.clone());
+                    }
+                    log::info!("✓ Window shown and focused");
+                }
+            }
         }
         Err(e) => {
             log::error!("✗ Failed to parse deep link URL: {e}");
 
-            emit_deeplink_error_or_buffer(app, url_str, &e.to_string());
+            if let Err(emit_err) = app.emit(
+                "deeplink-error",
+                serde_json::json!({
+                    "url": url_str,
+                    "error": e.to_string()
+                }),
+            ) {
+                log::error!("✗ Failed to emit deeplink-error event: {emit_err}");
+            }
         }
-    }
-
-    if focus_main_window {
-        spawn_show_main_window(app.clone());
-        log::info!("✓ Requested main window reveal");
     }
 
     true
@@ -277,7 +224,7 @@ pub fn run() {
             // Check for deep link URL in args (mainly for Windows/Linux command line)
             let mut found_deeplink = false;
             for arg in &args {
-                if handle_deeplink_url(app, arg, true, "single_instance args") {
+                if handle_deeplink_url(app, arg, false, "single_instance args") {
                     found_deeplink = true;
                     break;
                 }
@@ -287,8 +234,15 @@ pub fn run() {
                 log::info!("ℹ No deep link URL found in args (this is expected on macOS when launched via system)");
             }
 
-            if !found_deeplink {
-                spawn_show_main_window(app.clone());
+            // Show and focus window regardless
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+                #[cfg(target_os = "linux")]
+                {
+                    linux_fix::nudge_main_window(window.clone());
+                }
             }
         }));
     }
@@ -1208,9 +1162,6 @@ pub fn run() {
             commands::merge_deeplink_config,
             commands::import_from_deeplink,
             commands::import_from_deeplink_unified,
-            commands::take_pending_deeplink,
-            commands::take_pending_deeplink_error,
-            commands::set_main_window_ready,
             update_tray_menu,
             // Environment variable management
             commands::check_env_conflicts,

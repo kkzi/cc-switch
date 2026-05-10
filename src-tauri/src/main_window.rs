@@ -84,10 +84,6 @@ pub fn ensure_main_window(
         .build()
         .map_err(|e| AppError::Message(format!("创建主窗口失败: {e}")))?;
 
-    if let Some(state) = app.try_state::<AppState>() {
-        state.set_main_window_ready(false);
-    }
-
     apply_linux_webview_workaround(&window);
 
     if show_and_focus {
@@ -175,10 +171,6 @@ pub fn hide_then_schedule_main_window_destroy(app: &AppHandle) -> Result<(), App
 
 pub fn destroy_main_window(app: &AppHandle) -> Result<(), AppError> {
     cancel_pending_main_window_destroy(app);
-
-    if let Some(state) = app.try_state::<AppState>() {
-        state.set_main_window_ready(false);
-    }
 
     if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
         #[cfg(target_os = "macos")]

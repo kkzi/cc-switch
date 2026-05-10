@@ -198,63 +198,37 @@ fn schema_migration_normalizes_legacy_fork_version_to_main_version() {
 }
 
 #[test]
-fn schema_migration_cleans_legacy_fork_provider_failover_artifacts() {
+fn schema_migration_adds_provider_health_last_check_status_in_v11() {
     let conn = Connection::open_in_memory().expect("open memory db");
-    Database::create_tables_on_conn(&conn).expect("create tables");
-    Database::set_user_version(&conn, SCHEMA_VERSION).expect("set current schema version");
-
-    conn.execute(
-        "CREATE TABLE forkdb.fork_provider_failover_queue (
-            app_type TEXT NOT NULL,
+    conn.execute_batch(
+        r#"
+        CREATE TABLE provider_health (
             provider_id TEXT NOT NULL,
-            sort_index INTEGER
-        )",
-        [],
+            app_type TEXT NOT NULL,
+            is_healthy INTEGER NOT NULL DEFAULT 1,
+            consecutive_failures INTEGER NOT NULL DEFAULT 0,
+            last_success_at TEXT,
+            last_failure_at TEXT,
+            last_error TEXT,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (provider_id, app_type)
+        );
+        "#,
     )
-    .expect("create legacy fork_provider_failover_queue");
-    conn.execute(
-        "CREATE INDEX forkdb.idx_fork_provider_failover_queue
-         ON fork_provider_failover_queue(app_type, sort_index)",
-        [],
-    )
-    .expect("create legacy idx_fork_provider_failover_queue");
-    conn.execute(
-        "INSERT INTO forkdb.settings (key, value) VALUES ('fork_provider_failover_enabled_claude', '1')",
-        [],
-    )
-    .expect("insert legacy setting key");
-    Database::apply_schema_migrations_on_conn(&conn).expect("apply migrations");
+    .expect("create v10 provider_health");
+    Database::set_user_version(&conn, 10).expect("set user_version=10");
 
-    let table_count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM forkdb.sqlite_master
-             WHERE type = 'table' AND name = 'fork_provider_failover_queue'",
-            [],
-            |row| row.get(0),
-        )
-        .expect("query legacy table");
-    assert_eq!(table_count, 0, "legacy table should be removed");
+    Database::apply_schema_migrations_on_conn(&conn).expect("apply migration");
 
-    let index_count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM forkdb.sqlite_master
-             WHERE type = 'index' AND name = 'idx_fork_provider_failover_queue'",
-            [],
-            |row| row.get(0),
-        )
-        .expect("query legacy index");
-    assert_eq!(index_count, 0, "legacy index should be removed");
-
-    let legacy_key_count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM forkdb.settings
-             WHERE key LIKE 'fork_provider_failover_enabled_%'",
-            [],
-            |row| row.get(0),
-        )
-        .expect("query legacy setting keys");
-    assert_eq!(legacy_key_count, 0, "legacy setting keys should be removed");
-
+    assert!(
+        Database::has_column(&conn, "provider_health", "last_check_status")
+            .expect("check provider_health.last_check_status"),
+        "provider_health.last_check_status should exist after v10 -> v11 migration"
+    );
+    assert_eq!(
+        Database::get_user_version(&conn).expect("read version after"),
+        SCHEMA_VERSION
+    );
 }
 
 #[test]

@@ -236,73 +236,9 @@ impl Database {
                 ],
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
-
-            tx.execute(
-                "UPDATE forkdb.providers SET
-                    name = ?1,
-                    settings_config = ?2,
-                    website_url = ?3,
-                    category = ?4,
-                    created_at = ?5,
-                    sort_index = ?6,
-                    notes = ?7,
-                    icon = ?8,
-                    icon_color = ?9,
-                    meta = ?10,
-                    is_current = ?11,
-                    in_failover_queue = ?12
-                WHERE id = ?13 AND app_type = ?14",
-                params![
-                    provider.name,
-                    serde_json::to_string(&provider.settings_config).map_err(|e| {
-                        AppError::Database(format!("Failed to serialize settings_config: {e}"))
-                    })?,
-                    provider.website_url,
-                    provider.category,
-                    provider.created_at,
-                    provider.sort_index,
-                    provider.notes,
-                    provider.icon,
-                    provider.icon_color,
-                    serde_json::to_string(&meta_clone).map_err(|e| AppError::Database(format!(
-                        "Failed to serialize meta: {e}"
-                    )))?,
-                    is_current,
-                    in_failover_queue,
-                    provider.id,
-                    app_type,
-                ],
-            )
-            .map_err(|e| AppError::Database(e.to_string()))?;
         } else {
             tx.execute(
                 "INSERT INTO providers (
-                    id, app_type, name, settings_config, website_url, category,
-                    created_at, sort_index, notes, icon, icon_color, meta, is_current, in_failover_queue
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
-                params![
-                    provider.id,
-                    app_type,
-                    provider.name,
-                    serde_json::to_string(&provider.settings_config)
-                        .map_err(|e| AppError::Database(format!("Failed to serialize settings_config: {e}")))?,
-                    provider.website_url,
-                    provider.category,
-                    provider.created_at,
-                    provider.sort_index,
-                    provider.notes,
-                    provider.icon,
-                    provider.icon_color,
-                    serde_json::to_string(&meta_clone)
-                        .map_err(|e| AppError::Database(format!("Failed to serialize meta: {e}")))?,
-                    is_current,
-                    in_failover_queue,
-                ],
-            )
-            .map_err(|e| AppError::Database(e.to_string()))?;
-
-            tx.execute(
-                "INSERT INTO forkdb.providers (
                     id, app_type, name, settings_config, website_url, category,
                     created_at, sort_index, notes, icon, icon_color, meta, is_current, in_failover_queue
                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
@@ -334,13 +270,6 @@ impl Database {
                     params![provider.id, app_type, url, endpoint.added_at],
                 )
                 .map_err(|e| AppError::Database(e.to_string()))?;
-
-                tx.execute(
-                    "INSERT INTO forkdb.provider_endpoints (provider_id, app_type, url, added_at)
-                     VALUES (?1, ?2, ?3, ?4)",
-                    params![provider.id, app_type, url, endpoint.added_at],
-                )
-                .map_err(|e| AppError::Database(e.to_string()))?;
             }
         }
 
@@ -352,11 +281,6 @@ impl Database {
         let conn = lock_conn!(self.conn);
         conn.execute(
             "DELETE FROM providers WHERE id = ?1 AND app_type = ?2",
-            params![id, app_type],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
-        conn.execute(
-            "DELETE FROM forkdb.providers WHERE id = ?1 AND app_type = ?2",
             params![id, app_type],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -374,19 +298,9 @@ impl Database {
             params![app_type],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
-        tx.execute(
-            "UPDATE forkdb.providers SET is_current = 0 WHERE app_type = ?1",
-            params![app_type],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
 
         tx.execute(
             "UPDATE providers SET is_current = 1 WHERE id = ?1 AND app_type = ?2",
-            params![id, app_type],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
-        tx.execute(
-            "UPDATE forkdb.providers SET is_current = 1 WHERE id = ?1 AND app_type = ?2",
             params![id, app_type],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -404,17 +318,6 @@ impl Database {
         let conn = lock_conn!(self.conn);
         conn.execute(
             "UPDATE providers SET settings_config = ?1 WHERE id = ?2 AND app_type = ?3",
-            params![
-                serde_json::to_string(settings_config).map_err(|e| AppError::Database(format!(
-                    "Failed to serialize settings_config: {e}"
-                )))?,
-                provider_id,
-                app_type
-            ],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
-        conn.execute(
-            "UPDATE forkdb.providers SET settings_config = ?1 WHERE id = ?2 AND app_type = ?3",
             params![
                 serde_json::to_string(settings_config).map_err(|e| AppError::Database(format!(
                     "Failed to serialize settings_config: {e}"
@@ -461,7 +364,6 @@ impl Database {
         };
 
         patch_meta("providers")?;
-        let _ = patch_meta("forkdb.providers");
         Ok(())
     }
 
@@ -477,10 +379,6 @@ impl Database {
             "INSERT INTO provider_endpoints (provider_id, app_type, url, added_at) VALUES (?1, ?2, ?3, ?4)",
             params![provider_id, app_type, url, added_at],
         ).map_err(|e| AppError::Database(e.to_string()))?;
-        conn.execute(
-            "INSERT INTO forkdb.provider_endpoints (provider_id, app_type, url, added_at) VALUES (?1, ?2, ?3, ?4)",
-            params![provider_id, app_type, url, added_at],
-        ).map_err(|e| AppError::Database(e.to_string()))?;
         Ok(())
     }
 
@@ -493,11 +391,6 @@ impl Database {
         let conn = lock_conn!(self.conn);
         conn.execute(
             "DELETE FROM provider_endpoints WHERE provider_id = ?1 AND app_type = ?2 AND url = ?3",
-            params![provider_id, app_type, url],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
-        conn.execute(
-            "DELETE FROM forkdb.provider_endpoints WHERE provider_id = ?1 AND app_type = ?2 AND url = ?3",
             params![provider_id, app_type, url],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -519,11 +412,6 @@ impl Database {
             params![app_type, category],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
-        tx.execute(
-            "UPDATE forkdb.providers SET is_current = 0 WHERE app_type = ?1 AND category = ?2",
-            params![app_type, category],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
         // OMO ↔ OMO Slim mutually exclusive: deactivate the opposite category
         let opposite = match category {
             "omo" => Some("omo-slim"),
@@ -536,11 +424,6 @@ impl Database {
                 params![app_type, opp],
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
-            tx.execute(
-                "UPDATE forkdb.providers SET is_current = 0 WHERE app_type = ?1 AND category = ?2",
-                params![app_type, opp],
-            )
-            .map_err(|e| AppError::Database(e.to_string()))?;
         }
         let updated = tx
             .execute(
@@ -548,11 +431,6 @@ impl Database {
                 params![provider_id, app_type, category],
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
-        tx.execute(
-            "UPDATE forkdb.providers SET is_current = 1 WHERE id = ?1 AND app_type = ?2 AND category = ?3",
-            params![provider_id, app_type, category],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
         if updated != 1 {
             return Err(AppError::Database(format!(
                 "Failed to set {category} provider current: provider '{provider_id}' not found in app '{app_type}'"
@@ -590,12 +468,6 @@ impl Database {
         let conn = lock_conn!(self.conn);
         conn.execute(
             "UPDATE providers SET is_current = 0
-             WHERE id = ?1 AND app_type = ?2 AND category = ?3",
-            params![provider_id, app_type, category],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
-        conn.execute(
-            "UPDATE forkdb.providers SET is_current = 0
              WHERE id = ?1 AND app_type = ?2 AND category = ?3",
             params![provider_id, app_type, category],
         )

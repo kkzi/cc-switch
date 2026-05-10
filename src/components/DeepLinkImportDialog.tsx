@@ -1,10 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { listen } from "@tauri-apps/api/event";
-import {
-  DeepLinkImportRequest,
-  PendingDeepLinkError,
-  deeplinkApi,
-} from "@/lib/api/deeplink";
+import { DeepLinkImportRequest, deeplinkApi } from "@/lib/api/deeplink";
 import {
   Dialog,
   DialogContent,
@@ -22,38 +18,17 @@ import { McpConfirmation } from "./deeplink/McpConfirmation";
 import { SkillConfirmation } from "./deeplink/SkillConfirmation";
 import { ProviderIcon } from "./ProviderIcon";
 
+interface DeeplinkError {
+  url: string;
+  error: string;
+}
+
 export function DeepLinkImportDialog() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [request, setRequest] = useState<DeepLinkImportRequest | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-
-  const showDeepLinkError = (payload: PendingDeepLinkError) => {
-    console.error("Deep link error:", payload);
-    toast.error(t("deeplink.parseError"), {
-      description: payload.error,
-    });
-  };
-
-  const openDeepLinkRequest = async (payload: DeepLinkImportRequest) => {
-    if (payload.config || payload.configUrl) {
-      try {
-        const mergedRequest = await deeplinkApi.mergeDeeplinkConfig(payload);
-        setRequest(mergedRequest);
-      } catch (error) {
-        console.error("Failed to merge config:", error);
-        toast.error(t("deeplink.configMergeError"), {
-          description: error instanceof Error ? error.message : String(error),
-        });
-        setRequest(payload);
-      }
-    } else {
-      setRequest(payload);
-    }
-
-    setIsOpen(true);
-  };
 
   // 容错判断：MCP 导入结果可能缺少 type 字段
   const isMcpImportResult = (
@@ -74,49 +49,45 @@ export function DeepLinkImportDialog() {
   };
 
   useEffect(() => {
-    let disposed = false;
-    let unlistenImport: (() => void) | null = null;
-    let unlistenError: (() => void) | null = null;
+    // Listen for deep link import events
+    const unlistenImport = listen<DeepLinkImportRequest>(
+      "deeplink-import",
+      async (event) => {
+        // If config is present, merge it to get the complete configuration
+        if (event.payload.config || event.payload.configUrl) {
+          try {
+            const mergedRequest = await deeplinkApi.mergeDeeplinkConfig(
+              event.payload,
+            );
+            setRequest(mergedRequest);
+          } catch (error) {
+            console.error("Failed to merge config:", error);
+            toast.error(t("deeplink.configMergeError"), {
+              description:
+                error instanceof Error ? error.message : String(error),
+            });
+            // Fall back to original request
+            setRequest(event.payload);
+          }
+        } else {
+          setRequest(event.payload);
+        }
 
-    void (async () => {
-      const [importCleanup, errorCleanup] = await Promise.all([
-        listen<DeepLinkImportRequest>("deeplink-import", (event) => {
-          void openDeepLinkRequest(event.payload);
-        }),
-        listen<PendingDeepLinkError>("deeplink-error", (event) => {
-          showDeepLinkError(event.payload);
-        }),
-      ]);
+        setIsOpen(true);
+      },
+    );
 
-      if (disposed) {
-        importCleanup();
-        errorCleanup();
-        return;
-      }
-
-      unlistenImport = importCleanup;
-      unlistenError = errorCleanup;
-
-      await deeplinkApi.setMainWindowReady(true);
-
-      const pendingError = await deeplinkApi.takePendingDeeplinkError();
-      if (pendingError) {
-        showDeepLinkError(pendingError);
-      }
-
-      const pendingRequest = await deeplinkApi.takePendingDeeplink();
-      if (pendingRequest) {
-        await openDeepLinkRequest(pendingRequest);
-      }
-    })();
+    // Listen for deep link error events
+    const unlistenError = listen<DeeplinkError>("deeplink-error", (event) => {
+      console.error("Deep link error:", event.payload);
+      toast.error(t("deeplink.parseError"), {
+        description: event.payload.error,
+      });
+    });
 
     return () => {
-      disposed = true;
-      unlistenImport?.();
-      unlistenError?.();
-      void deeplinkApi.setMainWindowReady(false).catch((error) => {
-        console.error("Failed to clear main window ready flag:", error);
-      });
+      unlistenImport.then((fn) => fn());
+      unlistenError.then((fn) => fn());
     };
   }, [t]);
 

@@ -136,10 +136,3 @@ pub struct DeepLinkImportRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage_auto_interval: Option<u64>,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PendingDeepLinkError {
-    pub url: String,
-    pub error: String,
-}
