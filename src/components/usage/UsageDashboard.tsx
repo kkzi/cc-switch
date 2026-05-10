@@ -6,7 +6,6 @@ import { RequestLogTable } from "./RequestLogTable";
 import { ProviderStatsTable } from "./ProviderStatsTable";
 import { ModelStatsTable } from "./ModelStatsTable";
 import type { AppTypeFilter, UsageRangeSelection } from "@/types/usage";
-import { motion } from "framer-motion";
 import {
   BarChart3,
   ListFilter,
@@ -70,12 +69,7 @@ export function UsageDashboard() {
   }, [locale, range, resolvedRange.endDate, resolvedRange.startDate, t]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-8 pb-8"
-    >
+    <div className="space-y-8 pb-8">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
@@ -159,11 +153,7 @@ export function UsageDashboard() {
             </TabsList>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+          <div>
             <TabsContent value="logs" className="mt-0">
               <RequestLogTable
                 range={range}
@@ -189,7 +179,7 @@ export function UsageDashboard() {
                 refreshIntervalMs={refreshIntervalMs}
               />
             </TabsContent>
-          </motion.div>
+          </div>
         </Tabs>
       </div>
 
@@ -216,6 +206,6 @@ export function UsageDashboard() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-    </motion.div>
+    </div>
   );
 }
