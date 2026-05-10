@@ -223,12 +223,6 @@ fn schema_migration_cleans_legacy_fork_provider_failover_artifacts() {
         [],
     )
     .expect("insert legacy setting key");
-    conn.execute(
-        "INSERT INTO forkdb.settings (key, value) VALUES ('fork_failover_enabled_claude', '1')",
-        [],
-    )
-    .expect("insert unrelated setting key");
-
     Database::apply_schema_migrations_on_conn(&conn).expect("apply migrations");
 
     let table_count: i64 = conn
@@ -261,17 +255,6 @@ fn schema_migration_cleans_legacy_fork_provider_failover_artifacts() {
         .expect("query legacy setting keys");
     assert_eq!(legacy_key_count, 0, "legacy setting keys should be removed");
 
-    let unrelated_key_count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM forkdb.settings WHERE key = 'fork_failover_enabled_claude'",
-            [],
-            |row| row.get(0),
-        )
-        .expect("query unrelated setting key");
-    assert_eq!(
-        unrelated_key_count, 1,
-        "non-legacy setting keys should be preserved"
-    );
 }
 
 #[test]

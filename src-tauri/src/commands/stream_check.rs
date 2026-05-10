@@ -19,12 +19,6 @@ pub async fn stream_check_provider(
     provider_id: String,
 ) -> Result<StreamCheckResult, AppError> {
     let config = state.db.get_stream_check_config()?;
-    let failure_threshold = state
-        .db
-        .get_proxy_config_for_app(app_type.as_str())
-        .await
-        .map(|cfg| cfg.circuit_failure_threshold)
-        .unwrap_or(5);
 
     let providers = state.db.get_all_providers(app_type.as_str())?;
     let provider = providers
@@ -57,15 +51,6 @@ pub async fn stream_check_provider(
             .db
             .save_stream_check_log(&provider_id, &provider.name, app_type.as_str(), &result);
 
-    persist_stream_check_health(
-        state.inner(),
-        app_type.as_str(),
-        &provider_id,
-        &result,
-        failure_threshold,
-    )
-    .await?;
-
     Ok(result)
 }
 
@@ -78,12 +63,6 @@ pub async fn stream_check_all_providers(
     proxy_targets_only: bool,
 ) -> Result<Vec<(String, StreamCheckResult)>, AppError> {
     let config = state.db.get_stream_check_config()?;
-    let failure_threshold = state
-        .db
-        .get_proxy_config_for_app(app_type.as_str())
-        .await
-        .map(|cfg| cfg.circuit_failure_threshold)
-        .unwrap_or(5);
     let providers = state.db.get_all_providers(app_type.as_str())?;
 
     let mut results = Vec::new();
@@ -161,15 +140,6 @@ pub async fn stream_check_all_providers(
         let _ = state
             .db
             .save_stream_check_log(&id, &provider.name, app_type.as_str(), &result);
-
-        let _ = persist_stream_check_health(
-            state.inner(),
-            app_type.as_str(),
-            &id,
-            &result,
-            failure_threshold,
-        )
-        .await;
 
         results.push((id, result));
     }
@@ -266,46 +236,6 @@ fn is_copilot_provider(provider: &crate::provider::Provider) -> bool {
             .and_then(|value| value.as_str())
             .map(|url| url.contains("githubcopilot.com"))
             .unwrap_or(false)
-}
-
-async fn persist_stream_check_health(
-    state: &AppState,
-    app_type: &str,
-    provider_id: &str,
-    result: &StreamCheckResult,
-    failure_threshold: u32,
-) -> Result<(), AppError> {
-    let status = result_status_label(&result.status);
-    let success = matches!(result.status, HealthStatus::Operational | HealthStatus::Degraded);
-
-    state
-        .db
-        .update_provider_health_with_threshold(
-            provider_id,
-            app_type,
-            success,
-            Some(result.message.clone()),
-            Some(status),
-            failure_threshold,
-        )
-        .await?;
-
-    if success {
-        let _ = state
-            .proxy_service
-            .reset_provider_circuit_breaker(provider_id, app_type)
-            .await;
-    }
-
-    Ok(())
-}
-
-fn result_status_label(status: &HealthStatus) -> &'static str {
-    match status {
-        HealthStatus::Operational => "operational",
-        HealthStatus::Degraded => "degraded",
-        HealthStatus::Failed => "failed",
-    }
 }
 
 async fn resolve_claude_api_format_override(

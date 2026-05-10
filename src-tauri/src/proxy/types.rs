@@ -197,32 +197,6 @@ pub struct AppProxyConfig {
     pub circuit_min_requests: u32,
 }
 
-/// Claude 模型族路由策略（Fork 扩展）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClaudeModelRoutePolicy {
-    pub app_type: String,
-    pub model_key: String,
-    pub enabled: bool,
-    pub default_provider_id: Option<String>,
-    pub model_failover_enabled: bool,
-    #[serde(default = "default_model_failover_mode")]
-    pub model_failover_mode: String,
-    pub updated_at: String,
-}
-
-/// Claude 模型路由全局开关（Fork 扩展）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClaudeModelRoutingSettings {
-    pub route_enabled: bool,
-    pub model_failover_enabled: bool,
-}
-
-fn default_model_failover_mode() -> String {
-    "random".to_string()
-}
-
 /// 整流器配置
 ///
 /// 存储在 settings 表中

@@ -100,7 +100,6 @@ pub async fn handle_messages(
     let result = match forwarder
         .forward_with_retry(
             &AppType::Claude,
-            ctx.model_key.as_deref(),
             endpoint,
             body.clone(),
             headers,
@@ -393,7 +392,6 @@ pub async fn handle_chat_completions(
     let result = match forwarder
         .forward_with_retry(
             &AppType::Codex,
-            ctx.model_key.as_deref(),
             &endpoint,
             body,
             headers,
@@ -448,7 +446,6 @@ pub async fn handle_responses(
     let result = match forwarder
         .forward_with_retry(
             &AppType::Codex,
-            ctx.model_key.as_deref(),
             &endpoint,
             body,
             headers,
@@ -503,7 +500,6 @@ pub async fn handle_responses_compact(
     let result = match forwarder
         .forward_with_retry(
             &AppType::Codex,
-            ctx.model_key.as_deref(),
             &endpoint,
             body,
             headers,
@@ -569,7 +565,6 @@ pub async fn handle_gemini(
     let result = match forwarder
         .forward_with_retry(
             &AppType::Gemini,
-            ctx.model_key.as_deref(),
             endpoint,
             body,
             headers,

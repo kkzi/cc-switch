@@ -69,11 +69,6 @@ impl Database {
             rusqlite::params![provider_id, app_type],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
-        conn.execute(
-            "UPDATE forkdb.providers SET in_failover_queue = 1 WHERE id = ?1 AND app_type = ?2",
-            rusqlite::params![provider_id, app_type],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(())
     }
@@ -92,30 +87,15 @@ impl Database {
             rusqlite::params![provider_id, app_type],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // 2. 清除该供应商的健康状态（退出队列后不再需要健康监控）
         conn.execute(
-            "UPDATE forkdb.providers SET in_failover_queue = 0 WHERE id = ?1 AND app_type = ?2",
+            "DELETE FROM provider_health WHERE provider_id = ?1 AND app_type = ?2",
             rusqlite::params![provider_id, app_type],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-        // 2. 重置该供应商的运行态健康字段（保留 last_success_at 历史数据）
-        let now = chrono::Utc::now().to_rfc3339();
-        conn.execute(
-            "UPDATE provider_health SET is_healthy = 1, consecutive_failures = 0,
-             last_failure_at = NULL, last_error = NULL, updated_at = ?1
-             WHERE provider_id = ?2 AND app_type = ?3",
-            rusqlite::params![&now, provider_id, app_type],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
-        conn.execute(
-            "UPDATE forkdb.fork_provider_health_model SET is_healthy = 1, consecutive_failures = 0,
-             last_failure_at = NULL, last_error = NULL, updated_at = ?1
-             WHERE provider_id = ?2 AND app_type = ?3",
-            rusqlite::params![&now, provider_id, app_type],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
-
-        log::info!("已从故障转移队列移除供应商 {provider_id} ({app_type}), 并重置其运行态健康字段");
+        log::info!("已从故障转移队列移除供应商 {provider_id} ({app_type}), 并清除其健康状态");
 
         Ok(())
     }
@@ -126,11 +106,6 @@ impl Database {
 
         conn.execute(
             "UPDATE providers SET in_failover_queue = 0 WHERE app_type = ?1",
-            [app_type],
-        )
-        .map_err(|e| AppError::Database(e.to_string()))?;
-        conn.execute(
-            "UPDATE forkdb.providers SET in_failover_queue = 0 WHERE app_type = ?1",
             [app_type],
         )
         .map_err(|e| AppError::Database(e.to_string()))?;

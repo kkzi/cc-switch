@@ -48,8 +48,6 @@ pub struct RequestContext {
     pub current_provider_id: String,
     /// 请求中的模型名称
     pub request_model: String,
-    /// 模型族键（仅 Claude 使用）
-    pub model_key: Option<String>,
     /// 日志标签（如 "Claude"、"Codex"、"Gemini"）
     pub tag: &'static str,
     /// 应用类型字符串（如 "claude"、"codex"、"gemini"）
@@ -114,22 +112,6 @@ impl RequestContext {
             .unwrap_or("unknown")
             .to_string();
 
-        let model_key = if matches!(app_type, AppType::Claude) {
-            let settings = state.db.get_claude_model_routing_settings().unwrap_or(
-                crate::proxy::types::ClaudeModelRoutingSettings {
-                    route_enabled: false,
-                    model_failover_enabled: false,
-                },
-            );
-            if settings.route_enabled || settings.model_failover_enabled {
-                Some(classify_claude_model_key(&request_model))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
         // 提取 Session ID
         let session_result = extract_session_id(headers, body, app_type_str);
         let session_id = session_result.session_id.clone();
@@ -146,7 +128,7 @@ impl RequestContext {
         // 注意：只在这里调用一次，结果传递给 forwarder，避免重复消耗 HalfOpen 名额
         let providers = state
             .provider_router
-            .select_providers(app_type_str, model_key.as_deref())
+            .select_providers(app_type_str)
             .await
             .map_err(|e| match e {
                 crate::error::AppError::AllProvidersCircuitOpen => {
@@ -177,7 +159,6 @@ impl RequestContext {
             providers,
             current_provider_id,
             request_model,
-            model_key,
             tag,
             app_type_str,
             app_type,
@@ -287,20 +268,5 @@ impl RequestContext {
                 idle_timeout: 0,
             }
         }
-    }
-}
-
-fn classify_claude_model_key(model: &str) -> String {
-    let normalized = model.to_ascii_lowercase();
-    if normalized.contains("haiku") {
-        "haiku".to_string()
-    } else if normalized.contains("sonnet") {
-        "sonnet".to_string()
-    } else if normalized.contains("opus") {
-        "opus".to_string()
-    } else if normalized == "unknown" || normalized.trim().is_empty() {
-        "unknown".to_string()
-    } else {
-        "custom".to_string()
     }
 }

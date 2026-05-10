@@ -368,3 +368,5 @@ pnpm tauri build --no-bundle  # Verify build
 pnpm test:unit               # Run frontend tests
 cargo test                   # Run backend tests
 ```
+
+For a maintained list of fork-specific divergence, sync constraints, and post-merge validation items, see `docs/fork-sync-guide.md`.

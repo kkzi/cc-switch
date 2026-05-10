@@ -349,7 +349,7 @@ impl ProxyServer {
     pub async fn reset_provider_circuit_breaker(&self, provider_id: &str, app_type: &str) {
         self.state
             .provider_router
-            .reset_provider_breaker(provider_id, app_type, None)
+            .reset_provider_breaker(provider_id, app_type)
             .await;
     }
 }

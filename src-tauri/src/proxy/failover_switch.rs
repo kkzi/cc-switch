@@ -17,7 +17,7 @@ use tokio::sync::RwLock;
 /// 负责处理故障转移成功后的供应商切换，确保 UI 能够直观反映当前使用的供应商。
 #[derive(Clone)]
 pub struct FailoverSwitchManager {
-    /// 正在处理中的切换（key = "app_type:model_key:provider_id"）
+    /// 正在处理中的切换（key = "app_type:provider_id"）
     pending_switches: Arc<RwLock<HashSet<String>>>,
     db: Arc<Database>,
 }
@@ -44,9 +44,8 @@ impl FailoverSwitchManager {
         app_type: &str,
         provider_id: &str,
         provider_name: &str,
-        model_key: Option<&str>,
     ) -> Result<bool, AppError> {
-        let switch_key = format!("{app_type}:{}:{provider_id}", model_key.unwrap_or("-"));
+        let switch_key = format!("{app_type}:{provider_id}");
 
         // 去重检查：如果相同切换已在进行中，跳过
         {
@@ -60,7 +59,7 @@ impl FailoverSwitchManager {
 
         // 执行切换（确保最后清理 pending 标记）
         let result = self
-            .do_switch(app_handle, app_type, provider_id, provider_name, model_key)
+            .do_switch(app_handle, app_type, provider_id, provider_name)
             .await;
 
         // 清理 pending 标记
@@ -78,7 +77,6 @@ impl FailoverSwitchManager {
         app_type: &str,
         provider_id: &str,
         provider_name: &str,
-        model_key: Option<&str>,
     ) -> Result<bool, AppError> {
         // 检查该应用是否已被代理接管（enabled=true）
         // 只有被接管的应用才允许执行故障转移切换
@@ -125,8 +123,7 @@ impl FailoverSwitchManager {
             let event_data = serde_json::json!({
                 "appType": app_type,
                 "providerId": provider_id,
-                "source": "failover",  // 标识来源是故障转移
-                "modelKey": model_key
+                "source": "failover"  // 标识来源是故障转移
             });
             if let Err(e) = app.emit("provider-switched", event_data) {
                 log::error!("[Failover] 发射事件失败: {e}");

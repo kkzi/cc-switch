@@ -3,7 +3,6 @@
 //! 使用流式 API 进行快速健康检查，只需接收首个 chunk 即判定成功。
 
 use futures::StreamExt;
-use rand::prelude::IndexedRandom;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -49,25 +48,7 @@ pub struct StreamCheckConfig {
 }
 
 fn default_test_prompt() -> String {
-    r#"Does the Sun rise in the east?
-How many legs do insects have?
-How many centimeters are in a meter?
-In binary, how is decimal 5 written?
-What color do you get when you mix yellow and blue?
-Does the Moon orbit the Earth?
-What color do you get when you mix red and blue?
-How many minutes are in an hour?
-How many degrees are in a circle?
-In binary, how is decimal 3 written?
-Does water boil at 100°C at sea level?
-What number does the Roman numeral L represent?
-How many legs does a spider have?
-What color do you get when you mix black and white?
-Is Earth a planet in the Solar System?
-Do fish breathe with gills?
-Is Mars the fourth planet?
-What number does the Roman numeral V represent?"#
-        .to_string()
+    "Who are you?".to_string()
 }
 
 impl Default for StreamCheckConfig {
@@ -192,11 +173,17 @@ impl StreamCheckService {
                 degraded_threshold_ms: tc
                     .degraded_threshold_ms
                     .unwrap_or(global_config.degraded_threshold_ms),
-                claude_model: Self::trimmed_option(tc.test_model.as_deref())
+                claude_model: tc
+                    .test_model
+                    .clone()
                     .unwrap_or_else(|| global_config.claude_model.clone()),
-                codex_model: Self::trimmed_option(tc.test_model.as_deref())
+                codex_model: tc
+                    .test_model
+                    .clone()
                     .unwrap_or_else(|| global_config.codex_model.clone()),
-                gemini_model: Self::trimmed_option(tc.test_model.as_deref())
+                gemini_model: tc
+                    .test_model
+                    .clone()
                     .unwrap_or_else(|| global_config.gemini_model.clone()),
                 test_prompt: tc
                     .test_prompt
@@ -246,7 +233,7 @@ impl StreamCheckService {
         let request_timeout = std::time::Duration::from_secs(config.timeout_secs);
 
         let model_to_test = Self::resolve_test_model(app_type, provider, config);
-        let test_prompt = Self::pick_random_prompt(&config.test_prompt);
+        let test_prompt = &config.test_prompt;
 
         let result = match app_type {
             AppType::Claude => {
@@ -255,7 +242,7 @@ impl StreamCheckService {
                     &base_url,
                     &auth,
                     &model_to_test,
-                    &test_prompt,
+                    test_prompt,
                     request_timeout,
                     provider,
                     claude_api_format_override.as_deref(),
@@ -269,7 +256,7 @@ impl StreamCheckService {
                     &base_url,
                     &auth,
                     &model_to_test,
-                    &test_prompt,
+                    test_prompt,
                     request_timeout,
                     provider,
                 )
@@ -281,7 +268,7 @@ impl StreamCheckService {
                     &base_url,
                     &auth,
                     &model_to_test,
-                    &test_prompt,
+                    test_prompt,
                     request_timeout,
                     None,
                 )
@@ -1377,9 +1364,7 @@ impl StreamCheckService {
             AppType::Claude => Self::extract_env_model(provider, "ANTHROPIC_MODEL")
                 .unwrap_or_else(|| config.claude_model.clone()),
             AppType::Codex => {
-                Self::extract_provider_test_model(provider)
-                    .or_else(|| Self::extract_codex_model(provider))
-                    .unwrap_or_else(|| config.codex_model.clone())
+                Self::extract_codex_model(provider).unwrap_or_else(|| config.codex_model.clone())
             }
             AppType::Gemini => Self::extract_env_model(provider, "GEMINI_MODEL")
                 .unwrap_or_else(|| config.gemini_model.clone()),
@@ -1394,33 +1379,6 @@ impl StreamCheckService {
                 Self::extract_openclaw_model(provider).unwrap_or_else(|| "gpt-4o".to_string())
             }
         }
-    }
-
-    fn trimmed_option(value: Option<&str>) -> Option<String> {
-        value
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(str::to_string)
-    }
-
-    /// 从多行提示词中随机选择一条
-    /// 每行算一条提示词，空行会被忽略
-    fn pick_random_prompt(prompts: &str) -> String {
-        let lines: Vec<&str> = prompts
-            .lines()
-            .map(|l| l.trim())
-            .filter(|l| !l.is_empty())
-            .collect();
-
-        if lines.is_empty() {
-            return "Who are you?".to_string();
-        }
-
-        lines
-            .choose(&mut rand::rng())
-            .copied()
-            .map(String::from)
-            .unwrap_or_else(|| "Who are you?".to_string())
     }
 
     fn extract_opencode_model(provider: &Provider) -> Option<String> {
@@ -1454,16 +1412,8 @@ impl StreamCheckService {
             .get("env")
             .and_then(|env| env.get(key))
             .and_then(|value| value.as_str())
-            .and_then(|value| Self::trimmed_option(Some(value)))
-    }
-
-    fn extract_provider_test_model(provider: &Provider) -> Option<String> {
-        provider
-            .meta
-            .as_ref()
-            .and_then(|meta| meta.test_config.as_ref())
-            .filter(|test_config| test_config.enabled)
-            .and_then(|test_config| Self::trimmed_option(test_config.test_model.as_deref()))
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
     }
 
     fn extract_codex_model(provider: &Provider) -> Option<String> {
@@ -1578,34 +1528,6 @@ impl StreamCheckService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::provider::{ProviderMeta, ProviderTestConfig};
-    use serde_json::json;
-
-    fn make_codex_provider(config_text: &str, test_model: Option<&str>, enabled: bool) -> Provider {
-        Provider {
-            id: "codex-test".to_string(),
-            name: "Codex Test".to_string(),
-            settings_config: json!({
-                "config": config_text
-            }),
-            website_url: None,
-            category: None,
-            created_at: None,
-            sort_index: None,
-            notes: None,
-            meta: Some(ProviderMeta {
-                test_config: Some(ProviderTestConfig {
-                    enabled,
-                    test_model: test_model.map(str::to_string),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }),
-            icon: None,
-            icon_color: None,
-            in_failover_queue: false,
-        }
-    }
 
     fn make_provider(settings_config: serde_json::Value) -> Provider {
         Provider::with_id(
@@ -1758,57 +1680,6 @@ mod tests {
         assert_eq!(config.timeout_secs, 45);
         assert_eq!(config.max_retries, 2);
         assert_eq!(config.degraded_threshold_ms, 6000);
-        assert_eq!(config.codex_model, "gpt-5.2");
-    }
-
-    #[test]
-    fn test_resolve_codex_test_model_prefers_enabled_meta_test_model() {
-        let provider = make_codex_provider(r#"model = "config-model""#, Some("meta-model"), true);
-        let config = StreamCheckConfig::default();
-
-        let model = StreamCheckService::resolve_test_model(&AppType::Codex, &provider, &config);
-
-        assert_eq!(model, "meta-model");
-    }
-
-    #[test]
-    fn test_resolve_codex_test_model_falls_back_to_provider_config() {
-        let provider = make_codex_provider(r#"model = "config-model""#, None, false);
-        let config = StreamCheckConfig::default();
-
-        let model = StreamCheckService::resolve_test_model(&AppType::Codex, &provider, &config);
-
-        assert_eq!(model, "config-model");
-    }
-
-    #[test]
-    fn test_resolve_codex_test_model_reads_multiline_provider_config() {
-        let provider = make_codex_provider(
-            "model_provider = \"custom\"\nmodel = \"config-model\"\n[model_providers.custom]\nname = \"custom\"",
-            None,
-            false,
-        );
-        let config = StreamCheckConfig {
-            codex_model: "global-model".to_string(),
-            ..StreamCheckConfig::default()
-        };
-
-        let model = StreamCheckService::resolve_test_model(&AppType::Codex, &provider, &config);
-
-        assert_eq!(model, "config-model");
-    }
-
-    #[test]
-    fn test_resolve_codex_test_model_falls_back_to_global_config() {
-        let provider = make_codex_provider("", None, false);
-        let config = StreamCheckConfig {
-            codex_model: "global-model".to_string(),
-            ..StreamCheckConfig::default()
-        };
-
-        let model = StreamCheckService::resolve_test_model(&AppType::Codex, &provider, &config);
-
-        assert_eq!(model, "global-model");
     }
 
     #[test]
