@@ -85,7 +85,6 @@ export function CodexFormFields({
           value={codexBaseUrl}
           onChange={onBaseUrlChange}
           placeholder={t("providerForm.codexApiEndpointPlaceholder")}
-          hint={t("providerForm.codexApiHint")}
           showFullUrlToggle
           isFullUrl={isFullUrl}
           onFullUrlChange={onFullUrlChange}
@@ -151,15 +150,6 @@ export function CodexFormFields({
                 </Button>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {modelName.trim()
-                ? t("codexConfig.modelNameHint", {
-                    defaultValue: "指定使用的模型，将自动更新到 config.toml 中",
-                  })
-                : t("providerForm.modelHint", {
-                    defaultValue: "💡 留空将使用供应商的默认模型",
-                  })}
-            </p>
           </div>
         </div>
       )}

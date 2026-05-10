@@ -42,16 +42,15 @@ export function EndpointField({
   });
   const effectiveHint =
     showFullUrlToggle && isFullUrl
-      ? fullUrlHint ||
-        t("providerForm.fullUrlHint", {
-          defaultValue:
-            "💡 请填写完整请求 URL，并且必须开启代理后使用；代理将直接使用此 URL，不拼接路径",
-        })
+      ? fullUrlHint
       : hint;
 
   return (
     <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2">
-      <FormLabel htmlFor={id} className="pt-2">
+      <FormLabel
+        htmlFor={id}
+        className="font-medium leading-8 text-muted-foreground"
+      >
         {label}
       </FormLabel>
       <div className="space-y-1">

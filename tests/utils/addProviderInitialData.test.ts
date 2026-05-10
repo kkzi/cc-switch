@@ -38,4 +38,18 @@ base_url = "https://sub.jia4u.de"`,
       },
     });
   });
+
+  it("falls back to the base url hostname when provider name is empty", () => {
+    expect(
+      buildAddProviderInitialData(
+        "claude",
+        "",
+        "https://api.example.com/v1",
+        "sk-test_456",
+      ),
+    ).toMatchObject({
+      name: "api.example.com",
+      category: "custom",
+    });
+  });
 });

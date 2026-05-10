@@ -103,6 +103,7 @@ import { HERMES_DEFAULT_CONFIG } from "./hooks/useHermesFormState";
 import { resolveManagedAccountId } from "@/lib/authBinding";
 import { useOpenClawLiveProviderIds } from "@/hooks/useOpenClaw";
 import { useHermesLiveProviderIds } from "@/hooks/useHermes";
+import { resolveProviderName } from "@/utils/providerName";
 
 type PresetEntry = {
   id: string;
@@ -171,6 +172,7 @@ export function ProviderForm({
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
     initialData ? null : "custom",
   );
+  const [showAllPresets, setShowAllPresets] = useState(false);
   const [activePreset, setActivePreset] = useState<{
     id: string;
     category?: ProviderCategory;
@@ -226,6 +228,7 @@ export function ProviderForm({
 
   useEffect(() => {
     setSelectedPresetId(initialData ? null : "custom");
+    setShowAllPresets(false);
     setActivePreset(null);
 
     if (!initialData) {
@@ -770,9 +773,199 @@ export function ProviderForm({
     providerId,
   ]);
 
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [fetchedModelOptions, setFetchedModelOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    setFetchedModelOptions([]);
+    setIsFetchingModels(false);
+  }, [appId, providerId, selectedPresetId]);
+
+  const handleFetchModels = useCallback(async () => {
+    const parsedSettings = (() => {
+      try {
+        return JSON.parse(form.getValues("settingsConfig") || "{}") as Record<
+          string,
+          unknown
+        >;
+      } catch {
+        return {} as Record<string, unknown>;
+      }
+    })();
+
+    const resolveCredentials = () => {
+      if (appId === "claude") {
+        return {
+          baseUrl: baseUrl.trim(),
+          apiKey: apiKey.trim(),
+        };
+      }
+      if (appId === "codex") {
+        return {
+          baseUrl: codexBaseUrl.trim(),
+          apiKey: codexApiKey.trim(),
+        };
+      }
+      if (appId === "gemini") {
+        return {
+          baseUrl: geminiBaseUrl.trim(),
+          apiKey: geminiApiKey.trim(),
+        };
+      }
+      const options =
+        parsedSettings.options && typeof parsedSettings.options === "object"
+          ? (parsedSettings.options as Record<string, unknown>)
+          : {};
+      const fallbackBaseUrl =
+        typeof options.baseURL === "string" ? options.baseURL.trim() : "";
+      const fallbackApiKey =
+        typeof options.apiKey === "string" ? options.apiKey.trim() : "";
+      return {
+        baseUrl: opencodeForm.opencodeBaseUrl.trim() || fallbackBaseUrl,
+        apiKey: opencodeForm.opencodeApiKey.trim() || fallbackApiKey,
+      };
+    };
+
+    const { baseUrl: rawBaseUrl, apiKey: rawApiKey } = resolveCredentials();
+    if (!rawBaseUrl) {
+      toast.error(
+        t("providerForm.endpointRequired", {
+          defaultValue: "请先填写 API 端点",
+        }),
+      );
+      return;
+    }
+    if (!rawApiKey) {
+      toast.error(
+        t("providerForm.apiKeyRequired", {
+          defaultValue: "请先填写 API Key",
+        }),
+      );
+      return;
+    }
+
+    setIsFetchingModels(true);
+    try {
+      const response = await providersApi.fetchOpenAiModels({
+        appId,
+        providerId: providerId ?? null,
+        baseUrl: rawBaseUrl,
+        apiKey: rawApiKey,
+        timeoutSecs: 15,
+      });
+      const modelIds = Array.from(
+        new Set(
+          (response.models || [])
+            .map((item: { id?: string }) => item.id?.trim())
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ).sort((a: string, b: string) => a.localeCompare(b, "en-US"));
+
+      setFetchedModelOptions(modelIds);
+      toast.success(
+        t("providerForm.modelsFetched", {
+          count: modelIds.length,
+          defaultValue: "已获取 {{count}} 个模型",
+        }),
+      );
+
+      if ((response.warnings || []).length > 0) {
+        console.warn("[MODEL_FETCH_WARNINGS]", response.warnings);
+      }
+    } catch (error) {
+      toast.error(String(error), {
+        description: t("providerForm.fetchModelsFailedHint", {
+          defaultValue:
+            "此功能仅供参考，部分供应商可能不支持模型列表接口，您可以手动输入模型名称。",
+        }),
+      });
+    } finally {
+      setIsFetchingModels(false);
+    }
+  }, [
+    appId,
+    providerId,
+    baseUrl,
+    apiKey,
+    codexBaseUrl,
+    codexApiKey,
+    geminiBaseUrl,
+    geminiApiKey,
+    opencodeForm.opencodeBaseUrl,
+    opencodeForm.opencodeApiKey,
+    form,
+    t,
+  ]);
+
+  const handleImportFetchedModels = useCallback(() => {
+    if (appId !== "opencode") return;
+    if (fetchedModelOptions.length === 0) {
+      toast.error(
+        t("opencode.noFetchedModels", {
+          defaultValue: "暂无可导入模型，请先自动获取。",
+        }),
+      );
+      return;
+    }
+
+    const merged: Record<string, Record<string, unknown>> = { ...opencodeForm.opencodeModels };
+    let imported = 0;
+    let updated = 0;
+
+    for (const modelId of fetchedModelOptions) {
+      const key = modelId.trim();
+      if (!key) continue;
+
+      const existing = merged[key];
+      if (!existing) {
+        merged[key] = { name: key };
+        imported += 1;
+        continue;
+      }
+
+      if (!(existing as Record<string, unknown>).name || !(String((existing as Record<string, unknown>).name).trim())) {
+        merged[key] = { ...existing, name: key };
+        updated += 1;
+      }
+    }
+
+    opencodeForm.handleOpencodeModelsChange(merged as any);
+    toast.success(
+      t("opencode.importFetchedModelsResult", {
+        imported,
+        updated,
+        defaultValue:
+          "模型导入完成：新增 {{imported}} 个，补全名称 {{updated}} 个。",
+      }),
+    );
+  }, [
+    appId,
+    fetchedModelOptions,
+    opencodeForm.opencodeModels,
+    opencodeForm.handleOpencodeModelsChange,
+    t,
+  ]);
+
   const [isCommonConfigModalOpen, setIsCommonConfigModalOpen] = useState(false);
 
   const handleSubmit = async (values: ProviderFormData) => {
+    const resolvedProviderName = resolveProviderName(values.name, [
+      values.websiteUrl,
+      appId === "claude"
+        ? baseUrl
+        : appId === "codex"
+          ? codexBaseUrl
+          : appId === "gemini"
+            ? geminiBaseUrl
+            : appId === "opencode"
+              ? opencodeForm.opencodeBaseUrl
+              : appId === "openclaw"
+                ? openclawForm.openclawBaseUrl
+                : appId === "hermes"
+                  ? hermesForm.hermesBaseUrl
+                  : undefined,
+    ]);
+
     // 软性问题（业务约束，用户可选择仍要保存）
     const issues: string[] = [];
 
@@ -790,7 +983,7 @@ export function ProviderForm({
     }
 
     // 供应商名空：A 类
-    if (!values.name.trim()) {
+    if (!resolvedProviderName) {
       issues.push(
         t("providerForm.fillSupplierName", {
           defaultValue: "请填写供应商名称",
@@ -1003,6 +1196,23 @@ export function ProviderForm({
   };
 
   const performSubmit = async (values: ProviderFormData) => {
+    const resolvedProviderName = resolveProviderName(values.name, [
+      values.websiteUrl,
+      appId === "claude"
+        ? baseUrl
+        : appId === "codex"
+          ? codexBaseUrl
+          : appId === "gemini"
+            ? geminiBaseUrl
+            : appId === "opencode"
+              ? opencodeForm.opencodeBaseUrl
+              : appId === "openclaw"
+                ? openclawForm.openclawBaseUrl
+                : appId === "hermes"
+                  ? hermesForm.hermesBaseUrl
+                  : undefined,
+    ]);
+
     // OAuth / 其它身份识别（与 handleSubmit 保持一致）
     const isCopilotProvider =
       templatePreset?.providerType === "github_copilot" ||
@@ -1067,7 +1277,7 @@ export function ProviderForm({
 
     const payload: ProviderFormValues = {
       ...values,
-      name: values.name.trim(),
+      name: resolvedProviderName,
       websiteUrl: values.websiteUrl?.trim() ?? "",
       settingsConfig,
     };
@@ -1498,6 +1708,10 @@ export function ProviderForm({
     });
   };
 
+  const handleToggleShowAllPresets = useCallback(() => {
+    setShowAllPresets((prev) => !prev);
+  }, []);
+
   const settingsConfigErrorField = (
     <FormField
       control={form.control}
@@ -1516,7 +1730,7 @@ export function ProviderForm({
         <form
           id="provider-form"
           onSubmit={form.handleSubmit(handleSubmit)}
-          className="space-y-6 glass rounded-xl p-6 border border-white/10"
+          className="space-y-2.5 glass rounded-xl border border-white/10 p-3"
         >
           {!initialData && (
             <ProviderPresetSelector
@@ -1524,6 +1738,8 @@ export function ProviderForm({
               groupedPresets={groupedPresets}
               categoryKeys={categoryKeys}
               presetCategoryLabels={presetCategoryLabels}
+              showAllPresets={showAllPresets}
+              onToggleShowAllPresets={handleToggleShowAllPresets}
               onPresetChange={handlePresetChange}
               onUniversalPresetSelect={onUniversalPresetSelect}
               onManageUniversalProviders={onManageUniversalProviders}
@@ -1839,6 +2055,9 @@ export function ProviderForm({
               modelName={codexModelName}
               onModelNameChange={handleCodexModelNameChange}
               speedTestEndpoints={speedTestEndpoints}
+              onFetchModels={handleFetchModels}
+              isFetchingModels={isFetchingModels}
+              modelSuggestions={fetchedModelOptions}
             />
           )}
 
@@ -1868,6 +2087,9 @@ export function ProviderForm({
               model={geminiModel}
               onModelChange={handleGeminiModelChange}
               speedTestEndpoints={speedTestEndpoints}
+              onFetchModels={handleFetchModels}
+              isFetchingModels={isFetchingModels}
+              modelSuggestions={fetchedModelOptions}
             />
           )}
 
@@ -1890,6 +2112,10 @@ export function ProviderForm({
               onExtraOptionsChange={
                 opencodeForm.handleOpencodeExtraOptionsChange
               }
+              onFetchModels={handleFetchModels}
+              isFetchingModels={isFetchingModels}
+              fetchedModelOptions={fetchedModelOptions}
+              onImportFetchedModels={handleImportFetchedModels}
             />
           )}
 

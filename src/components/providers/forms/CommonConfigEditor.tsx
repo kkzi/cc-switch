@@ -161,7 +161,7 @@ export function CommonConfigEditor({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="settingsConfig">{t("provider.configJson")}</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
               <input
                 type="checkbox"
@@ -176,18 +176,16 @@ export function CommonConfigEditor({
                 })}
               </span>
             </label>
+            <button
+              type="button"
+              onClick={onEditClick}
+              className="text-xs text-blue-400 dark:text-blue-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+            >
+              {t("claudeConfig.editCommonConfig", {
+                defaultValue: "编辑通用配置",
+              })}
+            </button>
           </div>
-        </div>
-        <div className="flex items-center justify-end">
-          <button
-            type="button"
-            onClick={onEditClick}
-            className="text-xs text-blue-400 dark:text-blue-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-          >
-            {t("claudeConfig.editCommonConfig", {
-              defaultValue: "编辑通用配置",
-            })}
-          </button>
         </div>
         {commonConfigError && !isModalOpen && (
           <p className="text-xs text-red-500 dark:text-red-400 text-right">
@@ -300,23 +298,9 @@ export function CommonConfigEditor({
         }
       >
         <div className="space-y-4">
-          <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 p-3 space-y-1.5">
-            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-              {t("commonConfig.guideTitle")}
-            </p>
-            <p className="text-xs text-blue-700/80 dark:text-blue-400/80">
-              {t("commonConfig.guidePurpose")}
-            </p>
-            <p className="text-xs text-blue-700/80 dark:text-blue-400/80">
-              {t("commonConfig.guideUsage")}
-            </p>
-            <p className="text-xs text-blue-700/80 dark:text-blue-400/80">
-              {t("commonConfig.guideReExtract")}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {t("commonConfig.guideReassurance")}
-            </p>
-          </div>
+          <p className="text-xs text-orange-500 dark:text-orange-400">
+            {t("commonConfig.guideTitle")} — {t("commonConfig.guidePurpose")} {t("commonConfig.guideUsage")}
+          </p>
           {(!commonConfigSnippet ||
             commonConfigSnippet.trim() === "" ||
             commonConfigSnippet.trim() === "{}") && (

@@ -2,6 +2,7 @@ import type { AppId } from "@/lib/api";
 import { getCodexCustomTemplate } from "@/config/codexTemplates";
 import type { AddProviderInitialData } from "@/components/providers/AddProviderDialog";
 import { setCodexBaseUrl } from "@/utils/providerConfigUtils";
+import { resolveProviderName } from "@/utils/providerName";
 
 export function buildAddProviderInitialData(
   appId: AppId,
@@ -9,12 +10,14 @@ export function buildAddProviderInitialData(
   baseUrl: string,
   apiKey: string,
 ): AddProviderInitialData {
+  const resolvedName = resolveProviderName(name, [baseUrl]);
+
   switch (appId) {
     case "codex": {
       const template = getCodexCustomTemplate();
 
       return {
-        name,
+        name: resolvedName,
         category: "custom",
         meta: {
           commonConfigEnabled: true,
@@ -29,7 +32,7 @@ export function buildAddProviderInitialData(
     }
     case "gemini":
       return {
-        name,
+        name: resolvedName,
         category: "custom",
         settingsConfig: {
           env: {
@@ -40,7 +43,7 @@ export function buildAddProviderInitialData(
       };
     case "opencode":
       return {
-        name,
+        name: resolvedName,
         category: "custom",
         settingsConfig: {
           npm: "@ai-sdk/openai-compatible",
@@ -54,7 +57,7 @@ export function buildAddProviderInitialData(
       };
     case "openclaw":
       return {
-        name,
+        name: resolvedName,
         category: "custom",
         settingsConfig: {
           baseUrl,
@@ -66,7 +69,7 @@ export function buildAddProviderInitialData(
     case "claude":
     default:
       return {
-        name,
+        name: resolvedName,
         category: "custom",
         settingsConfig: {
           env: {

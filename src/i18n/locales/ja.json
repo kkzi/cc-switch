@@ -38,6 +38,8 @@
     "reset": "リセット",
     "actions": "操作",
     "deleting": "削除中...",
+    "expand": "展開",
+    "collapse": "折りたたむ",
     "auto": "自動",
     "enabled": "有効",
     "notSet": "未設定"

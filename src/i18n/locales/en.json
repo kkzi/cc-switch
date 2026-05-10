@@ -38,6 +38,8 @@
     "reset": "Reset",
     "actions": "Actions",
     "deleting": "Deleting...",
+    "expand": "Expand",
+    "collapse": "Collapse",
     "auto": "Auto",
     "enabled": "Enabled",
     "notSet": "Not Set"

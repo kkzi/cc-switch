@@ -34,15 +34,20 @@ vi.mock("@/components/JsonEditor", () => ({
   default: ({
     value,
     onChange,
+    showFormatButton = true,
   }: {
     value: string;
     onChange: (value: string) => void;
+    showFormatButton?: boolean;
   }) => (
-    <textarea
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      aria-label="mock-editor"
-    />
+    <div>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label="mock-editor"
+      />
+      {showFormatButton ? <button type="button">格式化</button> : null}
+    </div>
   ),
 }));
 
@@ -102,6 +107,41 @@ describe("Common config modals", () => {
     );
 
     expect(onAuthChange).toHaveBeenCalledWith('{\n  "foo": "bar"\n}');
+  });
+
+  it("hides codex auth/config hint copy and keeps the format action aligned in the auth header", () => {
+    render(
+      <CodexConfigEditor
+        authValue='{"foo":"bar"}'
+        configValue='model = "gpt-5"'
+        onAuthChange={() => {}}
+        onConfigChange={() => {}}
+        useCommonConfig={false}
+        onCommonConfigToggle={() => {}}
+        commonConfigSnippet=""
+        onCommonConfigSnippetChange={() => true}
+        onCommonConfigErrorClear={() => {}}
+        commonConfigError=""
+        authError=""
+        configError=""
+      />,
+    );
+
+    expect(
+      screen.queryByText("Codex auth.json 配置内容"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Codex config.toml 配置内容"),
+    ).not.toBeInTheDocument();
+
+    const authLabel = screen.getByText(/codexConfig.authJson|auth\.json/i, {
+      selector: "label",
+    });
+    const formatButton = screen.getByRole("button", {
+      name: /common.format|格式化/i,
+    });
+
+    expect(authLabel.parentElement).toContainElement(formatButton);
   });
 
   it("keeps the Codex common config modal closed after user closes it with an error present", async () => {

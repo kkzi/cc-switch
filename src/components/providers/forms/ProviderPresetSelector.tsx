@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { FormLabel } from "@/components/ui/form";
 import { ClaudeIcon, CodexIcon, GeminiIcon } from "@/components/BrandIcons";
@@ -23,6 +23,8 @@ interface ProviderPresetSelectorProps {
   groupedPresets: Record<string, PresetEntry[]>;
   categoryKeys: string[];
   presetCategoryLabels: Record<string, string>;
+  showAllPresets: boolean;
+  onToggleShowAllPresets: () => void;
   onPresetChange: (value: string) => void;
   onUniversalPresetSelect?: (preset: UniversalProviderPreset) => void;
   onManageUniversalProviders?: () => void;
@@ -34,13 +36,14 @@ export function ProviderPresetSelector({
   groupedPresets,
   categoryKeys,
   presetCategoryLabels,
+  showAllPresets,
+  onToggleShowAllPresets,
   onPresetChange,
   onUniversalPresetSelect,
   onManageUniversalProviders,
   category,
 }: ProviderPresetSelectorProps) {
   const { t } = useTranslation();
-  const [showAllPresets, setShowAllPresets] = useState(false);
 
   const normalizePresetLabel = (label: string) =>
     label.toLowerCase().replace(/\s+/g, " ").trim();
@@ -128,19 +131,13 @@ export function ProviderPresetSelector({
         return t("providerForm.thirdPartyApiKeyHint", {
           defaultValue: "💡 第三方供应商需要填写 API Key 和请求地址",
         });
-      case "custom":
-        return t("providerForm.customApiKeyHint", {
-          defaultValue: "💡 自定义配置需手动填写所有必要字段",
-        });
       case "omo":
         return t("providerForm.omoHint", {
           defaultValue:
             "💡 OMO 配置管理 Agent 模型分配，兼容 oh-my-openagent.jsonc / oh-my-opencode.jsonc",
         });
       default:
-        return t("providerPreset.hint", {
-          defaultValue: "选择预设后可继续调整下方字段。",
-        });
+        return null;
     }
   };
 
@@ -244,10 +241,12 @@ export function ProviderPresetSelector({
           {collapsedPresetEntries.length > 0 && (
             <button
               type="button"
-              onClick={() => setShowAllPresets((prev) => !prev)}
+              onClick={onToggleShowAllPresets}
               className="inline-flex h-8 items-center gap-2 border border-border-default bg-background px-2.5 text-sm font-medium text-muted-foreground hover:bg-muted"
             >
-              {showAllPresets ? t("common.collapse") : t("common.expand")}
+              {showAllPresets
+                ? t("common.collapse", { defaultValue: "收起" })
+                : t("common.expand", { defaultValue: "展开" })}
             </button>
           )}
         </div>

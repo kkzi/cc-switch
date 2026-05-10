@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatJSON } from "@/utils/formatters";
+import { cn } from "@/lib/utils";
 
 interface JsonEditorProps {
   id?: string;
@@ -23,6 +24,7 @@ interface JsonEditorProps {
   height?: string | number;
   showMinimap?: boolean; // 添加此属性以防未来使用
   showFormatButton?: boolean;
+  formatButtonClassName?: string;
 }
 
 const JsonEditor: React.FC<JsonEditorProps> = ({
@@ -35,6 +37,7 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
   language = "json",
   height,
   showFormatButton = true,
+  formatButtonClassName,
 }) => {
   const { t } = useTranslation();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -267,7 +270,11 @@ const JsonEditor: React.FC<JsonEditorProps> = ({
         <button
           type="button"
           onClick={handleFormat}
-          className={`${isFullHeight ? "mt-2 flex-shrink-0" : "mt-2"} inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors`}
+          className={cn(
+            isFullHeight ? "mt-2 flex-shrink-0" : "mt-2",
+            "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400",
+            formatButtonClassName,
+          )}
         >
           <Wand2 className="w-3.5 h-3.5" />
           {t("common.format", { defaultValue: "格式化" })}
