@@ -561,7 +561,7 @@ fn import_mcp_from_gemini_sse_url_only_is_valid() {
     let entry = servers.get("sse-server").expect("sse-server exists");
     assert!(entry.apps.gemini, "imported server should enable Gemini");
     assert_eq!(
-        entry.server.get("type").and_then(|v| v.as_str()),
+        entry.server.get("type").and_then(serde_json::Value::as_str),
         Some("sse"),
         "Gemini url-only server should be normalized to type=sse in unified structure"
     );

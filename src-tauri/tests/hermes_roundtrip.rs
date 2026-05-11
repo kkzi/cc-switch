@@ -111,12 +111,14 @@ fn get_providers_surfaces_rate_limit_delay_and_key_env() {
         let entry = providers.get("myhost").expect("myhost missing");
 
         assert_eq!(
-            entry.get("rate_limit_delay").and_then(|v| v.as_f64()),
+            entry
+                .get("rate_limit_delay")
+                .and_then(serde_json::Value::as_f64),
             Some(2.5),
             "rate_limit_delay not surfaced to DAO payload"
         );
         assert_eq!(
-            entry.get("key_env").and_then(|v| v.as_str()),
+            entry.get("key_env").and_then(serde_json::Value::as_str),
             Some("FOO_KEY"),
             "key_env not surfaced to DAO payload"
         );

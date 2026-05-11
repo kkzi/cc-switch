@@ -226,7 +226,7 @@ command = "say"
     assert_eq!(
         auth_value
             .get("OPENAI_API_KEY")
-            .and_then(|v| v.as_str())
+            .and_then(serde_json::Value::as_str)
             .unwrap_or(""),
         "fresh-key",
         "live auth.json should reflect new provider"
@@ -257,7 +257,7 @@ command = "say"
     let new_config_text = new_provider
         .settings_config
         .get("config")
-        .and_then(|v| v.as_str())
+        .and_then(serde_json::Value::as_str)
         .unwrap_or_default();
     // 供应商配置应该包含在 live 文件中
     // 注意：live 文件还会包含 MCP 同步后的内容
@@ -276,8 +276,9 @@ command = "say"
     let legacy_auth_value = legacy
         .settings_config
         .get("auth")
+        .and_then(serde_json::Value::as_object)
         .and_then(|v| v.get("OPENAI_API_KEY"))
-        .and_then(|v| v.as_str())
+        .and_then(serde_json::Value::as_str)
         .unwrap_or("");
     // 回填机制：切换前会将 live 配置回填到当前供应商
     // 这保护了用户在 live 文件中的手动修改
@@ -377,8 +378,9 @@ fn switch_provider_updates_claude_live_and_state() {
     assert_eq!(
         live_after
             .get("env")
+            .and_then(serde_json::Value::as_object)
             .and_then(|env| env.get("ANTHROPIC_API_KEY"))
-            .and_then(|key| key.as_str()),
+            .and_then(serde_json::Value::as_str),
         Some("fresh-key"),
         "live settings.json should reflect new provider auth"
     );
@@ -413,8 +415,9 @@ fn switch_provider_updates_claude_live_and_state() {
         new_provider
             .settings_config
             .get("env")
+            .and_then(serde_json::Value::as_object)
             .and_then(|env| env.get("ANTHROPIC_API_KEY"))
-            .and_then(|key| key.as_str()),
+            .and_then(serde_json::Value::as_str),
         Some("fresh-key"),
         "new provider snapshot should retain fresh auth"
     );

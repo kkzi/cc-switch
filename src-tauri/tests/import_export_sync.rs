@@ -668,7 +668,7 @@ command = "echo"
     // 验证现有配置被保留（server 不应被覆盖）
     let spec = entry.server.as_object().expect("server spec");
     assert_eq!(
-        spec.get("command").and_then(|v| v.as_str()),
+        spec.get("command").and_then(serde_json::Value::as_str),
         Some("prev"),
         "existing server config should be preserved, not overwritten by import"
     );
@@ -800,7 +800,10 @@ fn import_from_claude_merges_into_config() {
     // 验证现有配置被保留（server 不应被覆盖）
     let server = entry.server.as_object().expect("server obj");
     assert_eq!(
-        server.get("command").and_then(|v| v.as_str()).unwrap_or(""),
+        server
+            .get("command")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or(""),
         "prev",
         "existing server config should be preserved"
     );
