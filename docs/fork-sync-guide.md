@@ -5,8 +5,8 @@
 ## 1. 基线
 
 - 对比命令: `git diff upstream/main`
-- 当前状态: fork 相对 upstream `ahead 72 commits`
-- 当前 diff 规模: `121 files changed, 7606 insertions(+), 2014 deletions(-)`
+- 当前状态: fork 相对 upstream `ahead 76 commits`
+- 当前 diff 规模: `138 files changed, 7815 insertions(+), 2085 deletions(-)`
 - 不纳入本文档:
   - 未跟踪文件
   - 口头约定
@@ -22,7 +22,7 @@
 2. 主窗口运行时创建、托盘左键切换、隐藏后延迟销毁
 3. provider health / speedtest 元数据扩展
 4. OpenAI 兼容模型拉取能力
-5. Provider 列表/卡片交互与最近测试反馈
+5. Provider 列表/卡片交互、最近测试反馈与 tooltip 行为
 6. Provider 新增表单体验、剪贴板导入、Codex custom 配置标准化
 7. App shell、Settings、Usage 页面布局与动效取舍
 
@@ -187,10 +187,13 @@
 
 - `useStreamCheck` 不再直接靠 toast 表达测试结果，而是维护最近一次测试结果缓存
 - 最近测试结果会在 5 秒内驱动卡片状态与 tooltip
+- recent tooltip 只会自动打开一次，未悬停时 5 秒后自动隐藏
 - icon 边框状态基于：
   - `recentTestResult.status`
   - 或 `health.last_check_status`
 - tooltip 会优先展示最近测试 message，否则展示 `last_error`
+- Codex stream check 对首个候选 URL 返回 `text/html` 时会自动 fallback 到备用 `/v1/responses`
+- stream check 的 HTTP 错误 message 不再只保留状态码，而是会附带响应体摘要
 - 卡片支持：
   - 双击触发主操作
   - 右键菜单
@@ -203,7 +206,12 @@
 同步约束：
 
 - `ProviderList.tsx`、`ProviderCard.tsx`、`useStreamCheck.ts` 是高冲突区
-- 这部分不只是样式改动，依赖真实 health 字段与交互状态，不能按纯 UI 补丁处理
+- `src-tauri/src/services/stream_check.rs`、`src-tauri/src/commands/stream_check.rs` 也应纳入这一组热点文件
+- 这部分不只是样式改动，依赖真实 health 字段、错误消息格式与交互状态，不能按纯 UI 补丁处理
+- upstream 若修改 stream check 成功/失败判定，必须人工复核以下 fork 规则：
+  - `text/html` 不能被当作 Codex Responses 成功响应
+  - 根地址 `/responses` 返回 HTML 时要继续尝试 `/v1/responses`
+  - tooltip / recent result message 需要保留状态码之外的错误正文
 
 ### 3.7 Provider 新增表单、预设交互与剪贴板导入
 
@@ -273,6 +281,8 @@
 - `AddProviderDialog` 现在接收 `initialData`
 - usage summary 卡片动画被移除
 - Settings 页结构、WindowSettings、About 区块都有明显 fork 定制
+- Settings / Skills / Prompts / MCP / Sessions 等页面已统一外层面板 padding
+- Settings 高级页底部操作区采用“外层 top border 拉通主面板宽度，内层按钮区再对齐内容区”的显示逻辑
 - 一部分 UI primitive 与构建配置也有差异
 
 同步约束：
@@ -283,6 +293,8 @@
   - add provider 打开逻辑
   - clipboard import
   - usage 页面无进入动画
+  - 统一面板 padding 不被回滚
+  - Settings 高级页底部保存栏的“满宽分隔线 + 内容区对齐”逻辑不被回滚
 
 ## 4. 历史澄清
 
@@ -313,6 +325,8 @@
 - `src-tauri/src/commands/provider.rs`
 - `src-tauri/src/services/speedtest.rs`
 - `src-tauri/src/services/provider/models.rs`
+- `src-tauri/src/services/stream_check.rs`
+- `src-tauri/src/commands/stream_check.rs`
 - `src/lib/api/providers.ts`
 - `src/lib/api/vscode.ts`
 - `src/types.ts`
@@ -325,6 +339,7 @@
 - `src/hooks/useStreamCheck.ts`
 - `src/components/providers/forms/ProviderForm.tsx`
 - `src/components/providers/forms/ProviderPresetSelector.tsx`
+- `tests/components/ProviderCard.test.tsx`
 - `src/utils/addProviderInitialData.ts`
 - `src/utils/providerClipboard.ts`
 - `src/utils/providerConfigUtils.ts`
@@ -338,14 +353,23 @@
 - `package.json`
 - `src-tauri/Cargo.toml`
 - `README_EN.md`
+- `src/components/settings/SettingsPage.tsx`
+- `src/components/settings/ProxyTabContent.tsx`
+- `src/components/skills/SkillsPage.tsx`
+- `src/components/skills/UnifiedSkillsPanel.tsx`
+- `src/components/prompts/PromptPanel.tsx`
+- `src/components/mcp/UnifiedMcpPanel.tsx`
+- `src/components/sessions/SessionManagerPage.tsx`
+- `src/components/common/AppCountBar.tsx`
 
 ## 6. 建议同步顺序
 
 1. 先 fetch/merge upstream。
 2. 先处理主窗口、tray、`tauri.conf.json` 冲突。
-3. 再处理数据库 schema、provider health、speedtest、model fetch。
+3. 再处理数据库 schema、provider health、speedtest、model fetch、stream check。
 4. 再处理 `App.tsx`、ProviderCard/List、ProviderForm、preset selector。
-5. 最后处理 workflow、文档、README 与测试。
+5. 再处理 Settings / Skills / Prompts / MCP / Sessions 的面板布局和底部操作栏。
+6. 最后处理 workflow、文档、README 与测试。
 
 ## 7. 同步后最少回归项
 
@@ -368,6 +392,9 @@
 - recent test result 能驱动 icon 边框颜色
 - tooltip 优先显示最近测试 message，其次显示 `last_error`
 - recent tooltip 自动显示并在 5 秒后消失
+- recent tooltip 未悬停时只自动显示一次，不会重复弹出
+- Codex 测试遇到 `200 + text/html` 时会继续尝试 fallback URL，而不是误判成功
+- error tooltip / recent test tooltip 需要显示状态码之外的错误正文
 - 双击卡片触发主操作
 - 右键菜单可复制连接信息、置顶、置底
 
@@ -383,6 +410,9 @@
 - Add Provider 的 `initialData` 注入正常
 - usage 页面无页级进入动画
 - settings 页面结构与窗口设置项正常
+- Skills / Prompts / MCP / Sessions 与 Settings 页的外层 padding 保持一致
+- Settings 高级页底部操作区的 top border 贯穿主面板宽度
+- Settings 高级页保存按钮右边界与内容区右边界对齐
 
 ## 8. 文档维护规则
 
