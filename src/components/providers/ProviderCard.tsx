@@ -65,10 +65,7 @@ interface ProviderCardProps {
   onPrimaryAction?: (provider: Provider) => void;
 }
 
-const extractModelName = (
-  provider: Provider,
-  appId: AppId,
-): string | null => {
+const extractModelName = (provider: Provider, appId: AppId): string | null => {
   const config = provider.settingsConfig;
   if (!config || typeof config !== "object") return null;
 
@@ -233,18 +230,30 @@ export function ProviderCard({
     () => extractHealthTooltipMessage(recentTestResult?.message ?? ""),
     [recentTestResult?.message],
   );
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
+  const [isRecentTooltipActive, setIsRecentTooltipActive] = useState(false);
+  const [isTooltipRegionHovered, setIsTooltipRegionHovered] = useState(false);
+  const [recentTooltipSnapshot, setRecentTooltipSnapshot] = useState("");
+  const [recentStatusSnapshot, setRecentStatusSnapshot] = useState<
+    StreamCheckResult["status"] | null
+  >(null);
+  const activeRecentTooltip = isRecentTooltipActive
+    ? recentTestTooltip || recentTooltipSnapshot
+    : "";
   const lastCheckStatus = isTesting
     ? null
-    : recentTestResult?.status ?? health?.last_check_status;
+    : isRecentTooltipActive
+      ? (recentTestResult?.status ??
+        recentStatusSnapshot ??
+        health?.last_check_status)
+      : (recentTestResult?.status ?? health?.last_check_status);
   const iconBorderClass = useMemo(() => {
     if (lastCheckStatus === "operational") return "border-green-500";
     if (lastCheckStatus === "degraded") return "border-yellow-500";
     if (lastCheckStatus === "failed") return "border-red-500";
     return "border-border-default";
   }, [lastCheckStatus]);
-  const tooltipMessage = recentTestTooltip || latestHealthTooltip;
-  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
-  const [isRecentTooltipActive, setIsRecentTooltipActive] = useState(false);
+  const tooltipMessage = activeRecentTooltip || latestHealthTooltip;
   const hideTooltipTimerRef = useRef<number | null>(null);
 
   const usageEnabled = provider.meta?.usage_script?.enabled ?? false;
@@ -276,9 +285,6 @@ export function ProviderCard({
 
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const actionsRef = useRef<HTMLDivElement>(null);
-  const [actionsWidth, setActionsWidth] = useState(0);
-
   const clearHideTooltipTimer = () => {
     if (hideTooltipTimerRef.current !== null) {
       window.clearTimeout(hideTooltipTimerRef.current);
@@ -291,6 +297,8 @@ export function ProviderCard({
     hideTooltipTimerRef.current = window.setTimeout(() => {
       setIsTooltipOpen(false);
       setIsRecentTooltipActive(false);
+      setRecentTooltipSnapshot("");
+      setRecentStatusSnapshot(null);
       hideTooltipTimerRef.current = null;
     }, delayMs);
   };
@@ -302,34 +310,55 @@ export function ProviderCard({
   }, [hasMultiplePlans]);
 
   useEffect(() => {
-    if (actionsRef.current) {
-      const updateWidth = () => {
-        const width = actionsRef.current?.offsetWidth || 0;
-        setActionsWidth(width);
-      };
-      updateWidth();
-      window.addEventListener("resize", updateWidth);
-      return () => window.removeEventListener("resize", updateWidth);
-    }
-  }, [onTest, onOpenTerminal]); // 按钮数量可能变化时重新计算
-
-  useEffect(() => {
-    if (isTesting || !recentTestTooltip) {
+    if (isTesting) {
       clearHideTooltipTimer();
       setIsTooltipOpen(false);
       setIsRecentTooltipActive(false);
+      setRecentTooltipSnapshot("");
+      setRecentStatusSnapshot(null);
+      return;
+    }
+
+    if (!recentTestTooltip) {
+      if (
+        isRecentTooltipActive &&
+        isTooltipRegionHovered &&
+        recentTooltipSnapshot
+      ) {
+        clearHideTooltipTimer();
+        return;
+      }
+
+      if (isRecentTooltipActive) {
+        clearHideTooltipTimer();
+        setIsTooltipOpen(false);
+        setIsRecentTooltipActive(false);
+        setRecentTooltipSnapshot("");
+        setRecentStatusSnapshot(null);
+      }
       return;
     }
 
     clearHideTooltipTimer();
+    setRecentTooltipSnapshot(recentTestTooltip);
+    setRecentStatusSnapshot(recentTestResult?.status ?? null);
     setIsTooltipOpen(true);
     setIsRecentTooltipActive(true);
-    scheduleHideTooltip(5000);
+    if (!isTooltipRegionHovered) {
+      scheduleHideTooltip(5000);
+    }
 
     return () => {
       clearHideTooltipTimer();
     };
-  }, [isTesting, recentTestTooltip]);
+  }, [
+    isTesting,
+    isRecentTooltipActive,
+    isTooltipRegionHovered,
+    recentTestResult?.status,
+    recentTestTooltip,
+    recentTooltipSnapshot,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -338,13 +367,17 @@ export function ProviderCard({
   }, []);
 
   const handleTooltipRegionEnter = () => {
-    if (!isRecentTooltipActive) return;
-    clearHideTooltipTimer();
+    setIsTooltipRegionHovered(true);
+    if (isRecentTooltipActive) {
+      clearHideTooltipTimer();
+    }
   };
 
   const handleTooltipRegionLeave = () => {
-    if (!isRecentTooltipActive) return;
-    scheduleHideTooltip(60);
+    setIsTooltipRegionHovered(false);
+    if (isRecentTooltipActive) {
+      scheduleHideTooltip(60);
+    }
   };
 
   const handleOpenWebsite = () => {
@@ -384,13 +417,13 @@ export function ProviderCard({
     isInFailoverQueue &&
     typeof failoverPriority === "number";
 
-  const handleCardDoubleClick = (
-    event: React.MouseEvent<HTMLDivElement>,
-  ) => {
+  const handleCardDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onPrimaryAction) return;
 
     const target = event.target as HTMLElement | null;
-    if (target?.closest("button, a, input, textarea, select, [role='button']")) {
+    if (
+      target?.closest("button, a, input, textarea, select, [role='button']")
+    ) {
       return;
     }
 
@@ -410,8 +443,7 @@ export function ProviderCard({
         shouldUseBlue && "border-blue-500/60 shadow-sm shadow-blue-500/10",
         !(isActiveProvider || hasPersistentConfigHighlight) &&
           "hover:shadow-sm",
-        dragHandleProps?.isDragging &&
-          "z-10 cursor-grabbing border-foreground",
+        dragHandleProps?.isDragging && "z-10 cursor-grabbing border-foreground",
       )}
     >
       <div
@@ -448,6 +480,8 @@ export function ProviderCard({
                   clearHideTooltipTimer();
                   setIsTooltipOpen(false);
                   setIsRecentTooltipActive(false);
+                  setRecentTooltipSnapshot("");
+                  setRecentStatusSnapshot(null);
                   return;
                 }
                 if (isRecentTooltipActive && !open) {
@@ -554,84 +588,70 @@ export function ProviderCard({
               )}
             </div>
 
-            {displayUrl && (
-              <div className="flex min-w-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={handleOpenWebsite}
-                  className={cn(
-                    "inline-flex min-w-0 max-w-[280px] items-center text-xs",
-                    isClickableUrl
-                      ? "cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
-                      : "cursor-default text-muted-foreground",
-                  )}
-                  title={displayUrl}
-                  disabled={!isClickableUrl}
-                >
-                  <span className="truncate">{displayUrl}</span>
-                </button>
+            {(displayUrl || usageEnabled) && (
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-left">
+                {displayUrl && (
+                  <button
+                    type="button"
+                    onClick={handleOpenWebsite}
+                    className={cn(
+                      "inline-flex min-w-0 max-w-[280px] items-center text-xs",
+                      isClickableUrl
+                        ? "cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+                        : "cursor-default text-muted-foreground",
+                    )}
+                    title={displayUrl}
+                    disabled={!isClickableUrl}
+                  >
+                    <span className="truncate">{displayUrl}</span>
+                  </button>
+                )}
+
+                {hasMultiplePlans ? (
+                  <div className="inline-flex min-w-0 items-center gap-1.5 text-left text-xs text-gray-600 dark:text-gray-400">
+                    <span className="font-medium">
+                      {t("usage.multiplePlans", {
+                        count: usage?.data?.length || 0,
+                        defaultValue: `${usage?.data?.length || 0} 个套餐`,
+                      })}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsExpanded(!isExpanded);
+                      }}
+                      className="shrink-0 p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                      title={
+                        isExpanded
+                          ? t("usage.collapse", { defaultValue: "收起" })
+                          : t("usage.expand", { defaultValue: "展开" })
+                      }
+                    >
+                      {isExpanded ? (
+                        <ChevronUp size={14} />
+                      ) : (
+                        <ChevronDown size={14} />
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <UsageFooter
+                    provider={provider}
+                    providerId={provider.id}
+                    appId={appId}
+                    usageEnabled={usageEnabled}
+                    isCurrent={isCurrent}
+                    isInConfig={isInConfig}
+                    inline={true}
+                  />
+                )}
               </div>
             )}
           </div>
         </div>
 
-        <div
-          className="relative ml-auto flex min-w-0 items-center gap-2"
-          style={
-            {
-              "--actions-width": `${actionsWidth || 320}px`,
-            } as React.CSSProperties
-          }
-        >
-          <div className="ml-auto">
-            <div className="flex items-center gap-1 transition-transform duration-200 group-hover:-translate-x-[var(--actions-width)] group-focus-within:-translate-x-[var(--actions-width)]">
-              {hasMultiplePlans ? (
-                <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                  <span className="font-medium">
-                    {t("usage.multiplePlans", {
-                      count: usage?.data?.length || 0,
-                      defaultValue: `${usage?.data?.length || 0} 个套餐`,
-                    })}
-                  </span>
-                </div>
-              ) : (
-                <UsageFooter
-                  provider={provider}
-                  providerId={provider.id}
-                  appId={appId}
-                  usageEnabled={usageEnabled}
-                  isCurrent={isCurrent}
-                  isInConfig={isInConfig}
-                  inline={true}
-                />
-              )}
-              {hasMultiplePlans && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(!isExpanded);
-                  }}
-                  className="shrink-0 p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-                  title={
-                    isExpanded
-                      ? t("usage.collapse", { defaultValue: "收起" })
-                      : t("usage.expand", { defaultValue: "展开" })
-                  }
-                >
-                  {isExpanded ? (
-                    <ChevronUp size={14} />
-                  ) : (
-                    <ChevronDown size={14} />
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div
-            ref={actionsRef}
-            className="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 translate-x-2 items-center gap-1 pl-2 opacity-0 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100"
-          >
+        <div className="relative ml-auto flex min-w-0 items-center gap-2">
+          <div className="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 translate-x-2 items-center gap-1 pl-2 opacity-0 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100">
             <ProviderActions
               appId={appId}
               isCurrent={isCurrent}

@@ -124,10 +124,17 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   // ── Token Plan：订阅风格内联渲染（百分比徽章 + 倒计时） ──
   if (isTokenPlan && inline) {
     return (
-      <div className="flex flex-col items-end gap-1 text-xs whitespace-nowrap flex-shrink-0">
-        {/* 第一行：查询时间 + 刷新 */}
-        <div className="flex items-center gap-2 justify-end">
-          <span className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
+      <div className="inline-flex min-w-0 items-center gap-2 text-left text-xs whitespace-nowrap flex-shrink-0">
+        {/* 原第二行：tier 徽章（复用官方订阅的 TierBadge） */}
+        <div className="flex min-w-0 items-center gap-2">
+          {usageDataList.map((data, index) => (
+            <TierBadge key={index} tier={toQuotaTier(data)} t={t} />
+          ))}
+        </div>
+
+        {/* 原第一行：查询时间 + 刷新 */}
+        <div className="flex items-center gap-2 text-muted-foreground/70">
+          <span className="flex items-center gap-1">
             <Clock size={10} />
             {lastQueriedAt
               ? formatRelativeTime(lastQueriedAt, now, t)
@@ -144,12 +151,6 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
           >
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           </button>
-        </div>
-        {/* 第二行：tier 徽章（复用官方订阅的 TierBadge） */}
-        <div className="flex items-center gap-2">
-          {usageDataList.map((data, index) => (
-            <TierBadge key={index} tier={toQuotaTier(data)} t={t} />
-          ))}
         </div>
       </div>
     );
@@ -161,33 +162,9 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
     const isExpired = firstUsage.isValid === false;
 
     return (
-      <div className="flex flex-col items-end gap-1 text-xs whitespace-nowrap flex-shrink-0">
-        {/* 第一行：更新时间和刷新按钮 */}
-        <div className="flex items-center gap-2 justify-end">
-          {/* 上次查询时间 */}
-          <span className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
-            <Clock size={10} />
-            {lastQueriedAt
-              ? formatRelativeTime(lastQueriedAt, now, t)
-              : t("usage.never", { defaultValue: "从未更新" })}
-          </span>
-
-          {/* 刷新按钮 */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              refetch();
-            }}
-            disabled={loading}
-            className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-50 flex-shrink-0 text-muted-foreground"
-            title={t("usage.refreshUsage")}
-          >
-            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          </button>
-        </div>
-
-        {/* 第二行：用量和剩余 */}
-        <div className="flex items-center gap-2">
+      <div className="inline-flex min-w-0 items-center gap-2 text-left text-xs whitespace-nowrap flex-shrink-0">
+        {/* 原第二行：用量和剩余 */}
+        <div className="flex min-w-0 items-center gap-2">
           {/* 已用 */}
           {firstUsage.used !== undefined && (
             <div className="flex items-center gap-0.5">
@@ -237,6 +214,30 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
               {firstUsage.extra}
             </span>
           )}
+        </div>
+
+        {/* 原第一行：更新时间和刷新按钮 */}
+        <div className="flex items-center gap-2 text-muted-foreground/70">
+          {/* 上次查询时间 */}
+          <span className="flex items-center gap-1">
+            <Clock size={10} />
+            {lastQueriedAt
+              ? formatRelativeTime(lastQueriedAt, now, t)
+              : t("usage.never", { defaultValue: "从未更新" })}
+          </span>
+
+          {/* 刷新按钮 */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              refetch();
+            }}
+            disabled={loading}
+            className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-50 flex-shrink-0 text-muted-foreground"
+            title={t("usage.refreshUsage")}
+          >
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+          </button>
         </div>
       </div>
     );

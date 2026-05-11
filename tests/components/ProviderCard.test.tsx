@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Provider } from "@/types";
 import { ProviderCard } from "@/components/providers/ProviderCard";
@@ -213,6 +213,34 @@ describe("ProviderCard compact layout", () => {
     );
 
     expect(container.querySelector(".border-yellow-500")).toBeInTheDocument();
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "temporary slowdown",
+    );
+  });
+
+  it("keeps the recent tooltip visible while hovering the icon region", () => {
+    useProviderHealthMock.mockReturnValue({ data: null });
+
+    const recentResult = {
+      status: "degraded",
+      success: true,
+      message: "temporary slowdown",
+      modelUsed: "test-model",
+      testedAt: Date.now(),
+      retryCount: 0,
+    } satisfies StreamCheckResult;
+
+    const { rerender } = render(
+      <ProviderCard
+        {...baseProps}
+        recentTestResult={recentResult}
+      />,
+    );
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
+
+    rerender(<ProviderCard {...baseProps} recentTestResult={null} />);
+
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
       "temporary slowdown",
     );

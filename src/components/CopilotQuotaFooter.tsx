@@ -86,14 +86,18 @@ const CopilotQuotaFooter: React.FC<CopilotQuotaFooterProps> = ({
 
   if (inline) {
     return (
-      <div className="flex flex-col items-end gap-1 text-xs whitespace-nowrap flex-shrink-0">
-        <div className="flex items-center gap-2 justify-end">
+      <div className="inline-flex min-w-0 items-center gap-2 text-left text-xs whitespace-nowrap flex-shrink-0">
+        <div className="flex min-w-0 items-center gap-2">
+          {tiers.map((tier) => (
+            <TierBadge key={tier.name} tier={tier} t={t} />
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 text-muted-foreground/70">
           {quota.plan && (
-            <span className="text-[10px] text-muted-foreground/70">
-              {quota.plan}
-            </span>
+            <span className="text-muted-foreground/70">{quota.plan}</span>
           )}
-          <span className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
+          <span className="flex items-center gap-1">
             <Clock size={10} />
             {quota.queriedAt
               ? formatRelativeTime(quota.queriedAt, now, t)
@@ -110,12 +114,6 @@ const CopilotQuotaFooter: React.FC<CopilotQuotaFooterProps> = ({
           >
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {tiers.map((tier) => (
-            <TierBadge key={tier.name} tier={tier} t={t} />
-          ))}
         </div>
       </div>
     );

@@ -209,7 +209,7 @@ export function SettingsPage({
 
           <div className="flex-1 min-h-0 flex flex-col">
             <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1">
-              <TabsContent value="general" className="mt-0 space-y-4">
+              <TabsContent value="general" className="mt-0 space-y-4 pb-4">
                 {settings ? (
                   <div className="space-y-4">
                     <LanguageSettings
@@ -457,18 +457,18 @@ export function SettingsPage({
                 ) : null}
               </TabsContent>
 
-              <TabsContent value="about" className="mt-0">
+              <TabsContent value="about" className="mt-0 pb-4">
                 <AboutSection isPortable={isPortable} />
               </TabsContent>
 
-              <TabsContent value="usage" className="mt-0">
+              <TabsContent value="usage" className="mt-0 pb-4">
                 <UsageDashboard />
               </TabsContent>
             </div>
 
             {activeTab === "advanced" && settings && (
               <div
-                className="flex-shrink-0 pt-4 border-t border-border-default"
+                className="flex-shrink-0 border-t border-border-default py-4"
                 style={{ backgroundColor: "hsl(var(--background))" }}
               >
                 <div className="px-6 flex items-center justify-end gap-3">

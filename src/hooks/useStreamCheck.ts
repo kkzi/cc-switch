@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,28 +18,12 @@ export function useStreamCheck(appId: AppId) {
     Record<string, RecentStreamCheckEntry>
   >({});
   const queryClient = useQueryClient();
-  const clearTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map(),
-  );
-
-  useEffect(() => {
-    const clearTimers = clearTimersRef.current;
-    return () => {
-      clearTimers.forEach((timer) => clearTimeout(timer));
-      clearTimers.clear();
-    };
-  }, []);
 
   const checkProvider = useCallback(
     async (
       providerId: string,
       _providerName: string,
     ): Promise<StreamCheckResult | null> => {
-      const existingTimer = clearTimersRef.current.get(providerId);
-      if (existingTimer) {
-        clearTimeout(existingTimer);
-        clearTimersRef.current.delete(providerId);
-      }
       setRecentResults((prev) => {
         if (!(providerId in prev)) return prev;
         const next = { ...prev };
@@ -54,16 +38,6 @@ export function useStreamCheck(appId: AppId) {
           ...prev,
           [providerId]: { result },
         }));
-        const clearTimer = setTimeout(() => {
-          setRecentResults((prev) => {
-            if (!(providerId in prev)) return prev;
-            const next = { ...prev };
-            delete next[providerId];
-            return next;
-          });
-          clearTimersRef.current.delete(providerId);
-        }, 5000);
-        clearTimersRef.current.set(providerId, clearTimer);
 
         await queryClient.invalidateQueries({
           queryKey: ["providerHealth", providerId, appId],
