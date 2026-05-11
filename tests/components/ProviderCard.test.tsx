@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import * as React from "react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Provider } from "@/types";
 import { ProviderCard } from "@/components/providers/ProviderCard";
@@ -29,14 +30,48 @@ vi.mock("@/components/providers/FailoverPriorityBadge", () => ({
   FailoverPriorityBadge: () => <div data-testid="failover-priority-badge" />,
 }));
 
-vi.mock("@/components/ui/tooltip", () => ({
-  TooltipProvider: ({ children }: any) => <div>{children}</div>,
-  Tooltip: ({ children }: any) => <div>{children}</div>,
-  TooltipTrigger: ({ children }: any) => <div>{children}</div>,
-  TooltipContent: ({ children }: any) => (
-    <div data-testid="provider-card-tooltip">{children}</div>
-  ),
-}));
+vi.mock("@/components/ui/tooltip", () => {
+  const TooltipContext = React.createContext<{
+    open: boolean;
+    onOpenChange?: (open: boolean) => void;
+  }>({ open: false });
+
+  return {
+    TooltipProvider: ({ children }: any) => <div>{children}</div>,
+    Tooltip: ({ children, open, onOpenChange }: any) => (
+      <TooltipContext.Provider
+        value={{ open: Boolean(open), onOpenChange }}
+      >
+        <div>{children}</div>
+      </TooltipContext.Provider>
+    ),
+    TooltipTrigger: ({ children }: any) => {
+      const context = React.useContext(TooltipContext);
+      if (!React.isValidElement(children)) {
+        return <div>{children}</div>;
+      }
+      return React.cloneElement(children, {
+        onPointerEnter: (event: PointerEvent) => {
+          children.props.onPointerEnter?.(event);
+          context.onOpenChange?.(true);
+        },
+        onPointerLeave: (event: PointerEvent) => {
+          children.props.onPointerLeave?.(event);
+          context.onOpenChange?.(false);
+        },
+      });
+    },
+    TooltipContent: ({ children, ...props }: any) => {
+      const context = React.useContext(TooltipContext);
+      if (!context.open) return null;
+      return (
+        <div data-testid="provider-card-tooltip" {...props}>
+          {children}
+        </div>
+      );
+    },
+  };
+});
 
 vi.mock("@/lib/query/failover", () => ({
   useProviderHealth: (...args: unknown[]) => useProviderHealthMock(...args),
@@ -73,6 +108,7 @@ describe("ProviderCard compact layout", () => {
   };
 
   beforeEach(() => {
+    vi.useRealTimers();
     useProviderHealthMock.mockReturnValue({ data: null });
     useUsageQueryMock.mockReturnValue({ data: undefined });
   });
@@ -147,6 +183,8 @@ describe("ProviderCard compact layout", () => {
     });
 
     const { container } = render(<ProviderCard {...baseProps} />);
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
 
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
       longError,
@@ -244,5 +282,36 @@ describe("ProviderCard compact layout", () => {
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
       "temporary slowdown",
     );
+  });
+
+  it("auto hides the recent tooltip after 5 seconds when not hovered", async () => {
+    vi.useFakeTimers();
+    useProviderHealthMock.mockReturnValue({ data: null });
+
+    const recentResult = {
+      status: "degraded",
+      success: true,
+      message: "temporary slowdown",
+      modelUsed: "test-model",
+      testedAt: Date.now(),
+      retryCount: 0,
+    } satisfies StreamCheckResult;
+
+    render(
+      <ProviderCard
+        {...baseProps}
+        recentTestResult={recentResult}
+      />,
+    );
+
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "temporary slowdown",
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
+    expect(screen.queryByTestId("provider-card-tooltip")).not.toBeInTheDocument();
   });
 });

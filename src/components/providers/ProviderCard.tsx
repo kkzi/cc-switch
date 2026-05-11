@@ -234,6 +234,10 @@ export function ProviderCard({
     () => extractHealthTooltipMessage(recentTestResult?.message ?? ""),
     [recentTestResult?.message],
   );
+  const recentTooltipKey = useMemo(() => {
+    if (!recentTestResult || !recentTestTooltip) return "";
+    return `${recentTestResult.testedAt}:${recentTestResult.status}:${recentTestTooltip}`;
+  }, [recentTestResult, recentTestTooltip]);
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const [isRecentTooltipActive, setIsRecentTooltipActive] = useState(false);
   const [isTooltipRegionHovered, setIsTooltipRegionHovered] = useState(false);
@@ -259,6 +263,7 @@ export function ProviderCard({
   }, [lastCheckStatus]);
   const tooltipMessage = activeRecentTooltip || latestHealthTooltip;
   const hideTooltipTimerRef = useRef<number | null>(null);
+  const lastAutoOpenedRecentTooltipKeyRef = useRef("");
 
   const usageEnabled = provider.meta?.usage_script?.enabled ?? false;
   const isOfficial = isOfficialProvider(provider, appId);
@@ -320,10 +325,12 @@ export function ProviderCard({
       setIsRecentTooltipActive(false);
       setRecentTooltipSnapshot("");
       setRecentStatusSnapshot(null);
+      lastAutoOpenedRecentTooltipKeyRef.current = "";
       return;
     }
 
-    if (!recentTestTooltip) {
+    if (!recentTooltipKey) {
+      lastAutoOpenedRecentTooltipKeyRef.current = "";
       if (
         isRecentTooltipActive &&
         isTooltipRegionHovered &&
@@ -343,11 +350,16 @@ export function ProviderCard({
       return;
     }
 
+    if (lastAutoOpenedRecentTooltipKeyRef.current === recentTooltipKey) {
+      return;
+    }
+
     clearHideTooltipTimer();
     setRecentTooltipSnapshot(recentTestTooltip);
     setRecentStatusSnapshot(recentTestResult?.status ?? null);
     setIsTooltipOpen(true);
     setIsRecentTooltipActive(true);
+    lastAutoOpenedRecentTooltipKeyRef.current = recentTooltipKey;
     if (!isTooltipRegionHovered) {
       scheduleHideTooltip(5000);
     }
@@ -357,11 +369,9 @@ export function ProviderCard({
     };
   }, [
     isTesting,
-    isRecentTooltipActive,
-    isTooltipRegionHovered,
+    recentTooltipKey,
     recentTestResult?.status,
     recentTestTooltip,
-    recentTooltipSnapshot,
   ]);
 
   useEffect(() => {
