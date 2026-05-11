@@ -6,6 +6,7 @@ import { Zap, Star, Layers, Settings2 } from "lucide-react";
 import type { ProviderPreset } from "@/config/claudeProviderPresets";
 import type { CodexProviderPreset } from "@/config/codexProviderPresets";
 import type { GeminiProviderPreset } from "@/config/geminiProviderPresets";
+import type { ClaudeDesktopProviderPreset } from "@/config/claudeDesktopProviderPresets";
 import type { ProviderCategory } from "@/types";
 import {
   universalProviderPresets,
@@ -13,9 +14,15 @@ import {
 } from "@/config/universalProviderPresets";
 import { ProviderIcon } from "@/components/ProviderIcon";
 
+type AnyPreset =
+  | ProviderPreset
+  | CodexProviderPreset
+  | GeminiProviderPreset
+  | ClaudeDesktopProviderPreset;
+
 type PresetEntry = {
   id: string;
-  preset: ProviderPreset | CodexProviderPreset | GeminiProviderPreset;
+  preset: AnyPreset;
 };
 
 interface ProviderPresetSelectorProps {
@@ -48,9 +55,8 @@ export function ProviderPresetSelector({
   const normalizePresetLabel = (label: string) =>
     label.toLowerCase().replace(/\s+/g, " ").trim();
 
-  const resolvePresetName = (
-    preset: ProviderPreset | CodexProviderPreset | GeminiProviderPreset,
-  ) => (preset.nameKey ? t(preset.nameKey) : preset.name);
+  const resolvePresetName = (preset: AnyPreset) =>
+    preset.nameKey ? t(preset.nameKey) : preset.name;
 
   const allPresetEntries = useMemo(
     () => categoryKeys.flatMap((key) => groupedPresets[key] ?? []),
@@ -141,9 +147,7 @@ export function ProviderPresetSelector({
     }
   };
 
-  const renderPresetIcon = (
-    preset: ProviderPreset | CodexProviderPreset | GeminiProviderPreset,
-  ) => {
+  const renderPresetIcon = (preset: AnyPreset) => {
     const iconType = preset.theme?.icon;
     if (!iconType) return null;
 
@@ -161,10 +165,7 @@ export function ProviderPresetSelector({
     }
   };
 
-  const getPresetButtonClass = (
-    isSelected: boolean,
-    preset: ProviderPreset | CodexProviderPreset | GeminiProviderPreset,
-  ) => {
+  const getPresetButtonClass = (isSelected: boolean, preset: AnyPreset) => {
     const baseClass =
       "inline-flex h-8 items-center gap-2 border px-2.5 text-sm font-medium";
 
@@ -178,10 +179,7 @@ export function ProviderPresetSelector({
     return `${baseClass} border-border-default bg-background text-muted-foreground hover:bg-muted`;
   };
 
-  const getPresetButtonStyle = (
-    isSelected: boolean,
-    preset: ProviderPreset | CodexProviderPreset | GeminiProviderPreset,
-  ) => {
+  const getPresetButtonStyle = (isSelected: boolean, preset: AnyPreset) => {
     if (!isSelected || !preset.theme?.backgroundColor) {
       return undefined;
     }

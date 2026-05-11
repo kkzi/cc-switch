@@ -114,6 +114,7 @@ const HEADER_HEIGHT = 56; // px
 const STORAGE_KEY = "cc-switch-last-app";
 const VALID_APPS: AppId[] = [
   "claude",
+  "claude-desktop",
   "codex",
   "gemini",
   "opencode",
@@ -178,6 +179,7 @@ function App() {
   const contentTopOffset = dragBarHeight + HEADER_HEIGHT;
   const visibleApps: VisibleApps = settingsData?.visibleApps ?? {
     claude: true,
+    "claude-desktop": true,
     codex: true,
     gemini: true,
     opencode: true,
@@ -187,6 +189,7 @@ function App() {
 
   const getFirstVisibleApp = (): AppId => {
     if (visibleApps.claude) return "claude";
+    if (visibleApps["claude-desktop"]) return "claude-desktop";
     if (visibleApps.codex) return "codex";
     if (visibleApps.gemini) return "gemini";
     if (visibleApps.opencode) return "opencode";
@@ -272,7 +275,7 @@ function App() {
     useOpenClawHealth(isOpenClawView);
   const openHermesWebUI = useOpenHermesWebUI();
   useUsageCacheBridge();
-  const hasSkillsSupport = true;
+  const hasSkillsSupport = activeApp !== "claude-desktop";
   const hasSessionSupport =
     activeApp === "claude" ||
     activeApp === "codex" ||
