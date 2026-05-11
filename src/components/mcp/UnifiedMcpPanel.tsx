@@ -140,7 +140,7 @@ const UnifiedMcpPanel = React.forwardRef<
   };
 
   return (
-    <div className="px-6 flex flex-col flex-1 min-h-0 overflow-hidden">
+    <div className="px-4 pt-3 pb-4 flex flex-col flex-1 min-h-0 overflow-hidden">
       <AppCountBar
         totalLabel={t("mcp.serverCount", { count: serverEntries.length })}
         counts={enabledCounts}

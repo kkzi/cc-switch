@@ -468,10 +468,10 @@ export function SettingsPage({
 
             {activeTab === "advanced" && settings && (
               <div
-                className="flex-shrink-0 border-t border-border-default py-4"
+                className="-mx-4 flex-shrink-0 border-t border-border-default py-4"
                 style={{ backgroundColor: "hsl(var(--background))" }}
               >
-                <div className="px-6 flex items-center justify-end gap-3">
+                <div className="flex items-center justify-end gap-3 px-4 pr-5">
                   <Button onClick={handleSave} disabled={isSaving}>
                     {isSaving ? (
                       <span className="inline-flex items-center gap-2">

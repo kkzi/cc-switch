@@ -345,7 +345,7 @@ const UnifiedSkillsPanel = React.forwardRef<
   }));
 
   return (
-    <div className="px-6 flex flex-col flex-1 min-h-0 overflow-hidden">
+    <div className="px-4 pt-3 pb-4 flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className="flex items-center justify-between">
         <AppCountBar
           totalLabel={t("skills.installed", { count: skills?.length || 0 })}

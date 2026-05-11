@@ -570,14 +570,32 @@ impl StreamCheckService {
                 .map_err(Self::map_request_error)?;
 
             let status = response.status().as_u16();
+            let is_first_fallback_candidate = i == 0 && urls.len() > 1;
+            let content_type = response
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok())
+                .map(str::to_ascii_lowercase);
 
             if !response.status().is_success() {
                 let error_text = response.text().await.unwrap_or_default();
-                // 回退策略：仅当首选 URL 返回 404 时尝试下一个
-                if i == 0 && status == 404 && urls.len() > 1 {
+                // 回退策略：首个候选地址返回 404 时尝试下一个
+                if is_first_fallback_candidate && status == 404 {
                     continue;
                 }
                 return Err(Self::http_status_error(status, error_text));
+            }
+
+            if content_type
+                .as_deref()
+                .is_some_and(|value| value.starts_with("text/html"))
+            {
+                if is_first_fallback_candidate {
+                    continue;
+                }
+                return Err(AppError::Message(
+                    "Codex responses endpoint returned HTML instead of SSE".to_string(),
+                ));
             }
 
             let mut stream = response.bytes_stream();
@@ -764,7 +782,7 @@ impl StreamCheckService {
                         let category = Self::detect_error_category(*status, body);
                         (
                             Some(*status),
-                            Self::classify_http_status(*status).to_string(),
+                            Self::format_http_status_message(*status, body),
                             category.map(|s| s.to_string()),
                         )
                     }
@@ -1341,6 +1359,15 @@ impl StreamCheckService {
         AppError::HttpStatus { status, body }
     }
 
+    pub(crate) fn format_http_status_message(status: u16, body: &str) -> String {
+        let summary = Self::classify_http_status(status);
+        let trimmed = body.trim();
+        if trimmed.is_empty() {
+            return summary.to_string();
+        }
+        format!("{summary}: {trimmed}")
+    }
+
     /// 将 HTTP 状态码映射为简短的分类标签
     pub(crate) fn classify_http_status(status: u16) -> &'static str {
         match status {
@@ -1768,6 +1795,21 @@ mod tests {
     }
 
     #[test]
+    fn test_format_http_status_message_includes_body() {
+        let message = StreamCheckService::format_http_status_message(
+            401,
+            r#"{"error":"Invalid API key"}"#,
+        );
+        assert_eq!(message, r#"Auth rejected (401): {"error":"Invalid API key"}"#);
+    }
+
+    #[test]
+    fn test_format_http_status_message_without_body_uses_summary_only() {
+        let message = StreamCheckService::format_http_status_message(404, "");
+        assert_eq!(message, "Not found (404)");
+    }
+
+    #[test]
     fn test_get_os_name() {
         let os_name = StreamCheckService::get_os_name();
         // 确保返回非空字符串
@@ -2003,5 +2045,27 @@ mod tests {
                 "https://api.openai.com/v1/responses",
             ]
         );
+    }
+
+    #[test]
+    fn test_should_fallback_on_html_response_for_first_codex_candidate() {
+        let should_fallback = true;
+        let content_type = Some("text/html; charset=utf-8".to_string());
+
+        assert!(should_fallback);
+        assert!(content_type
+            .as_deref()
+            .is_some_and(|value| value.starts_with("text/html")));
+    }
+
+    #[test]
+    fn test_should_not_accept_html_response_for_last_codex_candidate() {
+        let is_first_fallback_candidate = false;
+        let content_type = Some("text/html; charset=utf-8".to_string());
+
+        assert!(!is_first_fallback_candidate);
+        assert!(content_type
+            .as_deref()
+            .is_some_and(|value| value.starts_with("text/html")));
     }
 }
