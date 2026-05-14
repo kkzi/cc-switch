@@ -5,8 +5,8 @@
 ## 1. 基线
 
 - 对比命令: `git diff upstream/main`
-- 当前状态: fork 相对 upstream `ahead 76 commits`
-- 当前 diff 规模: `138 files changed, 7815 insertions(+), 2085 deletions(-)`
+- 当前状态: fork 相对 upstream `ahead 79 commits`
+- 当前 diff 规模: `138 files changed, 8176 insertions(+), 2134 deletions(-)`
 - 不纳入本文档:
   - 未跟踪文件
   - 口头约定
@@ -115,6 +115,7 @@
 
 - upstream 若改 provider health、schema migration 或 speedtest 行为，必须人工合并
 - `ProviderHealth.last_check_status` 和 `ProviderMeta.lastSpeedtest` 不能被回滚掉
+- `stream_check` 对 provider health 的持久写回不能被回滚掉
 
 ### 3.4 OpenAI 兼容模型拉取能力
 
@@ -192,6 +193,9 @@
   - `recentTestResult.status`
   - 或 `health.last_check_status`
 - tooltip 会优先展示最近测试 message，否则展示 `last_error`
+- 单个 / 批量 stream check 结果现在会持久写回 `provider_health.last_error` 与 `last_check_status`
+- card 左侧 icon tooltip 对 HTTP 错误不再只显示摘要，会把错误正文解析成更可读的多行格式
+- 若 `last_error` 中包含 JSON 字符串或转义换行（如 `\\n`），tooltip 会优先提取 `error.message`；若不能解析为 JSON，则显示解码后的原文
 - Codex stream check 对首个候选 URL 返回 `text/html` 时会自动 fallback 到备用 `/v1/responses`
 - stream check 的 HTTP 错误 message 不再只保留状态码，而是会附带响应体摘要
 - 卡片支持：
@@ -212,6 +216,8 @@
   - `text/html` 不能被当作 Codex Responses 成功响应
   - 根地址 `/responses` 返回 HTML 时要继续尝试 `/v1/responses`
   - tooltip / recent result message 需要保留状态码之外的错误正文
+  - 测试按钮触发的 stream check 结果需要持久写回 `provider_health`
+  - `ProviderCard` tooltip 需要把 `Auth rejected (401): {...}` 一类错误整理成多行可读文本，而不是只显示摘要前缀
 
 ### 3.7 Provider 新增表单、预设交互与剪贴板导入
 
@@ -283,6 +289,9 @@
 - Settings 页结构、WindowSettings、About 区块都有明显 fork 定制
 - Settings / Skills / Prompts / MCP / Sessions 等页面已统一外层面板 padding
 - Settings 高级页底部操作区采用“外层 top border 拉通主面板宽度，内层按钮区再对齐内容区”的显示逻辑
+- 余额查询（`templateType === "balance"`）在 provider card 内联区域使用独立的紧凑布局，而不是复用通用用量布局
+- 余额查询操作按钮改为无 padding 的文本按钮；中文文案缩短为 `查询`
+- 余额内联区只保留最小控件：余额数值、可截断单位、小尺寸时间图标与文本按钮，避免撑大 provider card
 - 一部分 UI primitive 与构建配置也有差异
 
 同步约束：
@@ -383,6 +392,7 @@
 ### 7.2 Provider 数据链
 
 - `ProviderHealth.last_check_status` 能返回前端
+- stream check 结果会持久写入 `provider_health.last_error / last_check_status`
 - speedtest 结果能写入 `meta.lastSpeedtest`
 - OpenAI 兼容模型拉取链路可用
 - 新增 provider 默认插入第 2 位
@@ -395,6 +405,7 @@
 - recent tooltip 未悬停时只自动显示一次，不会重复弹出
 - Codex 测试遇到 `200 + text/html` 时会继续尝试 fallback URL，而不是误判成功
 - error tooltip / recent test tooltip 需要显示状态码之外的错误正文
+- `Auth rejected (401): {...}` 这类错误会在 tooltip 中整理成多行可读文本
 - 双击卡片触发主操作
 - 右键菜单可复制连接信息、置顶、置底
 
@@ -409,6 +420,7 @@
 - header 布局与按钮尺寸正常
 - Add Provider 的 `initialData` 注入正常
 - usage 页面无页级进入动画
+- balance inline controls 保持紧凑，不应因时间文本或按钮 padding 撑大 provider card
 - settings 页面结构与窗口设置项正常
 - Skills / Prompts / MCP / Sessions 与 Settings 页的外层 padding 保持一致
 - Settings 高级页底部操作区的 top border 贯穿主面板宽度
