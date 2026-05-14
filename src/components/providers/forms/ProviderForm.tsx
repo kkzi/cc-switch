@@ -48,6 +48,7 @@ import type { UniversalProviderPreset } from "@/config/universalProviderPresets"
 import {
   applyTemplateValues,
   hasApiKeyField,
+  normalizeCodexCustomProviderConfig,
 } from "@/utils/providerConfigUtils";
 import { mergeProviderMeta } from "@/utils/providerMetaUtils";
 import { getCodexCustomTemplate } from "@/config/codexTemplates";
@@ -1240,9 +1241,12 @@ function ProviderFormFull({
     if (appId === "codex") {
       try {
         const authJson = JSON.parse(codexAuth);
+        const normalizedCodexConfig = normalizeCodexCustomProviderConfig(
+          codexConfig ?? "",
+        );
         const configObj = {
           auth: authJson,
-          config: codexConfig ?? "",
+          config: normalizedCodexConfig,
         };
         settingsConfig = JSON.stringify(configObj);
       } catch (err) {

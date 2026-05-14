@@ -248,6 +248,7 @@
 - `ProviderPresetSelector` 改成了“首行展示 + 展开/收起”
 - 新增 `normalizeCodexCustomProviderConfig()`
 - Codex custom provider 统一规范到 `[model_providers.custom]`
+- 这条规范化不只发生在新建模板初始值；`ProviderForm` 的 Codex 保存提交路径也会在序列化前强制把 `model_provider`、`[model_providers.*]` 和 provider `name` 归一到固定的 `custom`
 - `ProviderService::create` 对新增 provider 的默认插入位置做了 fork 定制：
   - 空列表插到第 1 个
   - 非空列表默认插到第 2 个
@@ -256,6 +257,7 @@
 
 - provider 表单与 preset 相关文件属于高频冲突区
 - upstream 若改 Codex 表单结构、preset 组织或新增 provider 流程，需要整体复核
+- upstream 若改 `ProviderForm.tsx` 的 Codex 提交逻辑，不要把“保存时强制归一化 custom provider section”的 fork 行为回滚掉
 - 新增 provider 默认插入第 2 位的行为不要被无意回滚
 
 ### 3.8 App Shell、Settings、Usage 与样式层
@@ -413,7 +415,7 @@
 
 - `Ctrl/Cmd + V` 能从剪贴板打开新增 provider
 - clipboard draft 能生成正确的初始配置
-- Codex custom provider 会标准化到 `[model_providers.custom]`
+- Codex custom provider 在新增初始值和保存提交时都会标准化到 `[model_providers.custom]`
 
 ### 7.5 App Shell / Settings / Usage
 
