@@ -483,7 +483,7 @@ impl Database {
 
             conn.query_row(
                 "SELECT provider_id, app_type, is_healthy, consecutive_failures,
-                        last_success_at, last_failure_at, last_error, updated_at
+                        last_check_status, last_success_at, last_failure_at, last_error, updated_at
                  FROM provider_health
                  WHERE provider_id = ?1 AND app_type = ?2",
                 rusqlite::params![provider_id, app_type],
@@ -493,11 +493,11 @@ impl Database {
                         app_type: row.get(1)?,
                         is_healthy: row.get::<_, i64>(2)? != 0,
                         consecutive_failures: row.get::<_, i64>(3)? as u32,
-                        last_check_status: None,
-                        last_success_at: row.get(4)?,
-                        last_failure_at: row.get(5)?,
-                        last_error: row.get(6)?,
-                        updated_at: row.get(7)?,
+                        last_check_status: row.get(4)?,
+                        last_success_at: row.get(5)?,
+                        last_failure_at: row.get(6)?,
+                        last_error: row.get(7)?,
+                        updated_at: row.get(8)?,
                     })
                 },
             )
@@ -532,8 +532,15 @@ impl Database {
         error_msg: Option<String>,
     ) -> Result<(), AppError> {
         // 默认阈值与 CircuitBreakerConfig::default() 保持一致
-        self.update_provider_health_with_threshold(provider_id, app_type, success, error_msg, 5)
-            .await
+        self.update_provider_health_with_status(
+            provider_id,
+            app_type,
+            success,
+            Some(if success { "operational" } else { "failed" }),
+            error_msg,
+            5,
+        )
+        .await
     }
 
     /// 更新Provider健康状态（带阈值参数）
@@ -545,6 +552,26 @@ impl Database {
         provider_id: &str,
         app_type: &str,
         success: bool,
+        error_msg: Option<String>,
+        failure_threshold: u32,
+    ) -> Result<(), AppError> {
+        self.update_provider_health_with_status(
+            provider_id,
+            app_type,
+            success,
+            Some(if success { "operational" } else { "failed" }),
+            error_msg,
+            failure_threshold,
+        )
+        .await
+    }
+
+    pub async fn update_provider_health_with_status(
+        &self,
+        provider_id: &str,
+        app_type: &str,
+        success: bool,
+        last_check_status: Option<&str>,
         error_msg: Option<String>,
         failure_threshold: u32,
     ) -> Result<(), AppError> {
@@ -581,18 +608,20 @@ impl Database {
         conn.execute(
             "INSERT OR REPLACE INTO provider_health
              (provider_id, app_type, is_healthy, consecutive_failures,
-              last_success_at, last_failure_at, last_error, updated_at)
+              last_check_status, last_success_at, last_failure_at, last_error, updated_at)
              VALUES (?1, ?2, ?3, ?4,
-                     COALESCE(?5, (SELECT last_success_at FROM provider_health
+                     ?5,
+                     COALESCE(?6, (SELECT last_success_at FROM provider_health
                                    WHERE provider_id = ?1 AND app_type = ?2)),
-                     COALESCE(?6, (SELECT last_failure_at FROM provider_health
+                     COALESCE(?7, (SELECT last_failure_at FROM provider_health
                                    WHERE provider_id = ?1 AND app_type = ?2)),
-                     ?7, ?8)",
+                     ?8, ?9)",
             rusqlite::params![
                 provider_id,
                 app_type,
                 is_healthy,
                 consecutive_failures as i64,
+                last_check_status,
                 last_success_at,
                 last_failure_at,
                 error_msg,

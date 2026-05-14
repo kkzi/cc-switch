@@ -256,6 +256,53 @@ describe("ProviderCard compact layout", () => {
     );
   });
 
+  it("formats structured health errors into multiline tooltip text", () => {
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 1,
+        last_check_status: "failed",
+        last_error:
+          '401 Auth rejected: {"error":{"message":"Invalid token\\nPlease check","type":"new_api_error"}}',
+      },
+    });
+
+    render(<ProviderCard {...baseProps} />);
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
+
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "401 Auth rejected",
+    );
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "Invalid token",
+    );
+  });
+
+  it("decodes prefixed json-like health errors for tooltip display", () => {
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 1,
+        last_check_status: "failed",
+        last_error:
+          'Auth rejected (401): {"error":{"message":"Invalid token\\nPlease check"}}',
+      },
+    });
+
+    render(<ProviderCard {...baseProps} />);
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
+
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "401 Auth rejected",
+    );
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "Invalid token",
+    );
+    expect(screen.getByTestId("provider-card-tooltip")).not.toHaveTextContent(
+      "\\n",
+    );
+  });
+
   it("keeps the recent tooltip visible while hovering the icon region", () => {
     useProviderHealthMock.mockReturnValue({ data: null });
 

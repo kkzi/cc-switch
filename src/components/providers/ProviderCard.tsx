@@ -150,16 +150,90 @@ const extractApiUrl = (provider: Provider, fallbackText: string) => {
   return fallbackText;
 };
 
+const decodeEscapedText = (input: string) =>
+  input
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\"/g, '"')
+    .replace(/\\\\/g, "\\");
+
+const formatTooltipPayload = (
+  status: string,
+  title: string,
+  payload: string,
+) => {
+  const rawPayload = payload.trim();
+
+  try {
+    const parsed = JSON.parse(rawPayload) as unknown;
+    if (parsed && typeof parsed === "object") {
+      const obj = parsed as {
+        error?: { message?: unknown };
+        message?: unknown;
+      };
+      const detail =
+        typeof obj.error?.message === "string"
+          ? obj.error.message
+          : typeof obj.message === "string"
+            ? obj.message
+            : rawPayload;
+      return `${status} ${title}\n${decodeEscapedText(detail)}`.trim();
+    }
+  } catch {
+    return `${status} ${title}\n${decodeEscapedText(rawPayload)}`.trim();
+  }
+
+  return `${status} ${title}\n${decodeEscapedText(rawPayload)}`.trim();
+};
+
 const extractHealthTooltipMessage = (message: string) => {
   const trimmed = message.trim();
   if (!trimmed) return "";
 
-  const structuredMatch = trimmed.match(/(?:^|\n)message=([^\n]+)/);
-  if (structuredMatch?.[1]) {
-    return structuredMatch[1].trim();
+  const normalized = decodeEscapedText(trimmed);
+  const summaryPrefixMatch = trimmed.match(
+    /^([^\n(]+?)\s*\((\d{3})\):\s*([\s\S]+)$/,
+  );
+  if (summaryPrefixMatch) {
+    const [, title, status, payload] = summaryPrefixMatch;
+    return formatTooltipPayload(status, title.trim(), payload);
   }
 
-  return trimmed;
+  const statusPrefixMatch = trimmed.match(/^(\d{3})\s+([^\n:]+):\s*([\s\S]+)$/);
+  if (statusPrefixMatch) {
+    const [, status, title, payload] = statusPrefixMatch;
+    return formatTooltipPayload(status, title.trim(), payload);
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (parsed && typeof parsed === "object") {
+      const obj = parsed as {
+        error?: { message?: unknown; type?: unknown; code?: unknown };
+        message?: unknown;
+        status?: unknown;
+      };
+      const status = typeof obj.status === "string" ? obj.status : "401";
+      const title =
+          typeof obj.error?.type === "string"
+            ? obj.error.type
+            : typeof obj.error?.code === "string"
+              ? obj.error.code
+            : "Auth rejected";
+      const detail =
+        typeof obj.error?.message === "string"
+          ? obj.error.message
+          : typeof obj.message === "string"
+            ? obj.message
+            : trimmed;
+      return `${status} ${title}\n${decodeEscapedText(detail)}`.trim();
+    }
+  } catch {
+    return normalized;
+  }
+
+  return normalized;
 };
 
 export function ProviderCard({
