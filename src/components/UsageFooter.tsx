@@ -1,6 +1,7 @@
 import React from "react";
 import { RefreshCw, AlertCircle, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { type AppId } from "@/lib/api";
 import { useUsageQuery } from "@/lib/query/queries";
 import { UsageData, Provider } from "@/types";
@@ -38,6 +39,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   const { t } = useTranslation();
   const isTokenPlan =
     provider.meta?.usage_script?.templateType === "token_plan";
+  const isBalance = provider.meta?.usage_script?.templateType === "balance";
 
   // 统一的用量查询（自动查询仅对当前激活的供应商启用）
   // OpenCode（累加模式）：使用 isInConfig 代替 isCurrent
@@ -58,6 +60,57 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
 
   // 🆕 定期更新当前时间，用于刷新相对时间显示
   const [now, setNow] = React.useState(Date.now());
+  const balanceButtonLabel = t("usage.queryBalance", {
+    defaultValue: "Query balance",
+  });
+  const lastQueriedLabel = lastQueriedAt
+    ? formatRelativeTime(lastQueriedAt, now, t)
+    : t("usage.never", { defaultValue: "Never" });
+
+  const renderRefreshControl = ({
+    stopPropagation = false,
+    className,
+  }: {
+    stopPropagation?: boolean;
+    className: string;
+  }) => {
+    if (isBalance) {
+      return (
+        <Button
+          type="button"
+          variant="link"
+          onClick={(e) => {
+            if (stopPropagation) {
+              e.stopPropagation();
+            }
+            refetch();
+          }}
+          disabled={loading}
+          className={className}
+          title={balanceButtonLabel}
+        >
+          {balanceButtonLabel}
+        </Button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          if (stopPropagation) {
+            e.stopPropagation();
+          }
+          refetch();
+        }}
+        disabled={loading}
+        className={className}
+        title={t("usage.refreshUsage")}
+      >
+        <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+      </button>
+    );
+  };
 
   React.useEffect(() => {
     if (!lastQueriedAt) return;
@@ -77,19 +130,25 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   if (!usage.success) {
     if (inline) {
       return (
-        <div className="inline-flex items-center gap-2 text-xs rounded-lg border border-border-default bg-card px-3 py-2 shadow-sm">
-          <div className="flex items-center gap-1.5 text-red-500 dark:text-red-400">
-            <AlertCircle size={12} />
-            <span>{t("usage.queryFailed")}</span>
-          </div>
-          <button
-            onClick={() => refetch()}
-            disabled={loading}
-            className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-50 flex-shrink-0"
-            title={t("usage.refreshUsage")}
+        <div
+          className={`inline-flex max-w-full min-w-0 items-center rounded-md border border-border-default bg-card shadow-sm ${
+            isBalance ? "gap-1 px-1.5 py-0.5 text-[11px]" : "gap-2 px-3 py-2 text-xs"
+          }`}
+        >
+          <div
+            className={`flex min-w-0 items-center text-red-500 dark:text-red-400 ${
+              isBalance ? "gap-1" : "gap-1.5"
+            }`}
           >
-            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          </button>
+            <AlertCircle size={12} />
+            <span className="truncate">{t("usage.queryFailed")}</span>
+          </div>
+          {renderRefreshControl({
+            className:
+              isBalance
+                ? "h-auto flex-shrink-0 p-0 text-[11px] leading-none text-muted-foreground no-underline hover:no-underline"
+                : "h-auto flex-shrink-0 p-0 text-xs text-muted-foreground no-underline hover:no-underline",
+          })}
         </div>
       );
     }
@@ -103,14 +162,10 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
           </div>
 
           {/* 刷新按钮 */}
-          <button
-            onClick={() => refetch()}
-            disabled={loading}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 flex-shrink-0"
-            title={t("usage.refreshUsage")}
-          >
-            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          </button>
+          {renderRefreshControl({
+            className:
+              "h-auto flex-shrink-0 p-0 text-xs text-muted-foreground no-underline hover:no-underline",
+          })}
         </div>
       </div>
     );
@@ -120,6 +175,54 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
 
   // 无数据时不显示
   if (usageDataList.length === 0) return null;
+
+  if (isBalance && inline) {
+    const firstUsage = usageDataList[0];
+    const isExpired = firstUsage.isValid === false;
+
+    return (
+      <div className="inline-flex max-w-full min-w-0 items-center gap-1 overflow-hidden text-left text-[11px] leading-none">
+        {firstUsage.remaining !== undefined && (
+          <span
+            className={`font-semibold tabular-nums ${
+              isExpired
+                ? "text-red-500 dark:text-red-400"
+                : firstUsage.remaining <
+                      (firstUsage.total || firstUsage.remaining) * 0.1
+                  ? "text-orange-500 dark:text-orange-400"
+                  : "text-green-600 dark:text-green-400"
+            }`}
+            title={lastQueriedLabel}
+          >
+            {firstUsage.remaining.toFixed(2)}
+          </span>
+        )}
+
+        {firstUsage.unit && (
+          <span
+            className="max-w-[3rem] truncate text-[10px] text-gray-500 dark:text-gray-400"
+            title={firstUsage.unit}
+          >
+            {firstUsage.unit}
+          </span>
+        )}
+
+        {lastQueriedAt && (
+          <Clock
+            size={9}
+            className="shrink-0 text-muted-foreground/60"
+            title={lastQueriedLabel}
+          />
+        )}
+
+        {renderRefreshControl({
+          stopPropagation: true,
+          className:
+            "h-auto flex-shrink-0 p-0 text-[11px] leading-none text-muted-foreground no-underline hover:no-underline",
+        })}
+      </div>
+    );
+  }
 
   // ── Token Plan：订阅风格内联渲染（百分比徽章 + 倒计时） ──
   if (isTokenPlan && inline) {
@@ -140,17 +243,11 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
               ? formatRelativeTime(lastQueriedAt, now, t)
               : t("usage.never", { defaultValue: "从未更新" })}
           </span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              refetch();
-            }}
-            disabled={loading}
-            className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-50 flex-shrink-0 text-muted-foreground"
-            title={t("usage.refreshUsage")}
-          >
-            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          </button>
+          {renderRefreshControl({
+            stopPropagation: true,
+            className:
+              "h-auto flex-shrink-0 p-0 text-xs text-muted-foreground no-underline hover:no-underline",
+          })}
         </div>
       </div>
     );
@@ -227,17 +324,11 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
           </span>
 
           {/* 刷新按钮 */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              refetch();
-            }}
-            disabled={loading}
-            className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-50 flex-shrink-0 text-muted-foreground"
-            title={t("usage.refreshUsage")}
-          >
-            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          </button>
+          {renderRefreshControl({
+            stopPropagation: true,
+            className:
+              "h-auto flex-shrink-0 p-0 text-xs text-muted-foreground no-underline hover:no-underline",
+          })}
         </div>
       </div>
     );
@@ -258,14 +349,10 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
               {formatRelativeTime(lastQueriedAt, now, t)}
             </span>
           )}
-          <button
-            onClick={() => refetch()}
-            disabled={loading}
-            className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-50"
-            title={t("usage.refreshUsage")}
-          >
-            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          </button>
+          {renderRefreshControl({
+            className:
+              "h-auto p-0 text-xs text-muted-foreground no-underline hover:no-underline",
+          })}
         </div>
       </div>
 
