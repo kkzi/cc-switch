@@ -9,6 +9,7 @@ import type { AppId } from "@/lib/api";
 
 interface RecentStreamCheckEntry {
   result: StreamCheckResult;
+  nonce: number;
 }
 
 export function useStreamCheck(appId: AppId) {
@@ -36,7 +37,7 @@ export function useStreamCheck(appId: AppId) {
         const result = await streamCheckProvider(appId, providerId);
         setRecentResults((prev) => ({
           ...prev,
-          [providerId]: { result },
+          [providerId]: { result, nonce: Date.now() },
         }));
 
         await queryClient.invalidateQueries({
@@ -69,7 +70,15 @@ export function useStreamCheck(appId: AppId) {
   );
 
   const getRecentResult = useCallback(
-    (providerId: string) => recentResults[providerId]?.result ?? null,
+    (providerId: string) => {
+      const entry = recentResults[providerId];
+      if (!entry) return null;
+
+      return {
+        ...entry.result,
+        testedAt: entry.nonce,
+      };
+    },
     [recentResults],
   );
 

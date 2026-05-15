@@ -71,7 +71,7 @@ export function ProviderActions({
   onSetAsDefault,
 }: ProviderActionsProps) {
   const { t } = useTranslation();
-  const iconButtonClass = "h-8 w-8 p-1";
+  const iconButtonClass = "h-7 w-7 p-1";
 
   // 累加模式应用（OpenCode 非 OMO / OpenClaw / Hermes）
   const isAdditiveMode =
@@ -159,7 +159,7 @@ export function ProviderActions({
           disabled: false,
           variant: "secondary" as const,
           className:
-            "bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-400 dark:hover:bg-blue-900/70",
+            "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-400 dark:hover:bg-emerald-900/70",
           icon: <Check className="h-4 w-4" />,
           text: t("failover.inQueue", { defaultValue: "已加入" }),
         };
@@ -168,7 +168,7 @@ export function ProviderActions({
         disabled: false,
         variant: "default" as const,
         className:
-          "bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700",
+          "bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700",
         icon: <Plus className="h-4 w-4" />,
         text: t("failover.addQueue", { defaultValue: "加入" }),
       };
@@ -215,7 +215,7 @@ export function ProviderActions({
   });
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       {(appId === "openclaw" || appId === "hermes") &&
         isInConfig &&
         onSetAsDefault &&
@@ -235,7 +235,7 @@ export function ProviderActions({
               onClick={isDefaultModel ? undefined : onSetAsDefault}
               disabled={isDefaultModel}
               className={cn(
-                "w-fit px-2.5",
+                "h-7 w-fit gap-1 px-2 text-xs",
                 isDefaultModel
                   ? "bg-gray-200 text-muted-foreground dark:bg-gray-700 opacity-60 cursor-not-allowed"
                   : "bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700",
@@ -252,13 +252,13 @@ export function ProviderActions({
         variant={buttonState.variant}
         onClick={handleMainButtonClick}
         disabled={buttonState.disabled}
-        className={cn("w-[4.5rem] px-2.5", buttonState.className)}
+        className={cn("h-7 w-[4.1rem] gap-1 px-2 text-xs", buttonState.className)}
       >
         {buttonState.icon}
         {buttonState.text}
       </Button>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         <Button
           size="icon"
           variant="ghost"

@@ -1,6 +1,7 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { GripVertical, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import type {
   DraggableAttributes,
   DraggableSyntheticListeners,
@@ -16,6 +17,7 @@ import { isHermesReadOnlyProvider } from "@/config/hermesProviderPresets";
 import { ProviderHealthBadge } from "@/components/providers/ProviderHealthBadge";
 import { FailoverPriorityBadge } from "@/components/providers/FailoverPriorityBadge";
 import { extractCodexBaseUrl } from "@/utils/providerConfigUtils";
+import { copyText } from "@/lib/clipboard";
 import { useProviderHealth } from "@/lib/query/failover";
 import { useUsageQuery } from "@/lib/query/queries";
 import {
@@ -158,82 +160,245 @@ const decodeEscapedText = (input: string) =>
     .replace(/\\\"/g, '"')
     .replace(/\\\\/g, "\\");
 
+const unwrapRustOptionString = (input: string) => {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  if (trimmed === "None") return "";
+
+  const someQuotedMatch = trimmed.match(/^Some\("([\s\S]*)"\)$/);
+  if (someQuotedMatch) {
+    return decodeEscapedText(someQuotedMatch[1]);
+  }
+
+  const someRawMatch = trimmed.match(/^Some\(([\s\S]*)\)$/);
+  if (someRawMatch) {
+    return decodeEscapedText(someRawMatch[1].trim());
+  }
+
+  return input;
+};
+
+const padTimePart = (value: number) => value.toString().padStart(2, "0");
+
+const normalizeUnixTimestamp = (value: number) => {
+  // Stream check timestamps from Rust are currently Unix seconds; some
+  // frontend-generated timestamps (tests / local UI state) are already ms.
+  return value < 1_000_000_000_000 ? value * 1000 : value;
+};
+
+const formatTooltipTimestamp = (timestamp: number | null) => {
+  if (timestamp === null || !Number.isFinite(timestamp)) {
+    return "";
+  }
+
+  const date = new Date(normalizeUnixTimestamp(timestamp));
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return [
+    date.getFullYear(),
+    padTimePart(date.getMonth() + 1),
+    padTimePart(date.getDate()),
+  ].join("-") +
+    ` ${padTimePart(date.getHours())}:${padTimePart(date.getMinutes())}:${padTimePart(date.getSeconds())}`;
+};
+
+const parseTimestamp = (value?: string | number | null) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? normalizeUnixTimestamp(value) : null;
+  }
+
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  if (/^\d+$/.test(value.trim())) {
+    const numeric = Number(value.trim());
+    return Number.isFinite(numeric) ? normalizeUnixTimestamp(numeric) : null;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const prependTooltipTimestamp = (
+  message: string,
+  timestamp: number | null,
+) => {
+  const trimmed = message.trim();
+  if (!trimmed) return "";
+
+  const timestampText = formatTooltipTimestamp(timestamp);
+  if (!timestampText) {
+    return trimmed;
+  }
+
+  const [firstLine, ...rest] = trimmed.split("\n");
+  return [`${timestampText} ${firstLine}`.trim(), ...rest].join("\n").trim();
+};
+
+const extractParsedErrorDetail = (parsed: {
+  error?: { message?: unknown } | string;
+  message?: unknown;
+}) => {
+  if (typeof parsed.error === "string" && parsed.error.trim()) {
+    return parsed.error;
+  }
+
+  if (
+    parsed.error &&
+    typeof parsed.error === "object" &&
+    typeof parsed.error.message === "string"
+  ) {
+    return parsed.error.message;
+  }
+
+  if (typeof parsed.message === "string" && parsed.message.trim()) {
+    return parsed.message;
+  }
+
+  return "";
+};
+
+const extractParsedErrorTitle = (parsed: {
+  error?: { type?: unknown; code?: unknown } | string;
+}) => {
+  if (parsed.error && typeof parsed.error === "object") {
+    if (typeof parsed.error.type === "string" && parsed.error.type.trim()) {
+      return parsed.error.type;
+    }
+    if (typeof parsed.error.code === "string" && parsed.error.code.trim()) {
+      return parsed.error.code;
+    }
+  }
+
+  return "Auth rejected";
+};
+
 const formatTooltipPayload = (
   status: string,
   title: string,
   payload: string,
+  timestamp: number | null,
 ) => {
-  const rawPayload = payload.trim();
+  const rawPayload = unwrapRustOptionString(payload.trim()).trim();
 
   try {
     const parsed = JSON.parse(rawPayload) as unknown;
     if (parsed && typeof parsed === "object") {
       const obj = parsed as {
-        error?: { message?: unknown };
+        error?: { message?: unknown } | string;
         message?: unknown;
       };
-      const detail =
-        typeof obj.error?.message === "string"
-          ? obj.error.message
-          : typeof obj.message === "string"
-            ? obj.message
-            : rawPayload;
-      return `${status} ${title}\n${decodeEscapedText(detail)}`.trim();
+      const detail = extractParsedErrorDetail(obj) || rawPayload;
+      return prependTooltipTimestamp(
+        `${status} ${title}\n${decodeEscapedText(detail)}`.trim(),
+        timestamp,
+      );
     }
   } catch {
-    return `${status} ${title}\n${decodeEscapedText(rawPayload)}`.trim();
+    return prependTooltipTimestamp(
+      `${status} ${title}\n${decodeEscapedText(rawPayload)}`.trim(),
+      timestamp,
+    );
   }
 
-  return `${status} ${title}\n${decodeEscapedText(rawPayload)}`.trim();
+  return prependTooltipTimestamp(
+    `${status} ${title}\n${decodeEscapedText(rawPayload)}`.trim(),
+    timestamp,
+  );
 };
 
-const extractHealthTooltipMessage = (message: string) => {
-  const trimmed = message.trim();
+const extractHealthTooltipMessage = (
+  message: string,
+  timestamp: number | null,
+) => {
+  const trimmed = unwrapRustOptionString(message).trim();
   if (!trimmed) return "";
 
-  const normalized = decodeEscapedText(trimmed);
+  const normalized = prependTooltipTimestamp(
+    decodeEscapedText(trimmed),
+    timestamp,
+  );
   const summaryPrefixMatch = trimmed.match(
     /^([^\n(]+?)\s*\((\d{3})\):\s*([\s\S]+)$/,
   );
   if (summaryPrefixMatch) {
     const [, title, status, payload] = summaryPrefixMatch;
-    return formatTooltipPayload(status, title.trim(), payload);
+    return formatTooltipPayload(status, title.trim(), payload, timestamp);
+  }
+
+  const localizedStatusPrefixMatch = trimmed.match(
+    /^([^\n(]+?)\s*\(状态码\s*(\d{3})\):\s*([\s\S]+)$/,
+  );
+  if (localizedStatusPrefixMatch) {
+    const [, title, status, payload] = localizedStatusPrefixMatch;
+    return formatTooltipPayload(status, title.trim(), payload, timestamp);
   }
 
   const statusPrefixMatch = trimmed.match(/^(\d{3})\s+([^\n:]+):\s*([\s\S]+)$/);
   if (statusPrefixMatch) {
     const [, status, title, payload] = statusPrefixMatch;
-    return formatTooltipPayload(status, title.trim(), payload);
+    return formatTooltipPayload(status, title.trim(), payload, timestamp);
   }
 
   try {
     const parsed = JSON.parse(trimmed) as unknown;
     if (parsed && typeof parsed === "object") {
       const obj = parsed as {
-        error?: { message?: unknown; type?: unknown; code?: unknown };
+        error?: { message?: unknown; type?: unknown; code?: unknown } | string;
         message?: unknown;
         status?: unknown;
       };
-      const status = typeof obj.status === "string" ? obj.status : "401";
-      const title =
-          typeof obj.error?.type === "string"
-            ? obj.error.type
-            : typeof obj.error?.code === "string"
-              ? obj.error.code
-            : "Auth rejected";
-      const detail =
-        typeof obj.error?.message === "string"
-          ? obj.error.message
-          : typeof obj.message === "string"
-            ? obj.message
-            : trimmed;
-      return `${status} ${title}\n${decodeEscapedText(detail)}`.trim();
+      const status =
+        typeof obj.status === "string"
+          ? obj.status
+          : typeof obj.status === "number"
+            ? String(obj.status)
+            : "401";
+      const title = extractParsedErrorTitle(obj);
+      const detail = extractParsedErrorDetail(obj) || trimmed;
+      return prependTooltipTimestamp(
+        `${status} ${title}\n${decodeEscapedText(detail)}`.trim(),
+        timestamp,
+      );
     }
   } catch {
     return normalized;
   }
 
   return normalized;
+};
+
+type TooltipEntrySource = "recent" | "health";
+
+type TooltipEntry = {
+  source: TooltipEntrySource;
+  message: string;
+  timestamp: number | null;
+};
+
+const pickNewerTooltipEntry = (
+  recent: TooltipEntry | null,
+  health: TooltipEntry | null,
+) => {
+  if (!recent) return health;
+  if (!health) return recent;
+
+  if (recent.timestamp !== null && health.timestamp !== null) {
+    return recent.timestamp >= health.timestamp ? recent : health;
+  }
+
+  if (recent.timestamp !== null) {
+    return recent;
+  }
+
+  if (health.timestamp !== null) {
+    return health;
+  }
+
+  return recent;
 };
 
 export function ProviderCard({
@@ -300,18 +465,50 @@ export function ProviderCard({
     return true;
   }, [provider.notes, displayUrl, fallbackUrlText]);
   const latestHealthError = health?.last_error?.trim() || "";
-  const latestHealthTooltip = useMemo(
-    () => extractHealthTooltipMessage(latestHealthError),
-    [latestHealthError],
+  const latestHealthTimestamp = useMemo(
+    () => parseTimestamp(health?.last_failure_at ?? health?.updated_at),
+    [health?.last_failure_at, health?.updated_at],
   );
+  const latestHealthTooltip = useMemo(
+    () => extractHealthTooltipMessage(latestHealthError, latestHealthTimestamp),
+    [latestHealthError, latestHealthTimestamp],
+  );
+  const recentTestTimestamp =
+    typeof recentTestResult?.testedAt === "number"
+      ? normalizeUnixTimestamp(recentTestResult.testedAt)
+      : null;
   const recentTestTooltip = useMemo(
-    () => extractHealthTooltipMessage(recentTestResult?.message ?? ""),
-    [recentTestResult?.message],
+    () =>
+      extractHealthTooltipMessage(
+        recentTestResult?.message ?? "",
+        recentTestTimestamp,
+      ),
+    [recentTestResult?.message, recentTestTimestamp],
+  );
+  const latestHealthEntry = useMemo<TooltipEntry | null>(() => {
+    if (!latestHealthTooltip) return null;
+    return {
+      source: "health",
+      message: latestHealthTooltip,
+      timestamp: latestHealthTimestamp,
+    };
+  }, [latestHealthTimestamp, latestHealthTooltip]);
+  const recentTestEntry = useMemo<TooltipEntry | null>(() => {
+    if (!recentTestTooltip) return null;
+    return {
+      source: "recent",
+      message: recentTestTooltip,
+      timestamp: recentTestTimestamp,
+    };
+  }, [recentTestTimestamp, recentTestTooltip]);
+  const latestTooltipEntry = useMemo(
+    () => pickNewerTooltipEntry(recentTestEntry, latestHealthEntry),
+    [latestHealthEntry, recentTestEntry],
   );
   const recentTooltipKey = useMemo(() => {
-    if (!recentTestResult || !recentTestTooltip) return "";
-    return `${recentTestResult.testedAt}:${recentTestResult.status}:${recentTestTooltip}`;
-  }, [recentTestResult, recentTestTooltip]);
+    if (!latestTooltipEntry || latestTooltipEntry.source !== "recent") return "";
+    return `${recentTestResult?.testedAt ?? ""}:${recentTestResult?.status ?? ""}:${latestTooltipEntry.message}`;
+  }, [latestTooltipEntry, recentTestResult?.status, recentTestResult?.testedAt]);
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const [isRecentTooltipActive, setIsRecentTooltipActive] = useState(false);
   const [isTooltipRegionHovered, setIsTooltipRegionHovered] = useState(false);
@@ -328,14 +525,19 @@ export function ProviderCard({
       ? (recentTestResult?.status ??
         recentStatusSnapshot ??
         health?.last_check_status)
-      : (recentTestResult?.status ?? health?.last_check_status);
+      : latestTooltipEntry?.source === "health"
+        ? health?.last_check_status
+        : (recentTestResult?.status ?? health?.last_check_status);
   const iconBorderClass = useMemo(() => {
     if (lastCheckStatus === "operational") return "border-green-500";
     if (lastCheckStatus === "degraded") return "border-yellow-500";
     if (lastCheckStatus === "failed") return "border-red-500";
     return "border-border-default";
   }, [lastCheckStatus]);
-  const tooltipMessage = activeRecentTooltip || latestHealthTooltip;
+  const tooltipMessage =
+    activeRecentTooltip || latestTooltipEntry?.message || "";
+  const isHealthTooltipActive =
+    !activeRecentTooltip && latestTooltipEntry?.source === "health";
   const hideTooltipTimerRef = useRef<number | null>(null);
   const lastAutoOpenedRecentTooltipKeyRef = useRef("");
 
@@ -368,23 +570,28 @@ export function ProviderCard({
 
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const clearHideTooltipTimer = () => {
+  const clearHideTooltipTimer = useCallback(() => {
     if (hideTooltipTimerRef.current !== null) {
       window.clearTimeout(hideTooltipTimerRef.current);
       hideTooltipTimerRef.current = null;
     }
-  };
+  }, []);
 
-  const scheduleHideTooltip = (delayMs: number) => {
+  const hideTooltipImmediately = useCallback(() => {
+    clearHideTooltipTimer();
+    setIsTooltipOpen(false);
+    setIsRecentTooltipActive(false);
+    setRecentTooltipSnapshot("");
+    setRecentStatusSnapshot(null);
+  }, [clearHideTooltipTimer]);
+
+  const scheduleHideTooltip = useCallback((delayMs: number) => {
     clearHideTooltipTimer();
     hideTooltipTimerRef.current = window.setTimeout(() => {
-      setIsTooltipOpen(false);
-      setIsRecentTooltipActive(false);
-      setRecentTooltipSnapshot("");
-      setRecentStatusSnapshot(null);
+      hideTooltipImmediately();
       hideTooltipTimerRef.current = null;
     }, delayMs);
-  };
+  }, [clearHideTooltipTimer, hideTooltipImmediately]);
 
   useEffect(() => {
     if (hasMultiplePlans) {
@@ -394,11 +601,7 @@ export function ProviderCard({
 
   useEffect(() => {
     if (isTesting) {
-      clearHideTooltipTimer();
-      setIsTooltipOpen(false);
-      setIsRecentTooltipActive(false);
-      setRecentTooltipSnapshot("");
-      setRecentStatusSnapshot(null);
+      hideTooltipImmediately();
       lastAutoOpenedRecentTooltipKeyRef.current = "";
       return;
     }
@@ -415,21 +618,24 @@ export function ProviderCard({
       }
 
       if (isRecentTooltipActive) {
-        clearHideTooltipTimer();
-        setIsTooltipOpen(false);
-        setIsRecentTooltipActive(false);
-        setRecentTooltipSnapshot("");
-        setRecentStatusSnapshot(null);
+        hideTooltipImmediately();
       }
       return;
     }
 
     if (lastAutoOpenedRecentTooltipKeyRef.current === recentTooltipKey) {
+      if (
+        isRecentTooltipActive &&
+        !isTooltipRegionHovered &&
+        hideTooltipTimerRef.current === null
+      ) {
+        scheduleHideTooltip(5000);
+      }
       return;
     }
 
     clearHideTooltipTimer();
-    setRecentTooltipSnapshot(recentTestTooltip);
+    setRecentTooltipSnapshot(latestTooltipEntry?.message || recentTestTooltip);
     setRecentStatusSnapshot(recentTestResult?.status ?? null);
     setIsTooltipOpen(true);
     setIsRecentTooltipActive(true);
@@ -442,10 +648,17 @@ export function ProviderCard({
       clearHideTooltipTimer();
     };
   }, [
+    hideTooltipImmediately,
+    isRecentTooltipActive,
     isTesting,
-    recentTooltipKey,
+    isTooltipRegionHovered,
+    latestTooltipEntry,
     recentTestResult?.status,
     recentTestTooltip,
+    recentTooltipKey,
+    recentTooltipSnapshot,
+    scheduleHideTooltip,
+    clearHideTooltipTimer,
   ]);
 
   useEffect(() => {
@@ -453,6 +666,19 @@ export function ProviderCard({
       clearHideTooltipTimer();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isTooltipOpen) return;
+
+    const handleWindowScroll = () => {
+      hideTooltipImmediately();
+    };
+
+    window.addEventListener("scroll", handleWindowScroll, true);
+    return () => {
+      window.removeEventListener("scroll", handleWindowScroll, true);
+    };
+  }, [hideTooltipImmediately, isTooltipOpen]);
 
   const handleTooltipRegionEnter = () => {
     setIsTooltipRegionHovered(true);
@@ -464,7 +690,7 @@ export function ProviderCard({
   const handleTooltipRegionLeave = () => {
     setIsTooltipRegionHovered(false);
     if (isRecentTooltipActive) {
-      scheduleHideTooltip(60);
+      scheduleHideTooltip(5000);
     }
   };
 
@@ -473,6 +699,27 @@ export function ProviderCard({
       return;
     }
     onOpenWebsite(displayUrl);
+  };
+
+  const handleTooltipCopy = async () => {
+    if (!isHealthTooltipActive || latestTooltipEntry?.source !== "health") {
+      return;
+    }
+
+    try {
+      await copyText(latestTooltipEntry.message);
+      toast.success(
+        t("sessionManager.messageCopied", {
+          defaultValue: "已复制消息内容",
+        }),
+      );
+    } catch (error) {
+      toast.error(
+        t("settings.installCommandsCopyFailed", {
+          defaultValue: "复制失败，请手动复制。",
+        }),
+      );
+    }
   };
 
   // 判断是否是"当前使用中"的供应商
@@ -565,11 +812,7 @@ export function ProviderCard({
               open={tooltipMessage ? isTooltipOpen : false}
               onOpenChange={(open) => {
                 if (!tooltipMessage) {
-                  clearHideTooltipTimer();
-                  setIsTooltipOpen(false);
-                  setIsRecentTooltipActive(false);
-                  setRecentTooltipSnapshot("");
-                  setRecentStatusSnapshot(null);
+                  hideTooltipImmediately();
                   return;
                 }
                 if (isRecentTooltipActive && !open) {
@@ -599,9 +842,23 @@ export function ProviderCard({
               {tooltipMessage && (
                 <TooltipContent
                   side="top"
-                  className="max-w-[420px] whitespace-pre-wrap break-all"
+                  className={cn(
+                    "max-w-[420px] whitespace-pre-wrap break-all",
+                    isHealthTooltipActive &&
+                      "cursor-copy select-text transition-opacity hover:opacity-90",
+                  )}
                   onPointerEnter={handleTooltipRegionEnter}
                   onPointerLeave={handleTooltipRegionLeave}
+                  onClick={() => {
+                    void handleTooltipCopy();
+                  }}
+                  title={
+                    isHealthTooltipActive
+                      ? t("sessionManager.copyMessage", {
+                          defaultValue: "复制消息",
+                        })
+                      : undefined
+                  }
                 >
                   {tooltipMessage}
                 </TooltipContent>
@@ -687,13 +944,13 @@ export function ProviderCard({
             </div>
 
             {(displayUrl || usageEnabled) && (
-              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-left">
+              <div className="flex min-h-4 min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-left">
                 {displayUrl && (
                   <button
                     type="button"
                     onClick={handleOpenWebsite}
                     className={cn(
-                      "inline-flex min-w-0 max-w-[280px] items-center text-xs",
+                      "inline-flex min-w-0 max-w-[280px] items-center overflow-hidden text-xs leading-none",
                       isClickableUrl
                         ? "cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
                         : "cursor-default text-muted-foreground",
@@ -701,13 +958,13 @@ export function ProviderCard({
                     title={displayUrl}
                     disabled={!isClickableUrl}
                   >
-                    <span className="truncate">{displayUrl}</span>
+                    <span className="block min-w-0 truncate">{displayUrl}</span>
                   </button>
                 )}
 
                 {hasMultiplePlans ? (
-                  <div className="inline-flex min-w-0 items-center gap-1.5 text-left text-xs text-gray-600 dark:text-gray-400">
-                    <span className="font-medium">
+                  <div className="inline-flex min-w-0 items-center gap-1 text-left text-[11px] leading-none text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    <span className="font-medium tabular-nums">
                       {t("usage.multiplePlans", {
                         count: usage?.data?.length || 0,
                         defaultValue: `${usage?.data?.length || 0} 个套餐`,
@@ -718,7 +975,7 @@ export function ProviderCard({
                         e.stopPropagation();
                         setIsExpanded(!isExpanded);
                       }}
-                      className="shrink-0 p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                      className="inline-flex h-auto shrink-0 items-center p-0 text-gray-500 hover:text-foreground dark:text-gray-400"
                       title={
                         isExpanded
                           ? t("usage.collapse", { defaultValue: "收起" })
@@ -726,9 +983,9 @@ export function ProviderCard({
                       }
                     >
                       {isExpanded ? (
-                        <ChevronUp size={14} />
+                        <ChevronUp size={12} />
                       ) : (
-                        <ChevronDown size={14} />
+                        <ChevronDown size={12} />
                       )}
                     </button>
                   </div>
@@ -748,8 +1005,8 @@ export function ProviderCard({
           </div>
         </div>
 
-        <div className="relative ml-auto flex min-w-0 items-center gap-2">
-          <div className="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 translate-x-2 items-center gap-1 pl-2 opacity-0 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-x-0 group-focus-within:opacity-100">
+        <div className="ml-auto flex min-w-0 items-center gap-2 pl-2">
+          <div className="flex items-center gap-1">
             <ProviderActions
               appId={appId}
               isCurrent={isCurrent}

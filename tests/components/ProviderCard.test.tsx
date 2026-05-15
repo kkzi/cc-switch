@@ -7,6 +7,7 @@ import type { StreamCheckResult } from "@/lib/api/model-test";
 
 const useProviderHealthMock = vi.fn();
 const useUsageQueryMock = vi.fn();
+const copyTextMock = vi.fn();
 
 vi.mock("@/components/providers/ProviderActions", () => ({
   ProviderActions: () => <div data-testid="provider-actions" />,
@@ -35,6 +36,10 @@ vi.mock("@/components/ui/tooltip", () => {
     open: boolean;
     onOpenChange?: (open: boolean) => void;
   }>({ open: false });
+  type TooltipTriggerChildProps = {
+    onPointerEnter?: React.PointerEventHandler<HTMLElement>;
+    onPointerLeave?: React.PointerEventHandler<HTMLElement>;
+  };
 
   return {
     TooltipProvider: ({ children }: any) => <div>{children}</div>,
@@ -50,13 +55,15 @@ vi.mock("@/components/ui/tooltip", () => {
       if (!React.isValidElement(children)) {
         return <div>{children}</div>;
       }
-      return React.cloneElement(children, {
-        onPointerEnter: (event: PointerEvent) => {
-          children.props.onPointerEnter?.(event);
+      const child =
+        children as React.ReactElement<TooltipTriggerChildProps>;
+      return React.cloneElement(child, {
+        onPointerEnter: (event) => {
+          child.props.onPointerEnter?.(event);
           context.onOpenChange?.(true);
         },
-        onPointerLeave: (event: PointerEvent) => {
-          children.props.onPointerLeave?.(event);
+        onPointerLeave: (event) => {
+          child.props.onPointerLeave?.(event);
           context.onOpenChange?.(false);
         },
       });
@@ -79,6 +86,10 @@ vi.mock("@/lib/query/failover", () => ({
 
 vi.mock("@/lib/query/queries", () => ({
   useUsageQuery: (...args: unknown[]) => useUsageQueryMock(...args),
+}));
+
+vi.mock("@/lib/clipboard", () => ({
+  copyText: (...args: unknown[]) => copyTextMock(...args),
 }));
 
 function createProvider(overrides: Partial<Provider> = {}): Provider {
@@ -109,6 +120,8 @@ describe("ProviderCard compact layout", () => {
 
   beforeEach(() => {
     vi.useRealTimers();
+    copyTextMock.mockReset();
+    copyTextMock.mockResolvedValue(undefined);
     useProviderHealthMock.mockReturnValue({ data: null });
     useUsageQueryMock.mockReturnValue({ data: undefined });
   });
@@ -171,6 +184,30 @@ describe("ProviderCard compact layout", () => {
     expect(screen.queryByTestId("provider-card-tooltip")).not.toBeInTheDocument();
   });
 
+  it("truncates long urls visually but opens the full url on click", () => {
+    const onOpenWebsite = vi.fn();
+    const longUrl =
+      "https://very-long-provider-domain.example.com/path/to/a/deep/resource/with/query/segments/that/should/truncate/when/rendered";
+
+    render(
+      <ProviderCard
+        {...baseProps}
+        onOpenWebsite={onOpenWebsite}
+        provider={createProvider({ websiteUrl: longUrl })}
+      />,
+    );
+
+    const urlButton = screen.getByRole("button", { name: longUrl });
+    const urlText = urlButton.querySelector("span");
+
+    expect(urlButton).toHaveClass("max-w-[280px]", "overflow-hidden");
+    expect(urlText).toHaveClass("block", "min-w-0", "truncate");
+
+    fireEvent.click(urlButton);
+
+    expect(onOpenWebsite).toHaveBeenCalledWith(longUrl);
+  });
+
   it("renders tooltip content on the provider icon and removes inline error UI", () => {
     const longError =
       "503 upstream timeout while contacting a very long upstream error message for provider health diagnostics";
@@ -226,11 +263,14 @@ describe("ProviderCard compact layout", () => {
   });
 
   it("prefers recent test result for border color and tooltip message", () => {
+    const oldFailureTime = "2026-05-05T11:11:11Z";
     useProviderHealthMock.mockReturnValue({
       data: {
         consecutive_failures: 3,
         last_check_status: "failed",
         last_error: "old failure",
+        last_failure_at: oldFailureTime,
+        updated_at: oldFailureTime,
       },
     });
 
@@ -239,7 +279,7 @@ describe("ProviderCard compact layout", () => {
       success: true,
       message: "temporary slowdown",
       modelUsed: "test-model",
-      testedAt: Date.now(),
+      testedAt: new Date("2026-05-05T11:12:12Z").getTime(),
       retryCount: 0,
     } satisfies StreamCheckResult;
 
@@ -252,17 +292,20 @@ describe("ProviderCard compact layout", () => {
 
     expect(container.querySelector(".border-yellow-500")).toBeInTheDocument();
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
-      "temporary slowdown",
+      "2026-05-05 19:12:12 temporary slowdown",
     );
   });
 
   it("formats structured health errors into multiline tooltip text", () => {
+    const failureTime = "2026-05-05T11:11:11Z";
     useProviderHealthMock.mockReturnValue({
       data: {
         consecutive_failures: 1,
         last_check_status: "failed",
         last_error:
           '401 Auth rejected: {"error":{"message":"Invalid token\\nPlease check","type":"new_api_error"}}',
+        last_failure_at: failureTime,
+        updated_at: failureTime,
       },
     });
 
@@ -271,7 +314,7 @@ describe("ProviderCard compact layout", () => {
     fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
 
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
-      "401 Auth rejected",
+      "2026-05-05 19:11:11 401 Auth rejected",
     );
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
       "Invalid token",
@@ -279,12 +322,15 @@ describe("ProviderCard compact layout", () => {
   });
 
   it("decodes prefixed json-like health errors for tooltip display", () => {
+    const failureTime = "2026-05-05T11:11:11Z";
     useProviderHealthMock.mockReturnValue({
       data: {
         consecutive_failures: 1,
         last_check_status: "failed",
         last_error:
           'Auth rejected (401): {"error":{"message":"Invalid token\\nPlease check"}}',
+        last_failure_at: failureTime,
+        updated_at: failureTime,
       },
     });
 
@@ -293,7 +339,7 @@ describe("ProviderCard compact layout", () => {
     fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
 
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
-      "401 Auth rejected",
+      "2026-05-05 19:11:11 401 Auth rejected",
     );
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
       "Invalid token",
@@ -301,6 +347,142 @@ describe("ProviderCard compact layout", () => {
     expect(screen.getByTestId("provider-card-tooltip")).not.toHaveTextContent(
       "\\n",
     );
+  });
+
+  it("extracts string error fields from json health payloads", () => {
+    const failureTime = "2026-05-05T11:11:11Z";
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 1,
+        last_check_status: "failed",
+        last_error:
+          '{"status":"401","error":"Invalid token\\nPlease check"}',
+        last_failure_at: failureTime,
+        updated_at: failureTime,
+      },
+    });
+
+    render(<ProviderCard {...baseProps} />);
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
+
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "2026-05-05 19:11:11 401 Auth rejected",
+    );
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "Invalid token",
+    );
+  });
+
+  it("unwraps rust option wrappers around json error payloads", () => {
+    const failureTime = "2026-05-05T11:11:11Z";
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 1,
+        last_check_status: "failed",
+        last_error:
+          '上游错误 (状态码 422): Some("{\\"error\\":{\\"message\\":\\"model not found: gpt-5.4\\",\\"type\\":\\"invalid_model_error\\"}}")',
+        last_failure_at: failureTime,
+        updated_at: failureTime,
+      },
+    });
+
+    render(<ProviderCard {...baseProps} />);
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
+
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "2026-05-05 19:11:11 422 上游错误",
+    );
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "model not found: gpt-5.4",
+    );
+    expect(screen.getByTestId("provider-card-tooltip")).not.toHaveTextContent(
+      'Some("',
+    );
+  });
+
+  it("prefers the newer health error over an older recent test message", () => {
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 1,
+        last_check_status: "failed",
+        last_error: "401 Auth rejected: upstream rejected",
+        last_failure_at: "2026-05-05T11:11:11Z",
+        updated_at: "2026-05-05T11:11:11Z",
+      },
+    });
+
+    const recentResult = {
+      status: "degraded",
+      success: true,
+      message: "temporary slowdown",
+      modelUsed: "test-model",
+      testedAt: new Date("2026-05-05T11:10:10Z").getTime(),
+      retryCount: 0,
+    } satisfies StreamCheckResult;
+
+    const { container } = render(
+      <ProviderCard
+        {...baseProps}
+        recentTestResult={recentResult}
+      />,
+    );
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
+
+    expect(container.querySelector(".border-red-500")).toBeInTheDocument();
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "2026-05-05 19:11:11 401 Auth rejected",
+    );
+    expect(screen.getByTestId("provider-card-tooltip")).not.toHaveTextContent(
+      "temporary slowdown",
+    );
+  });
+
+  it("copies health tooltip text to clipboard when clicked", async () => {
+    const failureTime = "2026-05-05T11:11:11Z";
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 1,
+        last_check_status: "failed",
+        last_error:
+          'Auth rejected (401): {"error":{"message":"Invalid token\\nPlease check"}}',
+        last_failure_at: failureTime,
+        updated_at: failureTime,
+      },
+    });
+
+    render(<ProviderCard {...baseProps} />);
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
+    fireEvent.click(screen.getByTestId("provider-card-tooltip"));
+
+    expect(copyTextMock).toHaveBeenCalledWith(
+      "2026-05-05 19:11:11 401 Auth rejected\nInvalid token\nPlease check",
+    );
+  });
+
+  it("does not copy recent test tooltip text when clicked", () => {
+    const recentResult = {
+      status: "degraded",
+      success: true,
+      message: "temporary slowdown",
+      modelUsed: "test-model",
+      testedAt: Date.now(),
+      retryCount: 0,
+    } satisfies StreamCheckResult;
+
+    render(
+      <ProviderCard
+        {...baseProps}
+        recentTestResult={recentResult}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("provider-card-tooltip"));
+
+    expect(copyTextMock).not.toHaveBeenCalled();
   });
 
   it("keeps the recent tooltip visible while hovering the icon region", () => {

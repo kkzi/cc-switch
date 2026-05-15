@@ -12,8 +12,8 @@ export function Toaster() {
   return (
     <SonnerToaster
       position="top-center"
-      offset={{ top: 34 }}
-      mobileOffset={{ top: 26 }}
+      offset={{ top: 54 }}
+      mobileOffset={{ top: 46 }}
       hotkey={["Escape"]}
       richColors
       theme={sonnerTheme}

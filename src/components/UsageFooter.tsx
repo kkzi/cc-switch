@@ -1,7 +1,6 @@
 import React from "react";
 import { RefreshCw, AlertCircle, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import { type AppId } from "@/lib/api";
 import { useUsageQuery } from "@/lib/query/queries";
 import { UsageData, Provider } from "@/types";
@@ -76,9 +75,8 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   }) => {
     if (isBalance) {
       return (
-        <Button
+        <button
           type="button"
-          variant="link"
           onClick={(e) => {
             if (stopPropagation) {
               e.stopPropagation();
@@ -90,7 +88,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
           title={balanceButtonLabel}
         >
           {balanceButtonLabel}
-        </Button>
+        </button>
       );
     }
 
@@ -130,24 +128,17 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   if (!usage.success) {
     if (inline) {
       return (
-        <div
-          className={`inline-flex max-w-full min-w-0 items-center rounded-md border border-border-default bg-card shadow-sm ${
-            isBalance ? "gap-1 px-1.5 py-0.5 text-[11px]" : "gap-2 px-3 py-2 text-xs"
-          }`}
-        >
+        <div className="inline-flex max-w-full min-w-0 items-center gap-1 text-left text-[11px] leading-none">
           <div
-            className={`flex min-w-0 items-center text-red-500 dark:text-red-400 ${
-              isBalance ? "gap-1" : "gap-1.5"
-            }`}
+            className="flex min-w-0 items-center gap-1 text-red-500 dark:text-red-400"
+            title={usage.error || t("usage.queryFailed")}
           >
             <AlertCircle size={12} />
             <span className="truncate">{t("usage.queryFailed")}</span>
           </div>
           {renderRefreshControl({
             className:
-              isBalance
-                ? "h-auto flex-shrink-0 p-0 text-[11px] leading-none text-muted-foreground no-underline hover:no-underline"
-                : "h-auto flex-shrink-0 p-0 text-xs text-muted-foreground no-underline hover:no-underline",
+              "h-auto flex-shrink-0 p-0 text-[11px] leading-none text-muted-foreground hover:text-foreground",
           })}
         </div>
       );
@@ -181,7 +172,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
     const isExpired = firstUsage.isValid === false;
 
     return (
-      <div className="inline-flex max-w-full min-w-0 items-center gap-1 overflow-hidden text-left text-[11px] leading-none">
+      <div className="inline-flex max-w-full min-w-0 items-center gap-1 overflow-hidden text-left text-[11px] leading-none whitespace-nowrap">
         {firstUsage.remaining !== undefined && (
           <span
             className={`font-semibold tabular-nums ${
@@ -208,17 +199,15 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
         )}
 
         {lastQueriedAt && (
-          <Clock
-            size={9}
-            className="shrink-0 text-muted-foreground/60"
-            title={lastQueriedLabel}
-          />
+          <span title={lastQueriedLabel}>
+            <Clock size={9} className="shrink-0 text-muted-foreground/60" />
+          </span>
         )}
 
         {renderRefreshControl({
           stopPropagation: true,
           className:
-            "h-auto flex-shrink-0 p-0 text-[11px] leading-none text-muted-foreground no-underline hover:no-underline",
+            "h-auto flex-shrink-0 p-0 text-[11px] leading-none text-muted-foreground hover:text-foreground",
         })}
       </div>
     );
