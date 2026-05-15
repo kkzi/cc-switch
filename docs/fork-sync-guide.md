@@ -5,8 +5,8 @@
 ## 1. 基线
 
 - 对比命令: `git diff upstream/main`
-- 当前状态: fork 相对 upstream `ahead 79 commits`
-- 当前 diff 规模: `138 files changed, 8176 insertions(+), 2134 deletions(-)`
+- 当前状态: fork 相对 upstream `behind 5 / ahead 81 commits`
+- 当前 diff 规模: `151 files changed, 8529 insertions(+), 2869 deletions(-)`
 - 不纳入本文档:
   - 未跟踪文件
   - 口头约定
@@ -42,6 +42,7 @@
 - `package.json`
 - `src-tauri/Cargo.toml`
 - `src-tauri/tauri.conf.json`
+- `src-tauri/src/bin/export_providers.rs`
 - `README_EN.md`
 
 从代码可确认：
@@ -49,6 +50,7 @@
 - fork 维护独立 release workflow，而不是直接复用 upstream 发布流程
 - `package.json` 固定了 `packageManager`
 - `Cargo.toml` 启用了 `custom-protocol` 默认特性，并额外引入 `rand`
+- `src-tauri/src/bin/export_providers.rs` 提供了一个独立的辅助 bin；Windows release 构建后会同时产出 `cc-switch.exe` 和 `export_providers.exe`
 - `tauri.conf.json` 取消静态 `windows` 配置，改成运行时动态创建主窗口
 - fork 关闭了 `createUpdaterArtifacts`
 - updater endpoint 指向 fork 自己的 GitHub release
@@ -57,6 +59,7 @@
 
 - 不要直接用 upstream workflow 覆盖 fork 的发布配置
 - `package.json`、`Cargo.toml`、`tauri.conf.json` 合并时必须人工核对
+- 不要误删 `src-tauri/src/bin/export_providers.rs` 或把多 bin release 产物当成异常构建结果
 - 动态窗口策略和 updater 地址不能被误回滚
 
 ### 3.2 主窗口与托盘生命周期
@@ -179,6 +182,7 @@
 
 - `src/components/providers/ProviderList.tsx`
 - `src/components/providers/ProviderCard.tsx`
+- `src/components/UsageFooter.tsx`
 - `src/components/ProviderIcon.tsx`
 - `src/hooks/useStreamCheck.ts`
 - `tests/components/ProviderCard.test.tsx`
@@ -189,15 +193,27 @@
 - `useStreamCheck` 不再直接靠 toast 表达测试结果，而是维护最近一次测试结果缓存
 - 最近测试结果会在 5 秒内驱动卡片状态与 tooltip
 - recent tooltip 只会自动打开一次，未悬停时 5 秒后自动隐藏
+- `last error` / recent test tooltip 在显示期间如果触发滚动，会立即隐藏，而不是继续停留到超时
 - icon 边框状态基于：
   - `recentTestResult.status`
   - 或 `health.last_check_status`
-- tooltip 会优先展示最近测试 message，否则展示 `last_error`
+- tooltip 不是固定 recent 优先，而是会在以下两者之间按时间取最近一条：
+  - `recentTestResult.message` + `testedAt`
+  - `provider_health.last_error` + `last_failure_at`（无则退回 `updated_at`）
 - 单个 / 批量 stream check 结果现在会持久写回 `provider_health.last_error` 与 `last_check_status`
 - card 左侧 icon tooltip 对 HTTP 错误不再只显示摘要，会把错误正文解析成更可读的多行格式
-- 若 `last_error` 中包含 JSON 字符串或转义换行（如 `\\n`），tooltip 会优先提取 `error.message`；若不能解析为 JSON，则显示解码后的原文
+- tooltip 第一行会添加时间前缀，格式为 `YYYY-MM-DD HH:mm:ss <status> <title>`
+- 若 `last_error` / recent test message 中包含 JSON 字符串或转义换行（如 `\\n`），tooltip 会优先提取：
+  - `error.message`
+  - `error`（当其本身就是字符串）
+  - `message`
+  若都不存在，则显示解码后的原文
 - Codex stream check 对首个候选 URL 返回 `text/html` 时会自动 fallback 到备用 `/v1/responses`
 - stream check 的 HTTP 错误 message 不再只保留状态码，而是会附带响应体摘要
+- provider card 第二行采用紧凑布局：
+  - 长 URL 单行截断为 `...`，但 hover/title 与点击打开仍使用完整 URL
+  - 多套餐入口使用无 padding 的低高度文本样式
+  - 余额查询失败态与成功态的内联控件都避免额外 border / padding
 - 卡片支持：
   - 双击触发主操作
   - 右键菜单
@@ -210,14 +226,17 @@
 同步约束：
 
 - `ProviderList.tsx`、`ProviderCard.tsx`、`useStreamCheck.ts` 是高冲突区
+- `UsageFooter.tsx` 也应视为 provider card 内联布局的一部分，不要当作独立的普通 usage 组件随意回滚
 - `src-tauri/src/services/stream_check.rs`、`src-tauri/src/commands/stream_check.rs` 也应纳入这一组热点文件
 - 这部分不只是样式改动，依赖真实 health 字段、错误消息格式与交互状态，不能按纯 UI 补丁处理
 - upstream 若修改 stream check 成功/失败判定，必须人工复核以下 fork 规则：
   - `text/html` 不能被当作 Codex Responses 成功响应
   - 根地址 `/responses` 返回 HTML 时要继续尝试 `/v1/responses`
   - tooltip / recent result message 需要保留状态码之外的错误正文
+  - tooltip 在显示期间遇到任意滚动事件时需要立即关闭
+  - tooltip 需要比较 `testedAt` 与 `last_failure_at / updated_at`，而不是固定 recent 优先
   - 测试按钮触发的 stream check 结果需要持久写回 `provider_health`
-  - `ProviderCard` tooltip 需要把 `Auth rejected (401): {...}` 一类错误整理成多行可读文本，而不是只显示摘要前缀
+  - `ProviderCard` tooltip 需要把 `Auth rejected (401): {...}` 一类错误整理成带时间前缀的多行可读文本，而不是只显示摘要前缀
 
 ### 3.7 Provider 新增表单、预设交互与剪贴板导入
 
@@ -266,6 +285,7 @@
 
 - `src/App.tsx`
 - `src/components/common/FullScreenPanel.tsx`
+- `src/components/UsageFooter.tsx`
 - `src/components/settings/SettingsPage.tsx`
 - `src/components/settings/WindowSettings.tsx`
 - `src/components/usage/UsageDashboard.tsx`
@@ -294,6 +314,8 @@
 - 余额查询（`templateType === "balance"`）在 provider card 内联区域使用独立的紧凑布局，而不是复用通用用量布局
 - 余额查询操作按钮改为无 padding 的文本按钮；中文文案缩短为 `查询`
 - 余额内联区只保留最小控件：余额数值、可截断单位、小尺寸时间图标与文本按钮，避免撑大 provider card
+- provider card URL 行使用单行截断和固定上限宽度，避免长 endpoint 把卡片高度顶高
+- 多套餐展开入口也改成和余额内联态接近的低高度文本节奏
 - 一部分 UI primitive 与构建配置也有差异
 
 同步约束：
@@ -347,6 +369,7 @@
 
 - `src/components/providers/ProviderList.tsx`
 - `src/components/providers/ProviderCard.tsx`
+- `src/components/UsageFooter.tsx`
 - `src/hooks/useStreamCheck.ts`
 - `src/components/providers/forms/ProviderForm.tsx`
 - `src/components/providers/forms/ProviderPresetSelector.tsx`
@@ -363,6 +386,7 @@
 - `.github/workflows/portable-release.yml`
 - `package.json`
 - `src-tauri/Cargo.toml`
+- `src-tauri/src/bin/export_providers.rs`
 - `README_EN.md`
 - `src/components/settings/SettingsPage.tsx`
 - `src/components/settings/ProxyTabContent.tsx`
@@ -402,12 +426,15 @@
 ### 7.3 Provider UI 交互
 
 - recent test result 能驱动 icon 边框颜色
-- tooltip 优先显示最近测试 message，其次显示 `last_error`
+- tooltip 会在 recent test message 和 `last_error` 之间按时间选最近一条
 - recent tooltip 自动显示并在 5 秒后消失
 - recent tooltip 未悬停时只自动显示一次，不会重复弹出
+- `last error` / recent tooltip 显示期间一旦列表或容器发生滚动，应立即隐藏
 - Codex 测试遇到 `200 + text/html` 时会继续尝试 fallback URL，而不是误判成功
 - error tooltip / recent test tooltip 需要显示状态码之外的错误正文
-- `Auth rejected (401): {...}` 这类错误会在 tooltip 中整理成多行可读文本
+- `Auth rejected (401): {...}` 这类错误会在 tooltip 中整理成带 `YYYY-MM-DD HH:mm:ss` 前缀的多行可读文本
+- JSON 里的 `error` 如果本身是字符串，也会被提取出来显示
+- 长 URL 在 provider card 中保持单行 `...` 截断，但点击仍能打开完整 URL
 - 双击卡片触发主操作
 - 右键菜单可复制连接信息、置顶、置底
 
@@ -423,6 +450,7 @@
 - Add Provider 的 `initialData` 注入正常
 - usage 页面无页级进入动画
 - balance inline controls 保持紧凑，不应因时间文本或按钮 padding 撑大 provider card
+- 多套餐入口保持低高度文本按钮风格，不应因 hover 背景或 padding 撑大 provider card
 - settings 页面结构与窗口设置项正常
 - Skills / Prompts / MCP / Sessions 与 Settings 页的外层 padding 保持一致
 - Settings 高级页底部操作区的 top border 贯穿主面板宽度
