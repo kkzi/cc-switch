@@ -4,6 +4,7 @@ use crate::deeplink::{
 };
 use crate::store::AppState;
 use tauri::State;
+use tauri_plugin_deep_link::DeepLinkExt;
 
 /// Parse a deep link URL and return the parsed request for frontend confirmation
 #[tauri::command]
@@ -86,4 +87,12 @@ pub async fn import_from_deeplink_unified(
         }
         _ => Err(format!("Unsupported resource type: {}", request.resource)),
     }
+}
+
+/// Register configured deep link protocols with the OS for the current user.
+#[tauri::command]
+pub fn register_deep_link_protocols(app: tauri::AppHandle) -> Result<bool, String> {
+    log::info!("Registering deep link protocols via manual action");
+    app.deep_link().register_all().map_err(|e| e.to_string())?;
+    Ok(true)
 }

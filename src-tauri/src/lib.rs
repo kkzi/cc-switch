@@ -1179,6 +1179,7 @@ pub fn run() {
             commands::merge_deeplink_config,
             commands::import_from_deeplink,
             commands::import_from_deeplink_unified,
+            commands::register_deep_link_protocols,
             update_tray_menu,
             // Environment variable management
             commands::check_env_conflicts,

@@ -173,6 +173,10 @@ export const settingsApi = {
     return await invoke("get_auto_launch_status");
   },
 
+  async registerDeepLinkProtocols(): Promise<boolean> {
+    return await invoke("register_deep_link_protocols");
+  },
+
   async getToolVersions(
     tools?: string[],
     wslShellByTool?: Record<
