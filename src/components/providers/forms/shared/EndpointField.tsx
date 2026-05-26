@@ -40,10 +40,7 @@ export function EndpointField({
   const defaultManageLabel = t("providerForm.manageAndTest", {
     defaultValue: "管理和测速",
   });
-  const effectiveHint =
-    showFullUrlToggle && isFullUrl
-      ? fullUrlHint
-      : hint;
+  const effectiveHint = showFullUrlToggle && isFullUrl ? fullUrlHint : hint;
 
   return (
     <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2">

@@ -26,11 +26,7 @@ const DialogOverlay = React.forwardRef<
   return (
     <DialogPrimitive.Overlay
       ref={ref}
-      className={cn(
-        "fixed inset-0 bg-black/45",
-        zIndexMap[zIndex],
-        className,
-      )}
+      className={cn("fixed inset-0 bg-black/45", zIndexMap[zIndex], className)}
       {...props}
     />
   );
@@ -94,8 +90,8 @@ const DialogHeader = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-    <div
-      className={cn(
+  <div
+    className={cn(
       "flex shrink-0 flex-col space-y-1 text-center sm:text-left px-4 py-3 border-b border-border-default bg-muted/20",
       className,
     )}
@@ -108,8 +104,8 @@ const DialogFooter = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-    <div
-      className={cn(
+  <div
+    className={cn(
       "flex shrink-0 flex-col-reverse gap-2 border-t border-border-default bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-end",
       className,
     )}

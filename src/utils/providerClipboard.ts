@@ -47,7 +47,10 @@ export function extractProviderDraftFromClipboard(
 
   for (const candidate of matches) {
     try {
-      const sanitizedCandidate = candidate.replace(TRAILING_URL_PUNCTUATION, "");
+      const sanitizedCandidate = candidate.replace(
+        TRAILING_URL_PUNCTUATION,
+        "",
+      );
       const parsed = new URL(sanitizedCandidate);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
         continue;

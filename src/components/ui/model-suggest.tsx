@@ -29,7 +29,9 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <span className="font-semibold text-foreground">{text.slice(idx, idx + query.length)}</span>
+      <span className="font-semibold text-foreground">
+        {text.slice(idx, idx + query.length)}
+      </span>
       {text.slice(idx + query.length)}
     </>
   );
@@ -49,7 +51,10 @@ export function ModelSuggest({
 
   const sorted = React.useMemo(() => {
     if (suggestions.length === 0) return [];
-    const scored = suggestions.map((s) => ({ value: s, score: scoreSuggestion(s, value) }));
+    const scored = suggestions.map((s) => ({
+      value: s,
+      score: scoreSuggestion(s, value),
+    }));
     scored.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       return a.value.localeCompare(b.value, "en-US");
@@ -110,7 +115,12 @@ export function ModelSuggest({
           onClick={() => setOpen((prev) => !prev)}
           className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ChevronDown className={cn("h-4 w-4 transition-transform", showDropdown && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform",
+              showDropdown && "rotate-180",
+            )}
+          />
         </button>
       )}
       {showDropdown && (

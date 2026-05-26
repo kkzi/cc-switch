@@ -76,66 +76,66 @@ export const FullScreenPanel: React.FC<FullScreenPanelProps> = ({
         className="fixed inset-0 z-[60] flex flex-col"
         style={{ backgroundColor: "hsl(var(--background))" }}
       >
-          {/* Drag region - match App.tsx */}
-          <div
-            data-tauri-drag-region
-            style={
-              {
-                WebkitAppRegion: "drag",
-                height: DRAG_BAR_HEIGHT,
-              } as React.CSSProperties
-            }
-          />
+        {/* Drag region - match App.tsx */}
+        <div
+          data-tauri-drag-region
+          style={
+            {
+              WebkitAppRegion: "drag",
+              height: DRAG_BAR_HEIGHT,
+            } as React.CSSProperties
+          }
+        />
 
-          {/* Header - match App.tsx */}
+        {/* Header - match App.tsx */}
+        <div
+          className="flex shrink-0 items-center border-b border-border-default"
+          data-tauri-drag-region
+          style={
+            {
+              WebkitAppRegion: "drag",
+              backgroundColor: "hsl(var(--background))",
+              height: HEADER_HEIGHT,
+            } as React.CSSProperties
+          }
+        >
           <div
-            className="flex shrink-0 items-center border-b border-border-default"
+            className="flex w-full items-center gap-3 px-4"
             data-tauri-drag-region
-            style={
-              {
-                WebkitAppRegion: "drag",
-                backgroundColor: "hsl(var(--background))",
-                height: HEADER_HEIGHT,
-              } as React.CSSProperties
-            }
+            style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
           >
-            <div
-              className="flex w-full items-center gap-3 px-4"
-              data-tauri-drag-region
-              style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={onClose}
+              className="select-none"
+              style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
             >
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={onClose}
-                className="select-none"
-                style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <h2 className="select-none text-base font-semibold text-foreground">
-                {title}
-              </h2>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="select-none text-base font-semibold text-foreground">
+              {title}
+            </h2>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto scroll-overlay">
+          <div className="w-full space-y-4 px-4 py-4">{children}</div>
+        </div>
+
+        {/* Footer */}
+        {footer && (
+          <div
+            className="shrink-0 border-t border-border-default py-3"
+            style={{ backgroundColor: "hsl(var(--background))" }}
+          >
+            <div className="flex items-center justify-end gap-2 px-4">
+              {footer}
             </div>
           </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto scroll-overlay">
-            <div className="w-full space-y-4 px-4 py-4">{children}</div>
-          </div>
-
-          {/* Footer */}
-          {footer && (
-            <div
-              className="shrink-0 border-t border-border-default py-3"
-              style={{ backgroundColor: "hsl(var(--background))" }}
-            >
-              <div className="flex items-center justify-end gap-2 px-4">
-                {footer}
-              </div>
-            </div>
-          )}
+        )}
       </div>
     ) : null,
     document.body,

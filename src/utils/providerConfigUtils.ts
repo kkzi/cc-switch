@@ -743,7 +743,11 @@ export const extractProviderConnectionInfo = (
 
   if (appId === "opencode") {
     return {
-      baseUrl: readStringValue(options.baseURL, options.baseUrl, config.baseUrl),
+      baseUrl: readStringValue(
+        options.baseURL,
+        options.baseUrl,
+        config.baseUrl,
+      ),
       apiKey: readStringValue(options.apiKey, config.apiKey),
     };
   }
@@ -988,7 +992,9 @@ export const normalizeCodexCustomProviderConfig = (
     const providerTables = isPlainObject(parsed.model_providers)
       ? (parsed.model_providers as Record<string, any>)
       : {};
-    const currentProviderTable = isPlainObject(providerTables[currentProviderName])
+    const currentProviderTable = isPlainObject(
+      providerTables[currentProviderName],
+    )
       ? { ...(providerTables[currentProviderName] as Record<string, any>) }
       : {};
     const customProviderTable = isPlainObject(providerTables.custom)
@@ -1002,7 +1008,7 @@ export const normalizeCodexCustomProviderConfig = (
       wire_api:
         typeof currentProviderTable.wire_api === "string" ||
         typeof customProviderTable.wire_api === "string"
-          ? customProviderTable.wire_api ?? currentProviderTable.wire_api
+          ? (customProviderTable.wire_api ?? currentProviderTable.wire_api)
           : "responses",
       requires_openai_auth:
         customProviderTable.requires_openai_auth ??

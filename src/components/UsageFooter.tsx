@@ -179,7 +179,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
               isExpired
                 ? "text-red-500 dark:text-red-400"
                 : firstUsage.remaining <
-                      (firstUsage.total || firstUsage.remaining) * 0.1
+                    (firstUsage.total || firstUsage.remaining) * 0.1
                   ? "text-orange-500 dark:text-orange-400"
                   : "text-green-600 dark:text-green-400"
             }`}

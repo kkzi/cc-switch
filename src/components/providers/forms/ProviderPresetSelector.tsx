@@ -69,8 +69,7 @@ export function ProviderPresetSelector({
         label === "zhipu glm" ||
         label === "zhupu glm" ||
         label.startsWith("zhipu glm "),
-      (label: string) =>
-        label === "minimax" || label.startsWith("minimax "),
+      (label: string) => label === "minimax" || label.startsWith("minimax "),
       (label: string) => label === "kimi" || label.startsWith("kimi "),
       (label: string) => label === "nvidia" || label.startsWith("nvidia "),
     ];
@@ -210,7 +209,9 @@ export function ProviderPresetSelector({
           {firstRowPresetEntries.map((entry) => {
             const categoryKey =
               categoryKeys.find((key) =>
-                (groupedPresets[key] ?? []).some((item) => item.id === entry.id),
+                (groupedPresets[key] ?? []).some(
+                  (item) => item.id === entry.id,
+                ),
               ) ?? "others";
             const isSelected = selectedPresetId === entry.id;
             const isPartner = entry.preset.isPartner;
@@ -254,7 +255,9 @@ export function ProviderPresetSelector({
             {collapsedPresetEntries.map((entry) => {
               const categoryKey =
                 categoryKeys.find((key) =>
-                  (groupedPresets[key] ?? []).some((item) => item.id === entry.id),
+                  (groupedPresets[key] ?? []).some(
+                    (item) => item.id === entry.id,
+                  ),
                 ) ?? "others";
               const isSelected = selectedPresetId === entry.id;
               const isPartner = entry.preset.isPartner;
@@ -266,7 +269,8 @@ export function ProviderPresetSelector({
                   className={`${getPresetButtonClass(isSelected, entry.preset)} relative`}
                   style={getPresetButtonStyle(isSelected, entry.preset)}
                   title={
-                    presetCategoryLabels[categoryKey] ?? t("providerPreset.other")
+                    presetCategoryLabels[categoryKey] ??
+                    t("providerPreset.other")
                   }
                 >
                   {renderPresetIcon(entry.preset)}

@@ -384,7 +384,9 @@ const EndpointSpeedTest: React.FC<EndpointSpeedTestProps> = ({
             await vscodeApi.saveSpeedtestResult(appId, providerId, {
               bestUrl: normalizeEndpointUrl(best.url),
               latencyMs:
-                typeof best.latency === "number" ? Math.round(best.latency) : null,
+                typeof best.latency === "number"
+                  ? Math.round(best.latency)
+                  : null,
               status: best.error ? "error" : "success",
               error: best.error ?? undefined,
               testedAt: Date.now(),

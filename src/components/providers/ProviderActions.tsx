@@ -252,7 +252,10 @@ export function ProviderActions({
         variant={buttonState.variant}
         onClick={handleMainButtonClick}
         disabled={buttonState.disabled}
-        className={cn("h-7 w-[4.1rem] gap-1 px-2 text-xs", buttonState.className)}
+        className={cn(
+          "h-7 w-[4.1rem] gap-1 px-2 text-xs",
+          buttonState.className,
+        )}
       >
         {buttonState.icon}
         {buttonState.text}

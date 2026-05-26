@@ -242,8 +242,7 @@ function App() {
   const headerPanelClass =
     "flex h-10 items-center gap-1 border border-border-default bg-muted px-1";
   const headerUtilityButtonClass = `${headerControlButtonClass} bg-muted text-muted-foreground hover:bg-muted hover:text-foreground`;
-  const settingsButtonClass =
-    headerUtilityButtonClass;
+  const settingsButtonClass = headerUtilityButtonClass;
 
   const {
     isRunning: isProxyRunning,
@@ -983,48 +982,48 @@ function App() {
             >
               <div className="flex-1 overflow-y-auto overflow-x-hidden pb-8">
                 <div key={activeApp} className="space-y-3">
-                    <ProviderList
-                      providers={providers}
-                      currentProviderId={currentProviderId}
-                      appId={activeApp}
-                      isLoading={isLoading}
-                      isProxyRunning={isProxyRunning}
-                      isProxyTakeover={
-                        isProxyRunning && isCurrentAppTakeoverActive
-                      }
-                      activeProviderId={activeProviderId}
-                      onSwitch={switchProvider}
-                      onEdit={(provider) => {
-                        setEditingProvider(provider);
-                      }}
-                      onDelete={(provider) =>
-                        setConfirmAction({ provider, action: "delete" })
-                      }
-                      onRemoveFromConfig={
-                        activeApp === "opencode" || activeApp === "openclaw"
-                          ? (provider) =>
-                              setConfirmAction({ provider, action: "remove" })
-                          : undefined
-                      }
-                      onDisableOmo={
-                        activeApp === "opencode" ? handleDisableOmo : undefined
-                      }
-                      onDisableOmoSlim={
-                        activeApp === "opencode"
-                          ? handleDisableOmoSlim
-                          : undefined
-                      }
-                      onDuplicate={handleDuplicateProvider}
-                      onConfigureUsage={setUsageProvider}
-                      onOpenWebsite={handleOpenWebsite}
-                      onOpenTerminal={
-                        activeApp === "claude" ? handleOpenTerminal : undefined
-                      }
-                      onCreate={() => setIsAddOpen(true)}
-                      onSetAsDefault={
-                        activeApp === "openclaw" ? setAsDefaultModel : undefined
-                      }
-                    />
+                  <ProviderList
+                    providers={providers}
+                    currentProviderId={currentProviderId}
+                    appId={activeApp}
+                    isLoading={isLoading}
+                    isProxyRunning={isProxyRunning}
+                    isProxyTakeover={
+                      isProxyRunning && isCurrentAppTakeoverActive
+                    }
+                    activeProviderId={activeProviderId}
+                    onSwitch={switchProvider}
+                    onEdit={(provider) => {
+                      setEditingProvider(provider);
+                    }}
+                    onDelete={(provider) =>
+                      setConfirmAction({ provider, action: "delete" })
+                    }
+                    onRemoveFromConfig={
+                      activeApp === "opencode" || activeApp === "openclaw"
+                        ? (provider) =>
+                            setConfirmAction({ provider, action: "remove" })
+                        : undefined
+                    }
+                    onDisableOmo={
+                      activeApp === "opencode" ? handleDisableOmo : undefined
+                    }
+                    onDisableOmoSlim={
+                      activeApp === "opencode"
+                        ? handleDisableOmoSlim
+                        : undefined
+                    }
+                    onDuplicate={handleDuplicateProvider}
+                    onConfigureUsage={setUsageProvider}
+                    onOpenWebsite={handleOpenWebsite}
+                    onOpenTerminal={
+                      activeApp === "claude" ? handleOpenTerminal : undefined
+                    }
+                    onCreate={() => setIsAddOpen(true)}
+                    onSetAsDefault={
+                      activeApp === "openclaw" ? setAsDefaultModel : undefined
+                    }
+                  />
                 </div>
               </div>
             </div>
@@ -1034,7 +1033,7 @@ function App() {
 
     return (
       <div key={currentView} className="flex-1 min-h-0">
-          {content}
+        {content}
       </div>
     );
   };
@@ -1391,7 +1390,9 @@ function App() {
                         )}
                         title={t("skills.manage")}
                       >
-                        <Wrench className={`${headerIconClass} flex-shrink-0`} />
+                        <Wrench
+                          className={`${headerIconClass} flex-shrink-0`}
+                        />
                       </Button>
                       <Button
                         variant="ghost"
@@ -1414,7 +1415,9 @@ function App() {
                         )}
                         title={t("sessionManager.title")}
                       >
-                        <History className={`${headerIconClass} flex-shrink-0`} />
+                        <History
+                          className={`${headerIconClass} flex-shrink-0`}
+                        />
                       </Button>
                       {activeApp === "hermes" && (
                         <>
@@ -1423,7 +1426,9 @@ function App() {
                             size="icon"
                             onClick={() => setCurrentView("hermesMemory")}
                             className={`${headerPanelButtonClass} text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5`}
-                            title={t("hermes.memory.title", { defaultValue: "Memory" })}
+                            title={t("hermes.memory.title", {
+                              defaultValue: "Memory",
+                            })}
                           >
                             <Brain className={headerIconClass} />
                           </Button>
@@ -1432,7 +1437,9 @@ function App() {
                             size="icon"
                             onClick={() => void openHermesWebUI()}
                             className={`${headerPanelButtonClass} text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5`}
-                            title={t("hermes.webui.open", { defaultValue: "Open Web UI" })}
+                            title={t("hermes.webui.open", {
+                              defaultValue: "Open Web UI",
+                            })}
                           >
                             <LayoutDashboard className={headerIconClass} />
                           </Button>

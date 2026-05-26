@@ -22,7 +22,10 @@ const rowClassName =
 const labelClassName = "font-medium leading-8 text-muted-foreground";
 const rightAlignedLabelClassName = `${labelClassName} text-right`;
 
-export function BasicFormFields({ form, beforeNameSlot }: BasicFormFieldsProps) {
+export function BasicFormFields({
+  form,
+  beforeNameSlot,
+}: BasicFormFieldsProps) {
   const { t } = useTranslation();
 
   return (
@@ -35,7 +38,9 @@ export function BasicFormFields({ form, beforeNameSlot }: BasicFormFieldsProps) 
           name="name"
           render={({ field }) => (
             <FormItem className={rowClassName}>
-              <FormLabel className={labelClassName}>{t("provider.name")}</FormLabel>
+              <FormLabel className={labelClassName}>
+                {t("provider.name")}
+              </FormLabel>
               <div className="space-y-0.5">
                 <FormControl>
                   <Input

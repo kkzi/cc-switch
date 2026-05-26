@@ -922,7 +922,9 @@ function ProviderFormFull({
       return;
     }
 
-    const merged: Record<string, Record<string, unknown>> = { ...opencodeForm.opencodeModels };
+    const merged: Record<string, Record<string, unknown>> = {
+      ...opencodeForm.opencodeModels,
+    };
     let imported = 0;
     let updated = 0;
 
@@ -937,7 +939,10 @@ function ProviderFormFull({
         continue;
       }
 
-      if (!(existing as Record<string, unknown>).name || !(String((existing as Record<string, unknown>).name).trim())) {
+      if (
+        !(existing as Record<string, unknown>).name ||
+        !String((existing as Record<string, unknown>).name).trim()
+      ) {
         merged[key] = { ...existing, name: key };
         updated += 1;
       }
