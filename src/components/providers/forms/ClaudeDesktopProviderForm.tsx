@@ -616,7 +616,7 @@ export function ClaudeDesktopProviderForm({
                 ? t("providerForm.apiHintOAI")
                 : needsModelMapping && apiFormat === "gemini_native"
                   ? t("providerForm.apiHintGeminiNative")
-                  : t("providerForm.apiHint")
+                  : ""
           }
           showManageButton={false}
         />

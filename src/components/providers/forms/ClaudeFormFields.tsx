@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -24,13 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  ChevronDown,
-  ChevronRight,
-  Download,
-  Loader2,
-  Wand2,
-} from "lucide-react";
+import { ChevronDown, Download, Loader2, Wand2 } from "lucide-react";
 import EndpointSpeedTest from "./EndpointSpeedTest";
 import { ApiKeySection, EndpointField, ModelInputWithFetch } from "./shared";
 import { CopilotAuthSection } from "./CopilotAuthSection";
@@ -184,23 +173,6 @@ export function ClaudeFormFields({
   onFullUrlChange,
 }: ClaudeFormFieldsProps) {
   const { t } = useTranslation();
-  const hasAnyAdvancedValue = !!(
-    claudeModel ||
-    defaultHaikuModel ||
-    defaultSonnetModel ||
-    defaultOpusModel ||
-    apiFormat !== "anthropic" ||
-    apiKeyField !== "ANTHROPIC_AUTH_TOKEN"
-  );
-  const [advancedExpanded, setAdvancedExpanded] = useState(hasAnyAdvancedValue);
-
-  // 预设填充高级值后自动展开（仅从折叠→展开，不会自动折叠）
-  useEffect(() => {
-    if (hasAnyAdvancedValue) {
-      setAdvancedExpanded(true);
-    }
-  }, [hasAnyAdvancedValue]);
-
   // Copilot 可用模型列表
   const [copilotModels, setCopilotModels] = useState<CopilotModel[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -396,19 +368,6 @@ export function ClaudeFormFields({
         />
       )}
 
-      {/* API Key 输入框（非 OAuth 预设时显示） */}
-      {shouldShowApiKey && !usesOAuth && (
-        <ApiKeySection
-          value={apiKey}
-          onChange={onApiKeyChange}
-          category={category}
-          shouldShowLink={shouldShowApiKeyLink}
-          websiteUrl={websiteUrl}
-          isPartner={isPartner}
-          partnerPromotionKey={partnerPromotionKey}
-        />
-      )}
-
       {/* 模板变量输入 */}
       {templateValueEntries.length > 0 && (
         <div className="space-y-3">
@@ -459,7 +418,7 @@ export function ClaudeFormFields({
                 ? t("providerForm.apiHintOAI")
                 : apiFormat === "gemini_native"
                   ? t("providerForm.apiHintGeminiNative")
-                  : t("providerForm.apiHint")
+                  : ""
           }
           fullUrlHint={
             apiFormat === "gemini_native"
@@ -473,6 +432,19 @@ export function ClaudeFormFields({
           showFullUrlToggle={showEndpointTools}
           isFullUrl={isFullUrl}
           onFullUrlChange={onFullUrlChange}
+        />
+      )}
+
+      {/* API Key 输入框（非 OAuth 预设时显示） */}
+      {shouldShowApiKey && !usesOAuth && (
+        <ApiKeySection
+          value={apiKey}
+          onChange={onApiKeyChange}
+          category={category}
+          shouldShowLink={shouldShowApiKeyLink}
+          websiteUrl={websiteUrl}
+          isPartner={isPartner}
+          partnerPromotionKey={partnerPromotionKey}
         />
       )}
 
@@ -492,34 +464,17 @@ export function ClaudeFormFields({
         />
       )}
 
-      {/* 高级选项（API 格式 + 认证字段 + 模型映射） */}
+      {/* Claude 配置项 */}
       {shouldShowModelSelector && (
-        <Collapsible open={advancedExpanded} onOpenChange={setAdvancedExpanded}>
-          <CollapsibleTrigger asChild>
-            <Button
-              type="button"
-              variant={null}
-              size="sm"
-              className="h-8 gap-1.5 px-0 text-sm font-medium text-foreground hover:opacity-70"
-            >
-              {advancedExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-              {t("providerForm.advancedOptionsToggle")}
-            </Button>
-          </CollapsibleTrigger>
-          {!advancedExpanded && (
-            <p className="text-xs text-muted-foreground mt-1 ml-1">
-              {t("providerForm.advancedOptionsHint")}
-            </p>
-          )}
-          <CollapsibleContent className="space-y-4 pt-2">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[96px_minmax(0,1fr)_96px_minmax(0,1fr)] md:items-center md:gap-2">
             {/* API 格式选择（仅非云服务商显示） */}
-            {category !== "cloud_provider" && (
-              <div className="space-y-2">
-                <FormLabel htmlFor="apiFormat">
+            {category !== "cloud_provider" ? (
+              <>
+                <FormLabel
+                  htmlFor="apiFormat"
+                  className="font-medium leading-8 text-muted-foreground"
+                >
                   {t("providerForm.apiFormat", { defaultValue: "API 格式" })}
                 </FormLabel>
                 <Select value={apiFormat} onValueChange={onApiFormatChange}>
@@ -549,175 +504,169 @@ export function ClaudeFormFields({
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  {t("providerForm.apiFormatHint", {
-                    defaultValue: "选择供应商 API 的输入格式",
-                  })}
-                </p>
-              </div>
+              </>
+            ) : (
+              <div className="hidden md:block md:col-span-2" />
             )}
 
             {/* 认证字段选择器 */}
-            <div className="space-y-2">
-              <FormLabel>
-                {t("providerForm.authField", { defaultValue: "认证字段" })}
-              </FormLabel>
-              <Select
-                value={apiKeyField}
-                onValueChange={(v) =>
-                  onApiKeyFieldChange(v as ClaudeApiKeyField)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ANTHROPIC_AUTH_TOKEN">
-                    {t("providerForm.authFieldAuthToken", {
-                      defaultValue: "ANTHROPIC_AUTH_TOKEN（默认）",
-                    })}
-                  </SelectItem>
-                  <SelectItem value="ANTHROPIC_API_KEY">
-                    {t("providerForm.authFieldApiKey", {
-                      defaultValue: "ANTHROPIC_API_KEY",
-                    })}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {t("providerForm.authFieldHint", {
-                  defaultValue: "选择写入配置的认证环境变量名",
-                })}
-              </p>
-            </div>
+            <FormLabel className="font-medium leading-8 text-muted-foreground md:text-right">
+              {t("providerForm.authField", { defaultValue: "认证字段" })}
+            </FormLabel>
+            <Select
+              value={apiKeyField}
+              onValueChange={(v) => onApiKeyFieldChange(v as ClaudeApiKeyField)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ANTHROPIC_AUTH_TOKEN">
+                  {t("providerForm.authFieldAuthToken", {
+                    defaultValue: "ANTHROPIC_AUTH_TOKEN（默认）",
+                  })}
+                </SelectItem>
+                <SelectItem value="ANTHROPIC_API_KEY">
+                  {t("providerForm.authFieldApiKey", {
+                    defaultValue: "ANTHROPIC_API_KEY",
+                  })}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            {/* 模型映射 */}
-            <div className="space-y-1 pt-2 border-t">
-              <div className="flex items-center justify-between">
-                <FormLabel>{t("providerForm.modelMappingLabel")}</FormLabel>
-                <div className="flex gap-2">
-                  {/* 一键设置按钮 */}
+          {/* 模型映射 */}
+          <div className="grid grid-cols-1 gap-3 border-t pt-4 md:grid-cols-[96px_minmax(0,1fr)] md:items-center md:gap-2">
+            <FormLabel className="font-medium leading-8 text-muted-foreground">
+              {t("providerForm.modelMappingLabel")}
+            </FormLabel>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="min-w-0 flex-1" />
+              <div className="flex flex-wrap gap-2">
+                {!isCopilotPreset && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      const value =
-                        claudeModel ||
-                        defaultHaikuModel ||
-                        defaultSonnetModel ||
-                        defaultOpusModel;
-                      if (value) {
-                        onModelChange("ANTHROPIC_MODEL", value);
-                        onModelChange("ANTHROPIC_DEFAULT_HAIKU_MODEL", value);
-                        onModelChange("ANTHROPIC_DEFAULT_SONNET_MODEL", value);
-                        onModelChange("ANTHROPIC_DEFAULT_OPUS_MODEL", value);
-                        toast.success(
-                          t("providerForm.quickSetSuccess", {
-                            defaultValue: "已将模型名称应用到所有字段",
-                          }),
-                        );
-                      }
-                    }}
-                    disabled={
-                      !claudeModel &&
-                      !defaultHaikuModel &&
-                      !defaultSonnetModel &&
-                      !defaultOpusModel
-                    }
+                    onClick={handleFetchModels}
+                    disabled={isFetchingModels}
                     className="h-7 gap-1"
                   >
-                    <Wand2 className="h-3.5 w-3.5" />
-                    {t("providerForm.quickSetModels", {
-                      defaultValue: "一键设置",
-                    })}
+                    {isFetchingModels ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    {t("providerForm.fetchModels")}
                   </Button>
-                  {!isCopilotPreset && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleFetchModels}
-                      disabled={isFetchingModels}
-                      className="h-7 gap-1"
-                    >
-                      {isFetchingModels ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5" />
-                      )}
-                      {t("providerForm.fetchModels")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t("providerForm.modelMappingHint")}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 主模型 */}
-              <div className="space-y-2">
-                <FormLabel htmlFor="claudeModel">
-                  {t("providerForm.anthropicModel", {
-                    defaultValue: "主模型",
-                  })}
-                </FormLabel>
-                {renderModelInput(
-                  "claudeModel",
-                  claudeModel,
-                  "ANTHROPIC_MODEL",
-                  t("providerForm.modelPlaceholder", { defaultValue: "" }),
                 )}
-              </div>
-
-              {/* 默认 Haiku */}
-              <div className="space-y-2">
-                <FormLabel htmlFor="claudeDefaultHaikuModel">
-                  {t("providerForm.anthropicDefaultHaikuModel", {
-                    defaultValue: "Haiku 默认模型",
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const value =
+                      claudeModel ||
+                      defaultHaikuModel ||
+                      defaultSonnetModel ||
+                      defaultOpusModel;
+                    if (value) {
+                      onModelChange("ANTHROPIC_MODEL", value);
+                      onModelChange("ANTHROPIC_DEFAULT_HAIKU_MODEL", value);
+                      onModelChange("ANTHROPIC_DEFAULT_SONNET_MODEL", value);
+                      onModelChange("ANTHROPIC_DEFAULT_OPUS_MODEL", value);
+                      toast.success(
+                        t("providerForm.quickSetSuccess", {
+                          defaultValue: "已将模型名称应用到所有字段",
+                        }),
+                      );
+                    }
+                  }}
+                  disabled={
+                    !claudeModel &&
+                    !defaultHaikuModel &&
+                    !defaultSonnetModel &&
+                    !defaultOpusModel
+                  }
+                  className="h-7 gap-1"
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                  {t("providerForm.quickSetModels", {
+                    defaultValue: "一键设置",
                   })}
-                </FormLabel>
-                {renderModelInput(
-                  "claudeDefaultHaikuModel",
-                  defaultHaikuModel,
-                  "ANTHROPIC_DEFAULT_HAIKU_MODEL",
-                  t("providerForm.haikuModelPlaceholder", { defaultValue: "" }),
-                )}
-              </div>
-
-              {/* 默认 Sonnet */}
-              <div className="space-y-2">
-                <FormLabel htmlFor="claudeDefaultSonnetModel">
-                  {t("providerForm.anthropicDefaultSonnetModel", {
-                    defaultValue: "Sonnet 默认模型",
-                  })}
-                </FormLabel>
-                {renderModelInput(
-                  "claudeDefaultSonnetModel",
-                  defaultSonnetModel,
-                  "ANTHROPIC_DEFAULT_SONNET_MODEL",
-                  t("providerForm.modelPlaceholder", { defaultValue: "" }),
-                )}
-              </div>
-
-              {/* 默认 Opus */}
-              <div className="space-y-2">
-                <FormLabel htmlFor="claudeDefaultOpusModel">
-                  {t("providerForm.anthropicDefaultOpusModel", {
-                    defaultValue: "Opus 默认模型",
-                  })}
-                </FormLabel>
-                {renderModelInput(
-                  "claudeDefaultOpusModel",
-                  defaultOpusModel,
-                  "ANTHROPIC_DEFAULT_OPUS_MODEL",
-                  t("providerForm.modelPlaceholder", { defaultValue: "" }),
-                )}
+                </Button>
               </div>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[96px_minmax(0,1fr)_96px_minmax(0,1fr)] md:items-center md:gap-2">
+            {/* 主模型 */}
+            <FormLabel
+              htmlFor="claudeModel"
+              className="font-medium leading-8 text-muted-foreground"
+            >
+              {t("providerForm.anthropicModel", {
+                defaultValue: "主模型",
+              })}
+            </FormLabel>
+            {renderModelInput(
+              "claudeModel",
+              claudeModel,
+              "ANTHROPIC_MODEL",
+              t("providerForm.modelPlaceholder", { defaultValue: "" }),
+            )}
+
+            {/* 默认 Haiku */}
+            <FormLabel
+              htmlFor="claudeDefaultHaikuModel"
+              className="font-medium leading-8 text-muted-foreground md:text-right"
+            >
+              {t("providerForm.anthropicDefaultHaikuModel", {
+                defaultValue: "Haiku 模型",
+              })}
+            </FormLabel>
+            {renderModelInput(
+              "claudeDefaultHaikuModel",
+              defaultHaikuModel,
+              "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+              t("providerForm.haikuModelPlaceholder", { defaultValue: "" }),
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[96px_minmax(0,1fr)_96px_minmax(0,1fr)] md:items-center md:gap-2">
+            {/* 默认 Sonnet */}
+            <FormLabel
+              htmlFor="claudeDefaultSonnetModel"
+              className="font-medium leading-8 text-muted-foreground"
+            >
+              {t("providerForm.anthropicDefaultSonnetModel", {
+                defaultValue: "Sonnet 模型",
+              })}
+            </FormLabel>
+            {renderModelInput(
+              "claudeDefaultSonnetModel",
+              defaultSonnetModel,
+              "ANTHROPIC_DEFAULT_SONNET_MODEL",
+              t("providerForm.modelPlaceholder", { defaultValue: "" }),
+            )}
+
+            {/* 默认 Opus */}
+            <FormLabel
+              htmlFor="claudeDefaultOpusModel"
+              className="font-medium leading-8 text-muted-foreground md:text-right"
+            >
+              {t("providerForm.anthropicDefaultOpusModel", {
+                defaultValue: "Opus 模型",
+              })}
+            </FormLabel>
+            {renderModelInput(
+              "claudeDefaultOpusModel",
+              defaultOpusModel,
+              "ANTHROPIC_DEFAULT_OPUS_MODEL",
+              t("providerForm.modelPlaceholder", { defaultValue: "" }),
+            )}
+          </div>
+        </div>
       )}
     </>
   );

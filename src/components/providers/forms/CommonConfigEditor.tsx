@@ -3,8 +3,10 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { FullScreenPanel } from "@/components/common/FullScreenPanel";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Save, Download, Loader2, Package } from "lucide-react";
+import { Save, Download, Loader2, Package, Wand2 } from "lucide-react";
+import { toast } from "sonner";
 import JsonEditor from "@/components/JsonEditor";
+import { formatJSON } from "@/utils/formatters";
 
 interface CommonConfigEditorProps {
   value: string;
@@ -68,6 +70,26 @@ export function CommonConfigEditor({
     },
     [onChange],
   );
+
+  const handleFormat = useCallback(() => {
+    if (!localValue.trim()) return;
+
+    try {
+      handleLocalChange(formatJSON(localValue));
+      toast.success(t("common.formatSuccess", { defaultValue: "格式化成功" }), {
+        closeButton: true,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      toast.error(
+        t("common.formatError", {
+          defaultValue: "格式化失败：{{error}}",
+          error: errorMessage,
+        }),
+      );
+    }
+  }, [handleLocalChange, localValue, t]);
 
   const toggleStates = useMemo(() => {
     try {
@@ -161,7 +183,7 @@ export function CommonConfigEditor({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="settingsConfig">{t("provider.configJson")}</Label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
               <input
                 type="checkbox"
@@ -184,6 +206,14 @@ export function CommonConfigEditor({
               {t("claudeConfig.editCommonConfig", {
                 defaultValue: "编辑通用配置",
               })}
+            </button>
+            <button
+              type="button"
+              onClick={handleFormat}
+              className="inline-flex items-center gap-1.5 text-xs text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
+            >
+              <Wand2 className="h-3.5 w-3.5" />
+              {t("common.format", { defaultValue: "格式化" })}
             </button>
           </div>
         </div>
@@ -258,6 +288,7 @@ export function CommonConfigEditor({
           rows={14}
           showValidation={true}
           language="json"
+          showFormatButton={false}
         />
       </div>
 
@@ -299,7 +330,8 @@ export function CommonConfigEditor({
       >
         <div className="space-y-4">
           <p className="text-xs text-orange-500 dark:text-orange-400">
-            {t("commonConfig.guideTitle")} — {t("commonConfig.guidePurpose")} {t("commonConfig.guideUsage")}
+            {t("commonConfig.guideTitle")} — {t("commonConfig.guidePurpose")}{" "}
+            {t("commonConfig.guideUsage")}
           </p>
           {(!commonConfigSnippet ||
             commonConfigSnippet.trim() === "" ||
