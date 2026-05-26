@@ -65,6 +65,7 @@ interface ProviderCardProps {
   isDefaultModel?: boolean;
   onSetAsDefault?: () => void;
   onPrimaryAction?: (provider: Provider) => void;
+  suppressInitialRecentTooltip?: boolean;
 }
 
 const extractModelName = (provider: Provider, appId: AppId): string | null => {
@@ -196,12 +197,14 @@ const formatTooltipTimestamp = (timestamp: number | null) => {
     return "";
   }
 
-  return [
-    date.getFullYear(),
-    padTimePart(date.getMonth() + 1),
-    padTimePart(date.getDate()),
-  ].join("-") +
-    ` ${padTimePart(date.getHours())}:${padTimePart(date.getMinutes())}:${padTimePart(date.getSeconds())}`;
+  return (
+    [
+      date.getFullYear(),
+      padTimePart(date.getMonth() + 1),
+      padTimePart(date.getDate()),
+    ].join("-") +
+    ` ${padTimePart(date.getHours())}:${padTimePart(date.getMinutes())}:${padTimePart(date.getSeconds())}`
+  );
 };
 
 const parseTimestamp = (value?: string | number | null) => {
@@ -222,10 +225,7 @@ const parseTimestamp = (value?: string | number | null) => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
-const prependTooltipTimestamp = (
-  message: string,
-  timestamp: number | null,
-) => {
+const prependTooltipTimestamp = (message: string, timestamp: number | null) => {
   const trimmed = message.trim();
   if (!trimmed) return "";
 
@@ -433,6 +433,7 @@ export function ProviderCard({
   isDefaultModel,
   onSetAsDefault,
   onPrimaryAction,
+  suppressInitialRecentTooltip = false,
 }: ProviderCardProps) {
   const { t } = useTranslation();
 
@@ -506,9 +507,14 @@ export function ProviderCard({
     [latestHealthEntry, recentTestEntry],
   );
   const recentTooltipKey = useMemo(() => {
-    if (!latestTooltipEntry || latestTooltipEntry.source !== "recent") return "";
+    if (!latestTooltipEntry || latestTooltipEntry.source !== "recent")
+      return "";
     return `${recentTestResult?.testedAt ?? ""}:${recentTestResult?.status ?? ""}:${latestTooltipEntry.message}`;
-  }, [latestTooltipEntry, recentTestResult?.status, recentTestResult?.testedAt]);
+  }, [
+    latestTooltipEntry,
+    recentTestResult?.status,
+    recentTestResult?.testedAt,
+  ]);
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const [isRecentTooltipActive, setIsRecentTooltipActive] = useState(false);
   const [isTooltipRegionHovered, setIsTooltipRegionHovered] = useState(false);
@@ -540,6 +546,7 @@ export function ProviderCard({
     !activeRecentTooltip && latestTooltipEntry?.source === "health";
   const hideTooltipTimerRef = useRef<number | null>(null);
   const lastAutoOpenedRecentTooltipKeyRef = useRef("");
+  const hasHandledInitialRecentTooltipRef = useRef(false);
 
   const usageEnabled = provider.meta?.usage_script?.enabled ?? false;
   const isOfficial = isOfficialProvider(provider, appId);
@@ -585,13 +592,16 @@ export function ProviderCard({
     setRecentStatusSnapshot(null);
   }, [clearHideTooltipTimer]);
 
-  const scheduleHideTooltip = useCallback((delayMs: number) => {
-    clearHideTooltipTimer();
-    hideTooltipTimerRef.current = window.setTimeout(() => {
-      hideTooltipImmediately();
-      hideTooltipTimerRef.current = null;
-    }, delayMs);
-  }, [clearHideTooltipTimer, hideTooltipImmediately]);
+  const scheduleHideTooltip = useCallback(
+    (delayMs: number) => {
+      clearHideTooltipTimer();
+      hideTooltipTimerRef.current = window.setTimeout(() => {
+        hideTooltipImmediately();
+        hideTooltipTimerRef.current = null;
+      }, delayMs);
+    },
+    [clearHideTooltipTimer, hideTooltipImmediately],
+  );
 
   useEffect(() => {
     if (hasMultiplePlans) {
@@ -621,6 +631,14 @@ export function ProviderCard({
         hideTooltipImmediately();
       }
       return;
+    }
+
+    if (!hasHandledInitialRecentTooltipRef.current) {
+      hasHandledInitialRecentTooltipRef.current = true;
+      if (suppressInitialRecentTooltip) {
+        lastAutoOpenedRecentTooltipKeyRef.current = recentTooltipKey;
+        return;
+      }
     }
 
     if (lastAutoOpenedRecentTooltipKeyRef.current === recentTooltipKey) {
@@ -658,6 +676,7 @@ export function ProviderCard({
     recentTooltipKey,
     recentTooltipSnapshot,
     scheduleHideTooltip,
+    suppressInitialRecentTooltip,
     clearHideTooltipTimer,
   ]);
 

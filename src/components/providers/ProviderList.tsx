@@ -291,7 +291,10 @@ export function ProviderList({
         try {
           await providersApi.updateTrayMenu();
         } catch (trayError) {
-          console.error("Failed to update tray menu after quick sort", trayError);
+          console.error(
+            "Failed to update tray menu after quick sort",
+            trayError,
+          );
         }
         toast.success(
           t("provider.sortUpdated", { defaultValue: "排序已更新" }),
@@ -400,7 +403,10 @@ export function ProviderList({
 
   const handleCopyProviderConnection = useCallback(
     async (provider: Provider) => {
-      const { baseUrl, apiKey } = extractProviderConnectionInfo(provider, appId);
+      const { baseUrl, apiKey } = extractProviderConnectionInfo(
+        provider,
+        appId,
+      );
       await copyText(`${baseUrl}\r\n${apiKey}`);
       toast.success(
         t("provider.copyConnectionSuccess", {
@@ -934,6 +940,7 @@ function SortableProviderCard({
         isDefaultModel={isDefaultModel}
         onSetAsDefault={onSetAsDefault}
         onPrimaryAction={onPrimaryAction}
+        suppressInitialRecentTooltip
       />
     </div>
   );

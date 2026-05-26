@@ -44,9 +44,7 @@ vi.mock("@/components/ui/tooltip", () => {
   return {
     TooltipProvider: ({ children }: any) => <div>{children}</div>,
     Tooltip: ({ children, open, onOpenChange }: any) => (
-      <TooltipContext.Provider
-        value={{ open: Boolean(open), onOpenChange }}
-      >
+      <TooltipContext.Provider value={{ open: Boolean(open), onOpenChange }}>
         <div>{children}</div>
       </TooltipContext.Provider>
     ),
@@ -55,8 +53,7 @@ vi.mock("@/components/ui/tooltip", () => {
       if (!React.isValidElement(children)) {
         return <div>{children}</div>;
       }
-      const child =
-        children as React.ReactElement<TooltipTriggerChildProps>;
+      const child = children as React.ReactElement<TooltipTriggerChildProps>;
       return React.cloneElement(child, {
         onPointerEnter: (event) => {
           child.props.onPointerEnter?.(event);
@@ -131,7 +128,9 @@ describe("ProviderCard compact layout", () => {
 
     expect(container.firstElementChild).toHaveClass("p-2.5");
     expect(container.firstElementChild?.children[1]).toHaveClass("gap-2");
-    expect(container.firstElementChild?.querySelector(".space-y-0")).toBeInTheDocument();
+    expect(
+      container.firstElementChild?.querySelector(".space-y-0"),
+    ).toBeInTheDocument();
     expect(
       container.firstElementChild?.querySelector(".min-h-5"),
     ).toBeInTheDocument();
@@ -148,7 +147,9 @@ describe("ProviderCard compact layout", () => {
     const { container } = render(<ProviderCard {...baseProps} />);
 
     expect(await screen.findByTestId("usage-footer-block")).toBeInTheDocument();
-    const expandedShell = container.querySelector(".border-t.border-border-default");
+    const expandedShell = container.querySelector(
+      ".border-t.border-border-default",
+    );
     expect(expandedShell).toHaveClass("mt-2", "pt-2");
   });
 
@@ -181,7 +182,9 @@ describe("ProviderCard compact layout", () => {
   it("does not render a tooltip for the provider logo", () => {
     render(<ProviderCard {...baseProps} />);
 
-    expect(screen.queryByTestId("provider-card-tooltip")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("provider-card-tooltip"),
+    ).not.toBeInTheDocument();
   });
 
   it("truncates long urls visually but opens the full url on click", () => {
@@ -228,7 +231,9 @@ describe("ProviderCard compact layout", () => {
     );
     expect(container.querySelector(".border-red-500")).toBeInTheDocument();
     expect(screen.queryByText("最近错误:")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "查看详情" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "查看详情" }),
+    ).not.toBeInTheDocument();
   });
 
   it("resets icon border to default while testing is running", () => {
@@ -257,9 +262,13 @@ describe("ProviderCard compact layout", () => {
       />,
     );
 
-    expect(container.querySelector(".border-border-default")).toBeInTheDocument();
+    expect(
+      container.querySelector(".border-border-default"),
+    ).toBeInTheDocument();
     expect(container.querySelector(".border-red-500")).not.toBeInTheDocument();
-    expect(container.querySelector(".border-green-500")).not.toBeInTheDocument();
+    expect(
+      container.querySelector(".border-green-500"),
+    ).not.toBeInTheDocument();
   });
 
   it("prefers recent test result for border color and tooltip message", () => {
@@ -284,15 +293,53 @@ describe("ProviderCard compact layout", () => {
     } satisfies StreamCheckResult;
 
     const { container } = render(
-      <ProviderCard
-        {...baseProps}
-        recentTestResult={recentResult}
-      />,
+      <ProviderCard {...baseProps} recentTestResult={recentResult} />,
     );
 
     expect(container.querySelector(".border-yellow-500")).toBeInTheDocument();
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
       "2026-05-05 19:12:12 temporary slowdown",
+    );
+  });
+
+  it("can suppress stale recent tooltip on mount but still opens new results", () => {
+    const oldResult = {
+      status: "degraded",
+      success: true,
+      message: "old slowdown",
+      modelUsed: "test-model",
+      testedAt: new Date("2026-05-05T11:12:12Z").getTime(),
+      retryCount: 0,
+    } satisfies StreamCheckResult;
+
+    const { rerender } = render(
+      <ProviderCard
+        {...baseProps}
+        recentTestResult={oldResult}
+        suppressInitialRecentTooltip
+      />,
+    );
+
+    expect(
+      screen.queryByTestId("provider-card-tooltip"),
+    ).not.toBeInTheDocument();
+
+    const newResult = {
+      ...oldResult,
+      message: "new slowdown",
+      testedAt: new Date("2026-05-05T11:13:13Z").getTime(),
+    } satisfies StreamCheckResult;
+
+    rerender(
+      <ProviderCard
+        {...baseProps}
+        recentTestResult={newResult}
+        suppressInitialRecentTooltip
+      />,
+    );
+
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "2026-05-05 19:13:13 new slowdown",
     );
   });
 
@@ -355,8 +402,7 @@ describe("ProviderCard compact layout", () => {
       data: {
         consecutive_failures: 1,
         last_check_status: "failed",
-        last_error:
-          '{"status":"401","error":"Invalid token\\nPlease check"}',
+        last_error: '{"status":"401","error":"Invalid token\\nPlease check"}',
         last_failure_at: failureTime,
         updated_at: failureTime,
       },
@@ -423,10 +469,7 @@ describe("ProviderCard compact layout", () => {
     } satisfies StreamCheckResult;
 
     const { container } = render(
-      <ProviderCard
-        {...baseProps}
-        recentTestResult={recentResult}
-      />,
+      <ProviderCard {...baseProps} recentTestResult={recentResult} />,
     );
 
     fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
@@ -473,12 +516,7 @@ describe("ProviderCard compact layout", () => {
       retryCount: 0,
     } satisfies StreamCheckResult;
 
-    render(
-      <ProviderCard
-        {...baseProps}
-        recentTestResult={recentResult}
-      />,
-    );
+    render(<ProviderCard {...baseProps} recentTestResult={recentResult} />);
 
     fireEvent.click(screen.getByTestId("provider-card-tooltip"));
 
@@ -498,10 +536,7 @@ describe("ProviderCard compact layout", () => {
     } satisfies StreamCheckResult;
 
     const { rerender } = render(
-      <ProviderCard
-        {...baseProps}
-        recentTestResult={recentResult}
-      />,
+      <ProviderCard {...baseProps} recentTestResult={recentResult} />,
     );
 
     fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
@@ -526,12 +561,7 @@ describe("ProviderCard compact layout", () => {
       retryCount: 0,
     } satisfies StreamCheckResult;
 
-    render(
-      <ProviderCard
-        {...baseProps}
-        recentTestResult={recentResult}
-      />,
-    );
+    render(<ProviderCard {...baseProps} recentTestResult={recentResult} />);
 
     expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
       "temporary slowdown",
@@ -541,6 +571,8 @@ describe("ProviderCard compact layout", () => {
       await vi.advanceTimersByTimeAsync(5000);
     });
 
-    expect(screen.queryByTestId("provider-card-tooltip")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("provider-card-tooltip"),
+    ).not.toBeInTheDocument();
   });
 });
