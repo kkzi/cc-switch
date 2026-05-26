@@ -15,7 +15,9 @@ trait MainWindowIconBuilder: Sized {
     fn icon(self, icon: Image<'static>) -> Result<Self, AppError>;
 }
 
-impl<'a, R: Runtime, M: Manager<R>> MainWindowIconBuilder for tauri::WebviewWindowBuilder<'a, R, M> {
+impl<'a, R: Runtime, M: Manager<R>> MainWindowIconBuilder
+    for tauri::WebviewWindowBuilder<'a, R, M>
+{
     fn icon(self, icon: Image<'static>) -> Result<Self, AppError> {
         self.icon(icon)
             .map_err(|e| AppError::Message(format!("设置主窗口图标失败: {e}")))
@@ -75,7 +77,9 @@ pub fn ensure_main_window(
         .center();
     let builder = apply_default_window_icon(
         builder,
-        app.default_window_icon().cloned().map(|icon| icon.to_owned()),
+        app.default_window_icon()
+            .cloned()
+            .map(|icon| icon.to_owned()),
     )?;
     #[cfg(target_os = "macos")]
     let builder = builder.title_bar_style(tauri::TitleBarStyle::Overlay);

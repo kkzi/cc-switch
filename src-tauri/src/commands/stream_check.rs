@@ -55,15 +55,17 @@ pub async fn stream_check_provider(
         HealthStatus::Degraded => "degraded",
         HealthStatus::Failed => "failed",
     };
-    let _ = state.db.update_provider_health_with_status(
-        &provider_id,
-        app_type.as_str(),
-        result.success,
-        Some(health_status),
-        health_message,
-        5,
-    )
-    .await;
+    let _ = state
+        .db
+        .update_provider_health_with_status(
+            &provider_id,
+            app_type.as_str(),
+            result.success,
+            Some(health_status),
+            health_message,
+            5,
+        )
+        .await;
 
     // 记录日志
     let _ =

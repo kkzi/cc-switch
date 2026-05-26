@@ -379,9 +379,9 @@ impl RequestForwarder {
                                                 let at = app_type_str.to_string();
 
                                                 tokio::spawn(async move {
-                                                    let _ =
-                                                        fm.try_switch(ah.as_ref(), &at, &pid, &pname)
-                                                            .await;
+                                                    let _ = fm
+                                                        .try_switch(ah.as_ref(), &at, &pid, &pname)
+                                                        .await;
                                                 });
                                             }
                                             if status.total_requests > 0 {
@@ -573,9 +573,9 @@ impl RequestForwarder {
                                             let pname = provider.name.clone();
                                             let at = app_type_str.to_string();
                                             tokio::spawn(async move {
-                                                let _ =
-                                                    fm.try_switch(ah.as_ref(), &at, &pid, &pname)
-                                                        .await;
+                                                let _ = fm
+                                                    .try_switch(ah.as_ref(), &at, &pid, &pname)
+                                                    .await;
                                             });
                                         }
                                         if status.total_requests > 0 {

@@ -1796,11 +1796,12 @@ mod tests {
 
     #[test]
     fn test_format_http_status_message_includes_body() {
-        let message = StreamCheckService::format_http_status_message(
-            401,
-            r#"{"error":"Invalid API key"}"#,
+        let message =
+            StreamCheckService::format_http_status_message(401, r#"{"error":"Invalid API key"}"#);
+        assert_eq!(
+            message,
+            r#"Auth rejected (401): {"error":"Invalid API key"}"#
         );
-        assert_eq!(message, r#"Auth rejected (401): {"error":"Invalid API key"}"#);
     }
 
     #[test]

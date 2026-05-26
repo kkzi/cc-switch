@@ -111,11 +111,7 @@ impl ProviderRouter {
     ///
     /// 注意：调用方必须在请求结束后通过 `record_result()` 释放 HalfOpen 名额，
     /// 否则会导致该 Provider 长时间无法进入探测状态。
-    pub async fn allow_provider_request(
-        &self,
-        provider_id: &str,
-        app_type: &str,
-    ) -> AllowResult {
+    pub async fn allow_provider_request(&self, provider_id: &str, app_type: &str) -> AllowResult {
         let circuit_key = format!("{app_type}:{provider_id}");
         let breaker = self.get_or_create_circuit_breaker(&circuit_key).await;
         breaker.allow_request().await
@@ -169,11 +165,7 @@ impl ProviderRouter {
     }
 
     /// 重置指定供应商的熔断器
-    pub async fn reset_provider_breaker(
-        &self,
-        provider_id: &str,
-        app_type: &str,
-    ) {
+    pub async fn reset_provider_breaker(&self, provider_id: &str, app_type: &str) {
         let circuit_key = format!("{app_type}:{provider_id}");
         self.reset_circuit_breaker(&circuit_key).await;
     }
@@ -259,7 +251,6 @@ impl ProviderRouter {
 
         breaker
     }
-
 }
 
 #[cfg(test)]

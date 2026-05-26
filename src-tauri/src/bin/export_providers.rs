@@ -15,7 +15,7 @@ use std::fs;
 use std::path::Path;
 
 use rusqlite::Connection;
-use serde_json::{json, Value};
+use serde_json::Value;
 use toml::Value as TomlValue;
 
 fn main() {
@@ -29,9 +29,7 @@ fn main() {
     let out_path = if args.len() >= 3 {
         args[2].clone()
     } else {
-        let base = Path::new(db_path)
-            .parent()
-            .unwrap_or(Path::new("."));
+        let base = Path::new(db_path).parent().unwrap_or(Path::new("."));
         base.join("providers.json").to_string_lossy().into_owned()
     };
 
@@ -48,9 +46,9 @@ fn main() {
         }
     };
 
-    let mut stmt = match conn.prepare(
-        "SELECT app_type, settings_config FROM providers ORDER BY app_type, sort_index",
-    ) {
+    let mut stmt = match conn
+        .prepare("SELECT app_type, settings_config FROM providers ORDER BY app_type, sort_index")
+    {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Error querying providers: {e}");
@@ -196,10 +194,7 @@ fn extract_codex_base_url_from_toml(config_toml: &str) -> Option<String> {
 
     let providers = parsed.get("model_providers").and_then(|v| v.as_table())?;
 
-    if let Some(active_provider_id) = parsed
-        .get("model_provider")
-        .and_then(|v| v.as_str())
-    {
+    if let Some(active_provider_id) = parsed.get("model_provider").and_then(|v| v.as_str()) {
         if let Some(base_url) = providers
             .get(active_provider_id)
             .and_then(|v| v.get("base_url"))
@@ -220,6 +215,7 @@ fn extract_codex_base_url_from_toml(config_toml: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn extract_codex_credentials_reads_base_url_from_config_toml() {

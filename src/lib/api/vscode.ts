@@ -84,11 +84,7 @@ export const vscodeApi = {
     await invoke("save_speedtest_result", {
       app: appId,
       providerId,
-      bestUrl: result.bestUrl,
-      latencyMs: result.latencyMs,
-      status: result.status,
-      error: result.error,
-      testedAt: result.testedAt,
+      result,
     });
   },
 

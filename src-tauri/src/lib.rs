@@ -14,10 +14,10 @@ mod gemini_config;
 mod gemini_mcp;
 pub mod hermes_config;
 mod init_status;
-mod main_window;
 mod lightweight;
 #[cfg(target_os = "linux")]
 mod linux_fix;
+mod main_window;
 mod mcp;
 mod openclaw_config;
 mod opencode_config;

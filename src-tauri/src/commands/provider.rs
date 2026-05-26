@@ -602,25 +602,30 @@ pub fn update_endpoint_last_used(
         .map_err(|e| e.to_string())
 }
 
-#[allow(non_snake_case)]
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveSpeedtestResultInput {
+    best_url: String,
+    latency_ms: Option<u64>,
+    status: String,
+    error: Option<String>,
+    tested_at: i64,
+}
+
 #[tauri::command]
 pub fn save_speedtest_result(
     state: State<'_, AppState>,
     app: String,
-    providerId: String,
-    bestUrl: String,
-    latencyMs: Option<u64>,
-    status: String,
-    error: Option<String>,
-    testedAt: i64,
+    #[allow(non_snake_case)] providerId: String,
+    result: SaveSpeedtestResultInput,
 ) -> Result<(), String> {
     let app_type = AppType::from_str(&app).map_err(|e| e.to_string())?;
     let result = crate::provider::SpeedtestResult {
-        best_url: bestUrl,
-        latency_ms: latencyMs,
-        status,
-        error,
-        tested_at: testedAt,
+        best_url: result.best_url,
+        latency_ms: result.latency_ms,
+        status: result.status,
+        error: result.error,
+        tested_at: result.tested_at,
     };
     state
         .inner()
