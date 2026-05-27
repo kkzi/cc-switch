@@ -5,8 +5,8 @@
 ## 1. 基线
 
 - 对比命令: `git diff upstream/main`
-- 当前状态: fork 相对 upstream `behind 5 / ahead 81 commits`
-- 当前 diff 规模: `151 files changed, 8529 insertions(+), 2869 deletions(-)`
+- 当前状态: fork 相对 upstream `behind 5 / ahead 88 commits`
+- 当前 diff 规模: `148 files changed, 10921 insertions(+), 2475 deletions(-)`
 - 不纳入本文档:
   - 未跟踪文件
   - 口头约定
@@ -39,6 +39,8 @@
 
 - `.github/workflows/fork-release.yml`
 - `.github/workflows/portable-release.yml`
+- `.github/workflows/ci.yml`
+- `.github/workflows/release.yml`
 - `package.json`
 - `src-tauri/Cargo.toml`
 - `src-tauri/tauri.conf.json`
@@ -49,6 +51,8 @@
 
 - fork 维护独立 release workflow，而不是直接复用 upstream 发布流程
 - `package.json` 固定了 `packageManager`
+- 所有 GitHub workflow 使用 `pnpm/action-setup@v6`，且不再在 workflow 中声明 pnpm `version`
+- pnpm 版本只允许由 `package.json#packageManager` 作为唯一来源；不要同时在 action `with.version` 中再写一个版本
 - `Cargo.toml` 启用了 `custom-protocol` 默认特性，并额外引入 `rand`
 - `src-tauri/src/bin/export_providers.rs` 提供了一个独立的辅助 bin；Windows release 构建后会同时产出 `cc-switch.exe` 和 `export_providers.exe`
 - `tauri.conf.json` 取消静态 `windows` 配置，改成运行时动态创建主窗口
@@ -59,6 +63,8 @@
 
 - 不要直接用 upstream workflow 覆盖 fork 的发布配置
 - `package.json`、`Cargo.toml`、`tauri.conf.json` 合并时必须人工核对
+- 不要重新引入 `pnpm/action-setup` 的 `version` 字段，否则会与 `packageManager` 触发 “Multiple versions of pnpm specified”
+- backend CI 使用 `cargo fmt --check` 与 `cargo clippy -- -D warnings`；同步后必须先修掉格式和 Clippy warning 再推送
 - 不要误删 `src-tauri/src/bin/export_providers.rs` 或把多 bin release 产物当成异常构建结果
 - 动态窗口策略和 updater 地址不能被误回滚
 
@@ -111,6 +117,7 @@
 - 增加了 `v10 -> v11` 迁移与回归测试
 - `ProviderMeta` 新增 `lastSpeedtest`
 - 新增 `SpeedtestResult` 结构和 `save_speedtest_result` 命令
+- `save_speedtest_result` 的 Tauri 参数形状是 `{ app, providerId, result }`，其中 `result` 使用 camelCase 字段序列化到 Rust `SaveSpeedtestResultInput`
 - `update_speedtest_result()` 会把测速结果回写到 `providers.meta.lastSpeedtest`
 - `SpeedtestService` 对非 2xx 响应不再一律当作成功测速，而会保留 HTTP 错误信息
 
@@ -118,6 +125,7 @@
 
 - upstream 若改 provider health、schema migration 或 speedtest 行为，必须人工合并
 - `ProviderHealth.last_check_status` 和 `ProviderMeta.lastSpeedtest` 不能被回滚掉
+- `src/lib/api/vscode.ts` 调用 `save_speedtest_result` 时必须保持嵌套 `result` 参数，不要恢复成一组顶层参数
 - `stream_check` 对 provider health 的持久写回不能被回滚掉
 
 ### 3.4 OpenAI 兼容模型拉取能力
@@ -193,6 +201,8 @@
 - `useStreamCheck` 不再直接靠 toast 表达测试结果，而是维护最近一次测试结果缓存
 - 最近测试结果会在 5 秒内驱动卡片状态与 tooltip
 - recent tooltip 只会自动打开一次，未悬停时 5 秒后自动隐藏
+- 搜索过滤、0 结果再清空、或其它列表重挂载场景中，已有的旧 `recentTestResult` 不应在卡片首次挂载时自动弹出 tooltip
+- `ProviderList` 通过 `suppressInitialRecentTooltip` 抑制重挂载旧结果；真正新的测试结果仍应自动弹出
 - `last error` / recent test tooltip 在显示期间如果触发滚动，会立即隐藏，而不是继续停留到超时
 - icon 边框状态基于：
   - `recentTestResult.status`
@@ -235,6 +245,7 @@
   - tooltip / recent result message 需要保留状态码之外的错误正文
   - tooltip 在显示期间遇到任意滚动事件时需要立即关闭
   - tooltip 需要比较 `testedAt` 与 `last_failure_at / updated_at`，而不是固定 recent 优先
+  - 过滤/恢复 provider list 时不能重放旧 `recentTestResult` tooltip
   - 测试按钮触发的 stream check 结果需要持久写回 `provider_health`
   - `ProviderCard` tooltip 需要把 `Auth rejected (401): {...}` 一类错误整理成带时间前缀的多行可读文本，而不是只显示摘要前缀
 
@@ -284,6 +295,7 @@
 主要文件:
 
 - `src/App.tsx`
+- `src/App.tsx.fork`
 - `src/components/common/FullScreenPanel.tsx`
 - `src/components/UsageFooter.tsx`
 - `src/components/settings/SettingsPage.tsx`
@@ -304,6 +316,7 @@
 从代码可确认：
 
 - `App.tsx` 移除了页级 `framer-motion` 过渡
+- `src/App.tsx.fork` 是当前 fork 中跟踪的 App shell 副本，不参与常规 TypeScript glob 构建；同步时不要把它误认为 upstream 源文件自动覆盖，也不要在未确认用途前删除
 - header 高度改为 `56px`
 - 顶部壳层、按钮尺寸、面板间距做了 fork 定制
 - `AddProviderDialog` 现在接收 `initialData`
@@ -321,6 +334,7 @@
 同步约束：
 
 - upstream 若改 `App.tsx`、settings shell、usage 页面，这里冲突概率很高
+- 若 `App.tsx` 被大幅合并，必须同时决定是否同步更新 `App.tsx.fork`；不要让它长期停留在过期状态
 - 合并时重点回看：
   - header 结构
   - add provider 打开逻辑
@@ -384,6 +398,8 @@
 
 - `.github/workflows/fork-release.yml`
 - `.github/workflows/portable-release.yml`
+- `.github/workflows/ci.yml`
+- `.github/workflows/release.yml`
 - `package.json`
 - `src-tauri/Cargo.toml`
 - `src-tauri/src/bin/export_providers.rs`
@@ -396,6 +412,7 @@
 - `src/components/mcp/UnifiedMcpPanel.tsx`
 - `src/components/sessions/SessionManagerPage.tsx`
 - `src/components/common/AppCountBar.tsx`
+- `src/App.tsx.fork`
 
 ## 6. 建议同步顺序
 
@@ -405,6 +422,7 @@
 4. 再处理 `App.tsx`、ProviderCard/List、ProviderForm、preset selector。
 5. 再处理 Settings / Skills / Prompts / MCP / Sessions 的面板布局和底部操作栏。
 6. 最后处理 workflow、文档、README 与测试。
+7. 推送前至少跑一轮与 CI 对齐的格式、Clippy、前端类型检查和单测。
 
 ## 7. 同步后最少回归项
 
@@ -455,6 +473,18 @@
 - Skills / Prompts / MCP / Sessions 与 Settings 页的外层 padding 保持一致
 - Settings 高级页底部操作区的 top border 贯穿主面板宽度
 - Settings 高级页保存按钮右边界与内容区右边界对齐
+
+### 7.6 CI / Tooling
+
+- `pnpm/action-setup` workflow 中没有 `version` 字段
+- `package.json#packageManager` 是唯一 pnpm 版本来源
+- `pnpm format:check` 覆盖 `src/**/*.{js,jsx,ts,tsx,css,json}` 并通过
+- `pnpm typecheck` 通过
+- `pnpm test:unit` 通过
+- `cargo fmt --check --manifest-path src-tauri/Cargo.toml` 通过
+- `cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings` 通过
+- `cargo test --manifest-path src-tauri/Cargo.toml --bin export_providers` 通过
+- Windows 本地完整 `cargo test --manifest-path src-tauri/Cargo.toml` 可能受 WebView2 / proc-macro metadata 和锁定的 `target/release/deps/cc_switch.exe` 影响；CI 是 Ubuntu runner，判断 CI 风险时优先看 Linux 依赖、`fmt`、`clippy -D warnings` 和具体失败日志
 
 ## 8. 文档维护规则
 
