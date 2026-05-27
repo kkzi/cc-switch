@@ -188,6 +188,18 @@ impl ProviderRouter {
         breaker.release_half_open_permit();
     }
 
+    /// 仅更新 provider card 最近失败展示，不影响熔断器统计。
+    pub async fn record_display_failure(
+        &self,
+        provider_id: &str,
+        app_type: &str,
+        error_msg: Option<String>,
+    ) -> Result<(), AppError> {
+        self.db
+            .annotate_provider_health_failure(provider_id, app_type, Some("failed"), error_msg)
+            .await
+    }
+
     /// 更新所有熔断器的配置（热更新）
     pub async fn update_all_configs(&self, config: CircuitBreakerConfig) {
         let breakers = self.circuit_breakers.read().await;
@@ -514,5 +526,32 @@ mod tests {
         let third = router.allow_provider_request("a", "claude").await;
         assert!(third.allowed);
         assert!(third.used_half_open_permit);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_record_display_failure_does_not_change_consecutive_failures() {
+        let _home = TempHome::new();
+        let db = Arc::new(Database::memory().unwrap());
+
+        let provider =
+            Provider::with_id("a".to_string(), "Provider A".to_string(), json!({}), None);
+        db.save_provider("claude", &provider).unwrap();
+
+        let router = ProviderRouter::new(db.clone());
+
+        router
+            .record_result("a", "claude", false, false, Some("provider fail".to_string()))
+            .await
+            .unwrap();
+        router
+            .record_display_failure("a", "claude", Some("bad request".to_string()))
+            .await
+            .unwrap();
+
+        let health = db.get_provider_health("a", "claude").await.unwrap();
+        assert_eq!(health.consecutive_failures, 1);
+        assert_eq!(health.last_check_status.as_deref(), Some("failed"));
+        assert_eq!(health.last_error.as_deref(), Some("bad request"));
     }
 }

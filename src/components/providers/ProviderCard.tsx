@@ -778,16 +778,18 @@ export function ProviderCard({
   // - OMO/OMO Slim 供应商：使用 isCurrent
   // - OpenClaw：使用默认模型归属的 provider 作为当前项（蓝色边框）
   // - OpenCode（非 OMO）：不存在"当前"概念，返回 false
-  // - 故障转移模式：代理实际使用的供应商（activeProviderId）
+  // - 本地路由接管中：优先使用代理实际使用的供应商（activeProviderId）
   // - 普通模式：isCurrent
+  const takeoverActiveProviderId =
+    !isAnyOmo && isProxyTakeover ? activeProviderId : undefined;
   const isActiveProvider = isAnyOmo
     ? isCurrent
     : appId === "openclaw"
       ? Boolean(isDefaultModel)
       : appId === "opencode"
         ? false
-        : isAutoFailoverEnabled
-          ? activeProviderId === provider.id
+        : takeoverActiveProviderId
+          ? takeoverActiveProviderId === provider.id
           : isCurrent;
 
   const shouldUseGreen = !isAnyOmo && isProxyTakeover && isActiveProvider;
@@ -826,7 +828,7 @@ export function ProviderCard({
           ? "hover:border-emerald-500/50"
           : "hover:border-border-active",
         shouldUseGreen &&
-          "border-emerald-500/60 shadow-sm shadow-emerald-500/10",
+          "border-emerald-500/60 bg-emerald-500/5 shadow-sm shadow-emerald-500/10 dark:bg-emerald-500/10",
         shouldUseBlue && "border-blue-500/60 shadow-sm shadow-blue-500/10",
         !(isActiveProvider || hasPersistentConfigHighlight) &&
           "hover:shadow-sm",

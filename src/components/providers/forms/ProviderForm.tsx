@@ -58,7 +58,6 @@ import { mergeProviderMeta } from "@/utils/providerMetaUtils";
 import {
   extractCodexWireApi,
   setCodexWireApi,
-  setCodexModelName as setCodexModelNameInConfig,
 } from "@/utils/providerConfigUtils";
 import { isNonNegativeDecimalString } from "@/types/usage";
 import { getCodexCustomTemplate } from "@/config/codexTemplates";
@@ -517,13 +516,14 @@ function ProviderFormFull({
     codexConfig,
     codexApiKey,
     codexBaseUrl,
+    codexModelName,
     codexCatalogModels,
     codexAuthError,
     setCodexAuth,
-    setCodexConfig,
     setCodexCatalogModels,
     handleCodexApiKeyChange,
     handleCodexBaseUrlChange,
+    handleCodexModelNameChange,
     handleCodexConfigChange: originalHandleCodexConfigChange,
     resetCodexConfig,
   } = useCodexConfigState({ initialData });
@@ -556,19 +556,6 @@ function ProviderFormFull({
       debouncedValidate(value);
     },
     [originalHandleCodexConfigChange, debouncedValidate],
-  );
-
-  const handleCodexApiFormatChange = useCallback(
-    (format: CodexApiFormat) => {
-      setLocalCodexApiFormat(format);
-      // wire_api is always "responses" for Codex; format controls proxy-layer conversion
-      setCodexConfig((prev) => {
-        const updated = setCodexWireApi(prev, "responses");
-        debouncedValidate(updated);
-        return updated;
-      });
-    },
-    [setCodexConfig, debouncedValidate],
   );
 
   useEffect(() => {
@@ -1407,13 +1394,6 @@ function ProviderFormFull({
           category !== "official" && localCodexApiFormat === "openai_chat"
             ? normalizeCodexCatalogModelsForSave(codexCatalogModels)
             : [];
-        // Sync first catalog row's model into config.toml so Codex uses it as default
-        if (normalizedCatalogModels.length > 0) {
-          normalizedCodexConfig = setCodexModelNameInConfig(
-            normalizedCodexConfig,
-            normalizedCatalogModels[0].model,
-          );
-        }
         const configObj = {
           auth: authJson,
           config: normalizedCodexConfig,
@@ -2258,15 +2238,17 @@ function ProviderFormFull({
               autoSelect={endpointAutoSelect}
               onAutoSelectChange={setEndpointAutoSelect}
               apiFormat={localCodexApiFormat}
-              onApiFormatChange={handleCodexApiFormatChange}
               codexChatReasoning={codexChatReasoning}
               onCodexChatReasoningChange={setCodexChatReasoning}
               catalogModels={codexCatalogModels}
               onCatalogModelsChange={setCodexCatalogModels}
-              speedTestEndpoints={speedTestEndpoints}
+              shouldShowModelField={category !== "official"}
+              modelName={codexModelName}
+              onModelNameChange={handleCodexModelNameChange}
               onFetchModels={handleFetchModels}
               isFetchingModels={isFetchingModels}
               modelSuggestions={fetchedModelOptions}
+              speedTestEndpoints={speedTestEndpoints}
             />
           )}
 

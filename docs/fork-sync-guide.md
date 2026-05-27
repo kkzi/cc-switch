@@ -211,6 +211,10 @@
   - `recentTestResult.message` + `testedAt`
   - `provider_health.last_error` + `last_failure_at`（无则退回 `updated_at`）
 - 单个 / 批量 stream check 结果现在会持久写回 `provider_health.last_error` 与 `last_check_status`
+- 本地路由真实请求里的失败，不只 stream check：
+  - provider 级可重试故障会正常写入 `provider_health`
+  - 客户端类 / 非可重试错误也要写最近失败展示，驱动 provider card icon + tooltip
+  - 但这类错误不能反向污染熔断器统计或自动故障转移判定
 - card 左侧 icon tooltip 对 HTTP 错误不再只显示摘要，会把错误正文解析成更可读的多行格式
 - tooltip 第一行会添加时间前缀，格式为 `YYYY-MM-DD HH:mm:ss <status> <title>`
 - 若 `last_error` / recent test message 中包含 JSON 字符串或转义换行（如 `\\n`），tooltip 会优先提取：
@@ -224,6 +228,7 @@
   - 长 URL 单行截断为 `...`，但 hover/title 与点击打开仍使用完整 URL
   - 多套餐入口使用无 padding 的低高度文本样式
   - 余额查询失败态与成功态的内联控件都避免额外 border / padding
+- 本地路由接管运行中，当前实际路由到的 provider 要用浅绿背景高亮；判断应优先读 `activeProviderId`，不能只在 auto failover 开启时才显示
 - 卡片支持：
   - 双击触发主操作
   - 右键菜单
@@ -247,6 +252,8 @@
   - tooltip 需要比较 `testedAt` 与 `last_failure_at / updated_at`，而不是固定 recent 优先
   - 过滤/恢复 provider list 时不能重放旧 `recentTestResult` tooltip
   - 测试按钮触发的 stream check 结果需要持久写回 `provider_health`
+  - 本地路由的非可重试错误也要写到 provider card 的最近失败展示，但不能计入熔断器统计
+  - 接管模式下当前实际路由 provider 的浅绿背景高亮必须保留，且应优先按 `activeProviderId` 判断
   - `ProviderCard` tooltip 需要把 `Auth rejected (401): {...}` 一类错误整理成带时间前缀的多行可读文本，而不是只显示摘要前缀
 
 ### 3.7 Provider 新增表单、预设交互与剪贴板导入
@@ -279,6 +286,12 @@
 - 新增 `normalizeCodexCustomProviderConfig()`
 - Codex custom provider 统一规范到 `[model_providers.custom]`
 - 这条规范化不只发生在新建模板初始值；`ProviderForm` 的 Codex 保存提交路径也会在序列化前强制把 `model_provider`、`[model_providers.*]` 和 provider `name` 归一到固定的 `custom`
+- Codex 新建/编辑表单保留 fork 定制：
+  - 显示 `模型名称` 输入框和 `获取模型` 按钮，模型名同步到 `config.toml` 顶级 `model` 字段
+  - 不显示 upstream 的 `需要本地路由映射` 卡片；本地路由能力由预设 / meta / modelCatalog 数据驱动，不在表单中暴露开关
+  - 不显示旧的 `填写兼容 OpenAI Response 格式的服务端点地址` 提示
+  - 保存时不得用 `modelCatalog.models[0].model` 覆盖用户填写的顶级 `model`
+  - `modelCatalog` 只负责 Codex 本地路由的模型目录 / 映射，不应替代单独的默认模型输入
 - `ProviderService::create` 对新增 provider 的默认插入位置做了 fork 定制：
   - 空列表插到第 1 个
   - 非空列表默认插到第 2 个
@@ -288,6 +301,8 @@
 - provider 表单与 preset 相关文件属于高频冲突区
 - upstream 若改 Codex 表单结构、preset 组织或新增 provider 流程，需要整体复核
 - upstream 若改 `ProviderForm.tsx` 的 Codex 提交逻辑，不要把“保存时强制归一化 custom provider section”的 fork 行为回滚掉
+- upstream 若恢复 Codex `apiFormat`/本地路由开关 UI，必须人工删除或隐藏；不要让它替代 fork 的 `模型名称 + 获取模型` 行
+- 合并 `useCodexConfigState.ts` 时必须保留 `extractCodexModelName()` / `setCodexModelName()` 与表单输入的双向同步
 - 新增 provider 默认插入第 2 位的行为不要被无意回滚
 
 ### 3.8 App Shell、Settings、Usage 与样式层

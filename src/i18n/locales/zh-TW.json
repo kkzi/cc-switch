@@ -879,7 +879,6 @@
     "apiHint": "填寫相容 Claude API 的伺服器端點位址，請勿以斜線結尾",
     "apiHintOAI": "填寫相容 OpenAI Chat Completions 的伺服器端點位址，請勿以斜線結尾",
     "apiHintGeminiNative": "建議填寫 Gemini Native 的 base URL，例如 https://generativelanguage.googleapis.com 或 https://generativelanguage.googleapis.com/v1beta；代理伺服器會自動補齊 models/*:generateContent",
-    "codexApiHint": "填寫相容 OpenAI Response 格式的伺服器端點位址",
     "fillSupplierName": "請填寫供應商名稱",
     "fillConfigContent": "請填寫設定內容",
     "fillParameter": "請填寫 {{label}}",

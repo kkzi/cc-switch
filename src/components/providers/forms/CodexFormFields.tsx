@@ -63,7 +63,6 @@ interface CodexFormFieldsProps {
   // API Format
   // Note: wire_api is always "responses" for Codex; apiFormat controls proxy-layer conversion
   apiFormat: CodexApiFormat;
-  onApiFormatChange: (format: CodexApiFormat) => void;
   codexChatReasoning?: CodexChatReasoning;
   onCodexChatReasoningChange?: (value: CodexChatReasoning) => void;
 
@@ -75,13 +74,12 @@ interface CodexFormFieldsProps {
   shouldShowModelField?: boolean;
   modelName?: string;
   onModelNameChange?: (model: string) => void;
-
-  // Speed Test Endpoints
-  speedTestEndpoints: EndpointCandidate[];
-
   onFetchModels?: () => void;
   isFetchingModels?: boolean;
   modelSuggestions?: string[];
+
+  // Speed Test Endpoints
+  speedTestEndpoints: EndpointCandidate[];
 }
 
 type CodexCatalogRow = CodexCatalogModel & { rowId: string };
@@ -132,7 +130,6 @@ export function CodexFormFields({
   autoSelect,
   onAutoSelectChange,
   apiFormat,
-  onApiFormatChange,
   codexChatReasoning = {},
   onCodexChatReasoningChange,
   catalogModels = [],
@@ -140,10 +137,10 @@ export function CodexFormFields({
   shouldShowModelField = true,
   modelName = "",
   onModelNameChange,
-  speedTestEndpoints,
   onFetchModels,
   isFetchingModels = false,
   modelSuggestions = [],
+  speedTestEndpoints,
 }: CodexFormFieldsProps) {
   const { t } = useTranslation();
 
@@ -188,13 +185,6 @@ export function CodexFormFields({
     lastSentModelsRef.current = next;
     onCatalogModelsChange(next);
   }, [catalogRows, onCatalogModelsChange]);
-
-  const handleLocalRoutingChange = useCallback(
-    (checked: boolean) => {
-      onApiFormatChange(checked ? "openai_chat" : "openai_responses");
-    },
-    [onApiFormatChange],
-  );
 
   const handleReasoningThinkingChange = useCallback(
     (checked: boolean) => {
@@ -321,6 +311,21 @@ export function CodexFormFields({
         }}
       />
 
+      {/* Codex Base URL 输入框 */}
+      {shouldShowSpeedTest && (
+        <EndpointField
+          id="codexBaseUrl"
+          label={t("codexConfig.apiUrlLabel")}
+          value={codexBaseUrl}
+          onChange={onBaseUrlChange}
+          placeholder={t("providerForm.codexApiEndpointPlaceholder")}
+          showFullUrlToggle
+          isFullUrl={isFullUrl}
+          onFullUrlChange={onFullUrlChange}
+          onManageClick={() => onEndpointModalToggle(true)}
+        />
+      )}
+
       {/* Codex Model Name 输入框 */}
       {shouldShowModelField && onModelNameChange && (
         <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-2">
@@ -330,8 +335,8 @@ export function CodexFormFields({
           >
             {t("codexConfig.modelName", { defaultValue: "模型名称" })}
           </label>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
               <ModelSuggest
                 id="codexModelName"
                 value={modelName}
@@ -341,72 +346,26 @@ export function CodexFormFields({
                   defaultValue: "例如: gpt-5.4",
                 })}
               />
-              {onFetchModels && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onFetchModels}
-                  disabled={isFetchingModels}
-                  className="h-8 shrink-0"
-                >
-                  {isFetchingModels && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  )}
-                  {t("providerForm.autoFetchModels", {
-                    defaultValue: "自动获取模型",
-                  })}
-                </Button>
-              )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Codex Base URL 输入框 */}
-      {shouldShowSpeedTest && (
-        <EndpointField
-          id="codexBaseUrl"
-          label={t("codexConfig.apiUrlLabel")}
-          value={codexBaseUrl}
-          onChange={onBaseUrlChange}
-          placeholder={t("providerForm.codexApiEndpointPlaceholder")}
-          hint={t("providerForm.codexApiHint")}
-          showFullUrlToggle
-          isFullUrl={isFullUrl}
-          onFullUrlChange={onFullUrlChange}
-          onManageClick={() => onEndpointModalToggle(true)}
-        />
-      )}
-
-      {shouldShowSpeedTest && (
-        <div className="space-y-3 rounded-lg border border-border-default bg-muted/20 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-1">
-              <FormLabel>
-                {t("codexConfig.localRoutingToggle", {
-                  defaultValue: "需要本地路由映射",
+            {onFetchModels && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onFetchModels}
+                disabled={isFetchingModels}
+                className="h-8 shrink-0 gap-1"
+              >
+                {isFetchingModels ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                {t("providerForm.fetchModels", {
+                  defaultValue: "获取模型",
                 })}
-              </FormLabel>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {needsLocalRouting
-                  ? t("codexConfig.localRoutingOnHint", {
-                      defaultValue:
-                        "Codex 目前仅原生支持 OpenAI Responses API 与 GPT 系列模型；如果您的供应商使用 Chat Completions 协议或非 GPT 模型（如 DeepSeek、Kimi），则需要打开本开关，并在使用过程中保持本地路由开启。",
-                    })
-                  : t("codexConfig.localRoutingOffHint", {
-                      defaultValue:
-                        "如果您的供应商不是原生 OpenAI Responses API，或者模型名不是 Codex 默认的 GPT 系列，请打开此开关。",
-                    })}
-              </p>
-            </div>
-            <Switch
-              checked={needsLocalRouting}
-              onCheckedChange={handleLocalRoutingChange}
-              aria-label={t("codexConfig.localRoutingToggle", {
-                defaultValue: "需要本地路由映射",
-              })}
-            />
+              </Button>
+            )}
           </div>
         </div>
       )}

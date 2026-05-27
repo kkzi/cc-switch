@@ -201,6 +201,23 @@ impl RequestForwarder {
         });
     }
 
+    async fn record_display_failure_only(
+        &self,
+        provider_id: &str,
+        app_type: &str,
+        error_msg: String,
+    ) {
+        if let Err(e) = self
+            .router
+            .record_display_failure(provider_id, app_type, Some(error_msg))
+            .await
+        {
+            log::warn!(
+                "[{app_type}] 记录 Provider 展示失败结果失败: provider_id={provider_id}, error={e}"
+            );
+        }
+    }
+
     /// 整流（thinking signature 或 budget）重试失败后的统一收尾。
     ///
     /// `None` 表示已记录熔断器、累积 `last_error`/`last_provider`，
@@ -251,6 +268,8 @@ impl RequestForwarder {
 
         self.router
             .release_permit_neutral(&provider.id, app_type_str, used_half_open_permit)
+            .await;
+        self.record_display_failure_only(&provider.id, app_type_str, retry_err.to_string())
             .await;
         let mut status = self.status.write().await;
         status.failed_requests += 1;
@@ -494,6 +513,12 @@ impl RequestForwarder {
                                         used_half_open_permit,
                                     )
                                     .await;
+                                self.record_display_failure_only(
+                                    &provider.id,
+                                    app_type_str,
+                                    e.to_string(),
+                                )
+                                .await;
                                 let mut status = self.status.write().await;
                                 status.failed_requests += 1;
                                 status.last_error = Some(e.to_string());
@@ -645,6 +670,12 @@ impl RequestForwarder {
                                         used_half_open_permit,
                                     )
                                     .await;
+                                self.record_display_failure_only(
+                                    &provider.id,
+                                    app_type_str,
+                                    e.to_string(),
+                                )
+                                .await;
                                 let mut status = self.status.write().await;
                                 status.failed_requests += 1;
                                 status.last_error = Some(e.to_string());
@@ -671,6 +702,12 @@ impl RequestForwarder {
                                         used_half_open_permit,
                                     )
                                     .await;
+                                self.record_display_failure_only(
+                                    &provider.id,
+                                    app_type_str,
+                                    e.to_string(),
+                                )
+                                .await;
                                 let mut status = self.status.write().await;
                                 status.failed_requests += 1;
                                 status.last_error = Some(e.to_string());
@@ -792,6 +829,12 @@ impl RequestForwarder {
                                 used_half_open_permit,
                             )
                             .await;
+                        self.record_display_failure_only(
+                            &provider.id,
+                            app_type_str,
+                            e.to_string(),
+                        )
+                        .await;
                         let mut status = self.status.write().await;
                         status.failed_requests += 1;
                         status.last_error = Some(e.to_string());
@@ -808,7 +851,7 @@ impl RequestForwarder {
 
                     // 先分类错误，决定是否计入 provider 健康度
                     // —— NonRetryable / ClientAbort 是客户端层错误，无论换哪家 provider 都会被拒绝，
-                    //    不应污染熔断器和数据库健康度（与 release_permit_neutral 同语义）。
+                    //    不应污染熔断器统计；但仍需写最近失败展示，驱动 provider card icon/tooltip。
                     let category = self.categorize_proxy_error(&e);
 
                     match category {
@@ -845,7 +888,7 @@ impl RequestForwarder {
                             continue;
                         }
                         ErrorCategory::NonRetryable | ErrorCategory::ClientAbort => {
-                            // 不可重试：客户端层错误或客户端断连 → 不污染健康度，仅释放 HalfOpen permit
+                            // 不可重试：客户端层错误或客户端断连 → 不污染熔断器，仅释放 HalfOpen permit
                             self.router
                                 .release_permit_neutral(
                                     &provider.id,
@@ -853,6 +896,12 @@ impl RequestForwarder {
                                     used_half_open_permit,
                                 )
                                 .await;
+                            self.record_display_failure_only(
+                                &provider.id,
+                                app_type_str,
+                                e.to_string(),
+                            )
+                            .await;
                             {
                                 let mut status = self.status.write().await;
                                 status.failed_requests += 1;

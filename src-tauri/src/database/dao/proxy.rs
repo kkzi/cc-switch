@@ -657,6 +657,51 @@ impl Database {
         Ok(())
     }
 
+    /// 仅更新最近一次失败展示，不影响熔断器统计或健康阈值。
+    ///
+    /// 用于客户端请求错误等"需要展示在卡片 tooltip/icon 上，但不应污染
+    /// provider 健康度"的场景。
+    pub async fn annotate_provider_health_failure(
+        &self,
+        provider_id: &str,
+        app_type: &str,
+        last_check_status: Option<&str>,
+        error_msg: Option<String>,
+    ) -> Result<(), AppError> {
+        let conn = lock_conn!(self.conn);
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "INSERT OR REPLACE INTO provider_health
+             (provider_id, app_type, is_healthy, consecutive_failures,
+              last_check_status, last_success_at, last_failure_at, last_error, updated_at)
+             VALUES (
+                ?1, ?2,
+                COALESCE((SELECT is_healthy FROM provider_health
+                          WHERE provider_id = ?1 AND app_type = ?2), 1),
+                COALESCE((SELECT consecutive_failures FROM provider_health
+                          WHERE provider_id = ?1 AND app_type = ?2), 0),
+                ?3,
+                (SELECT last_success_at FROM provider_health
+                 WHERE provider_id = ?1 AND app_type = ?2),
+                ?4,
+                ?5,
+                ?6
+             )",
+            rusqlite::params![
+                provider_id,
+                app_type,
+                last_check_status,
+                now,
+                error_msg,
+                &now,
+            ],
+        )
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
     /// 重置Provider健康状态
     pub async fn reset_provider_health(
         &self,

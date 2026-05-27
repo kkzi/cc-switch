@@ -179,6 +179,38 @@ describe("ProviderCard compact layout", () => {
     expect(container.querySelector(".pr-24")).not.toBeInTheDocument();
   });
 
+  it("highlights the actively routed provider with a light green background during takeover", () => {
+    const { container } = render(
+      <ProviderCard
+        {...baseProps}
+        isCurrent={false}
+        isProxyRunning={true}
+        isProxyTakeover={true}
+        activeProviderId="provider-1"
+      />,
+    );
+
+    expect(container.firstElementChild).toHaveClass(
+      "border-emerald-500/60",
+      "bg-emerald-500/5",
+    );
+  });
+
+  it("prefers activeProviderId over isCurrent during takeover", () => {
+    const { container } = render(
+      <ProviderCard
+        {...baseProps}
+        isCurrent={true}
+        isProxyRunning={true}
+        isProxyTakeover={true}
+        activeProviderId="provider-2"
+      />,
+    );
+
+    expect(container.firstElementChild).not.toHaveClass("border-emerald-500/60");
+    expect(container.firstElementChild).not.toHaveClass("bg-emerald-500/5");
+  });
+
   it("does not render a tooltip for the provider logo", () => {
     render(<ProviderCard {...baseProps} />);
 
