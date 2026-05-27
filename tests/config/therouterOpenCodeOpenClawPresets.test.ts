@@ -4,7 +4,9 @@ import { openclawProviderPresets } from "@/config/openclawProviderPresets";
 
 describe("TheRouter OpenCode and OpenClaw presets", () => {
   it("uses OpenAI-compatible config for OpenCode", () => {
-    const preset = opencodeProviderPresets.find((item) => item.name === "TheRouter");
+    const preset = opencodeProviderPresets.find(
+      (item) => item.name === "TheRouter",
+    );
     const models = preset?.settingsConfig.models ?? {};
 
     expect(preset).toBeDefined();
@@ -22,8 +24,12 @@ describe("TheRouter OpenCode and OpenClaw presets", () => {
   });
 
   it("uses OpenAI completions config for OpenClaw", () => {
-    const preset = openclawProviderPresets.find((item) => item.name === "TheRouter");
-    const modelIds = (preset?.settingsConfig.models ?? []).map((model) => model.id);
+    const preset = openclawProviderPresets.find(
+      (item) => item.name === "TheRouter",
+    );
+    const modelIds = (preset?.settingsConfig.models ?? []).map(
+      (model) => model.id,
+    );
 
     expect(preset).toBeDefined();
     expect(preset?.websiteUrl).toBe("https://therouter.ai");

@@ -13,10 +13,16 @@ import { cn } from "@/lib/utils";
 import { ProviderActions } from "@/components/providers/ProviderActions";
 import { ProviderIcon } from "@/components/ProviderIcon";
 import UsageFooter from "@/components/UsageFooter";
+import { PROVIDER_TYPES } from "@/config/constants";
 import { isHermesReadOnlyProvider } from "@/config/hermesProviderPresets";
 import { ProviderHealthBadge } from "@/components/providers/ProviderHealthBadge";
 import { FailoverPriorityBadge } from "@/components/providers/FailoverPriorityBadge";
-import { extractCodexBaseUrl } from "@/utils/providerConfigUtils";
+import {
+  extractCodexBaseUrl,
+  extractCodexExperimentalBearerToken,
+  extractCodexWireApi,
+  isCodexChatWireApi,
+} from "@/utils/providerConfigUtils";
 import { copyText } from "@/lib/clipboard";
 import { useProviderHealth } from "@/lib/query/failover";
 import { useUsageQuery } from "@/lib/query/queries";
@@ -108,7 +114,14 @@ function isOfficialProvider(provider: Provider, appId: AppId): boolean {
   }
   if (appId === "codex") {
     const apiKey = config?.auth?.OPENAI_API_KEY;
-    return !apiKey || (typeof apiKey === "string" && apiKey.trim() === "");
+    const bearerToken =
+      typeof config?.config === "string"
+        ? extractCodexExperimentalBearerToken(config.config)
+        : undefined;
+    return (
+      !bearerToken &&
+      (!apiKey || (typeof apiKey === "string" && apiKey.trim() === ""))
+    );
   }
   if (appId === "gemini") {
     const apiKey = config?.env?.GEMINI_API_KEY;
@@ -556,6 +569,26 @@ export function ProviderCard({
   // read-only here — writes have to go through Hermes Web UI.
   const isHermesReadOnly =
     appId === "hermes" && isHermesReadOnlyProvider(provider.settingsConfig);
+  const isCopilot =
+    provider.meta?.providerType === PROVIDER_TYPES.GITHUB_COPILOT;
+  const isCodexOauth =
+    provider.meta?.providerType === PROVIDER_TYPES.CODEX_OAUTH;
+  const codexNeedsRouting = useMemo(() => {
+    if (appId !== "codex" || provider.category === "official") return false;
+    if (provider.meta?.apiFormat === "openai_chat") return true;
+    const config = (provider.settingsConfig as Record<string, any>)?.config;
+    return (
+      typeof config === "string" &&
+      isCodexChatWireApi(extractCodexWireApi(config))
+    );
+  }, [
+    appId,
+    provider.category,
+    provider.meta?.apiFormat,
+    (provider.settingsConfig as Record<string, any>)?.config,
+  ]);
+  const isClaudeThirdParty =
+    appId === "claude" && provider.category === "third_party";
 
   // 获取用量数据以判断是否有多套餐
   // 累加模式应用（OpenCode/OpenClaw/Hermes）：使用 isInConfig 代替 isCurrent
@@ -925,8 +958,44 @@ export function ProviderCard({
               {shouldShowHealthBadge && health && (
                 <ProviderHealthBadge
                   consecutiveFailures={health.consecutive_failures}
+                  isHealthy={health.is_healthy}
                   className="h-4 shrink-0 gap-1 px-1 py-0 text-[10px] leading-none"
                 />
+              )}
+
+              {appId === "claude" &&
+                provider.category !== "official" &&
+                provider.meta?.apiFormat &&
+                provider.meta.apiFormat !== "anthropic" && (
+                  <span className="inline-flex items-center rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                    {t("claudeCode.needsRouting", {
+                      defaultValue: "需要路由",
+                    })}
+                  </span>
+                )}
+
+              {codexNeedsRouting && (
+                <span className="inline-flex items-center rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                  {t("codex.needsRouting", {
+                    defaultValue: "需要路由",
+                  })}
+                </span>
+              )}
+
+              {appId === "claude" && provider.category === "official" && (
+                <span className="inline-flex items-center rounded-md bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-700/60 dark:text-slate-200">
+                  {t("claudeCode.noRoutingSupport", {
+                    defaultValue: "不支持路由",
+                  })}
+                </span>
+              )}
+
+              {appId === "codex" && provider.category === "official" && (
+                <span className="inline-flex items-center rounded-md bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-700/60 dark:text-slate-200">
+                  {t("codex.noRoutingSupport", {
+                    defaultValue: "不支持路由",
+                  })}
+                </span>
               )}
 
               {shouldShowFailoverPriorityBadge && (
@@ -1038,8 +1107,20 @@ export function ProviderCard({
               onSwitch={() => onSwitch(provider)}
               onEdit={() => onEdit(provider)}
               onDuplicate={() => onDuplicate(provider)}
-              onTest={onTest ? () => onTest(provider) : undefined}
-              onConfigureUsage={() => onConfigureUsage(provider)}
+              onTest={
+                onTest &&
+                !isOfficial &&
+                !isCopilot &&
+                !isCodexOauth &&
+                !isClaudeThirdParty
+                  ? () => onTest(provider)
+                  : undefined
+              }
+              onConfigureUsage={
+                isOfficial || isCopilot || isCodexOauth
+                  ? undefined
+                  : () => onConfigureUsage(provider)
+              }
               onDelete={() => onDelete(provider)}
               onRemoveFromConfig={
                 onRemoveFromConfig

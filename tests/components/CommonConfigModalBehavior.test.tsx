@@ -70,9 +70,12 @@ describe("Common config modals", () => {
       />,
     );
 
-    const configLabel = screen.getByText(/codexConfig.configToml|config\.toml/i, {
-      selector: "label",
-    });
+    const configLabel = screen.getByText(
+      /codexConfig.configToml|config\.toml/i,
+      {
+        selector: "label",
+      },
+    );
     const authLabel = screen.getByText(/codexConfig.authJson|auth\.json/i, {
       selector: "label",
     });
@@ -165,7 +168,9 @@ describe("Common config modals", () => {
     expect(screen.queryByTestId("common-config-panel")).not.toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: /codexConfig.editCommonConfig|编辑通用配置/ }),
+      screen.getByRole("button", {
+        name: /codexConfig.editCommonConfig|编辑通用配置/,
+      }),
     );
 
     expect(screen.getByTestId("common-config-panel")).toBeInTheDocument();

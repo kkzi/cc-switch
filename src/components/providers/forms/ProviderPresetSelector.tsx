@@ -7,6 +7,9 @@ import type { ProviderPreset } from "@/config/claudeProviderPresets";
 import type { CodexProviderPreset } from "@/config/codexProviderPresets";
 import type { GeminiProviderPreset } from "@/config/geminiProviderPresets";
 import type { ClaudeDesktopProviderPreset } from "@/config/claudeDesktopProviderPresets";
+import type { OpenCodeProviderPreset } from "@/config/opencodeProviderPresets";
+import type { OpenClawProviderPreset } from "@/config/openclawProviderPresets";
+import type { HermesProviderPreset } from "@/config/hermesProviderPresets";
 import type { ProviderCategory } from "@/types";
 import {
   universalProviderPresets,
@@ -18,7 +21,10 @@ type AnyPreset =
   | ProviderPreset
   | CodexProviderPreset
   | GeminiProviderPreset
-  | ClaudeDesktopProviderPreset;
+  | ClaudeDesktopProviderPreset
+  | OpenCodeProviderPreset
+  | OpenClawProviderPreset
+  | HermesProviderPreset;
 
 type PresetEntry = {
   id: string;
@@ -27,8 +33,7 @@ type PresetEntry = {
 
 interface ProviderPresetSelectorProps {
   selectedPresetId: string | null;
-  groupedPresets: Record<string, PresetEntry[]>;
-  categoryKeys: string[];
+  presetEntries: PresetEntry[];
   presetCategoryLabels: Record<string, string>;
   showAllPresets: boolean;
   onToggleShowAllPresets: () => void;
@@ -40,8 +45,7 @@ interface ProviderPresetSelectorProps {
 
 export function ProviderPresetSelector({
   selectedPresetId,
-  groupedPresets,
-  categoryKeys,
+  presetEntries,
   presetCategoryLabels,
   showAllPresets,
   onToggleShowAllPresets,
@@ -58,10 +62,7 @@ export function ProviderPresetSelector({
   const resolvePresetName = (preset: AnyPreset) =>
     preset.nameKey ? t(preset.nameKey) : preset.name;
 
-  const allPresetEntries = useMemo(
-    () => categoryKeys.flatMap((key) => groupedPresets[key] ?? []),
-    [categoryKeys, groupedPresets],
-  );
+  const allPresetEntries = presetEntries;
 
   const featuredPresetEntries = useMemo(() => {
     const shortcuts = [
@@ -207,12 +208,7 @@ export function ProviderPresetSelector({
           </button>
 
           {firstRowPresetEntries.map((entry) => {
-            const categoryKey =
-              categoryKeys.find((key) =>
-                (groupedPresets[key] ?? []).some(
-                  (item) => item.id === entry.id,
-                ),
-              ) ?? "others";
+            const categoryKey = entry.preset.category ?? "others";
             const isSelected = selectedPresetId === entry.id;
             const isPartner = entry.preset.isPartner;
             return (
@@ -253,12 +249,7 @@ export function ProviderPresetSelector({
         {showAllPresets && collapsedPresetEntries.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {collapsedPresetEntries.map((entry) => {
-              const categoryKey =
-                categoryKeys.find((key) =>
-                  (groupedPresets[key] ?? []).some(
-                    (item) => item.id === entry.id,
-                  ),
-                ) ?? "others";
+              const categoryKey = entry.preset.category ?? "others";
               const isSelected = selectedPresetId === entry.id;
               const isPartner = entry.preset.isPartner;
               return (

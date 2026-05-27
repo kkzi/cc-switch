@@ -65,7 +65,9 @@ vi.mock("@/components/providers/ProviderCard", () => ({
         >
           open
         </button>
-        <span data-testid={`website-${provider.id}`}>{provider.websiteUrl ?? ""}</span>
+        <span data-testid={`website-${provider.id}`}>
+          {provider.websiteUrl ?? ""}
+        </span>
         <span data-testid={`is-current-${provider.id}`}>
           {props.isCurrent ? "current" : "inactive"}
         </span>

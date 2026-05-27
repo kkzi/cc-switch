@@ -9,9 +9,9 @@ describe("resolveProviderName", () => {
   });
 
   it("falls back to the first valid candidate hostname when name is empty", () => {
-    expect(
-      resolveProviderName("", ["", "https://api.example.com/v1"]),
-    ).toBe("api.example.com");
+    expect(resolveProviderName("", ["", "https://api.example.com/v1"])).toBe(
+      "api.example.com",
+    );
   });
 
   it("returns empty string when neither name nor candidates are usable", () => {

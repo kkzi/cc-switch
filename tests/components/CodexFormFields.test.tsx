@@ -32,6 +32,8 @@ function CodexFormFieldsHarness() {
           onEndpointModalToggle={() => {}}
           autoSelect={true}
           onAutoSelectChange={() => {}}
+          apiFormat="openai_responses"
+          onApiFormatChange={() => {}}
           shouldShowModelField={true}
           modelName=""
           onModelNameChange={() => {}}
@@ -43,10 +45,10 @@ function CodexFormFieldsHarness() {
 }
 
 describe("CodexFormFields", () => {
-  it("does not render endpoint or model hint rows in the compact codex form", () => {
+  it("renders the endpoint hint added for the local routing form", () => {
     render(<CodexFormFieldsHarness />);
 
-    expect(screen.queryByText("providerForm.codexApiHint")).not.toBeInTheDocument();
+    expect(screen.getByText("providerForm.codexApiHint")).toBeInTheDocument();
     expect(
       screen.queryByText("💡 留空将使用供应商的默认模型"),
     ).not.toBeInTheDocument();
@@ -59,6 +61,10 @@ describe("CodexFormFields", () => {
     render(<CodexFormFieldsHarness />);
 
     const endpointLabel = screen.getByText("codexConfig.apiUrlLabel");
-    expect(endpointLabel).toHaveClass("font-medium", "leading-8", "text-muted-foreground");
+    expect(endpointLabel).toHaveClass(
+      "font-medium",
+      "leading-8",
+      "text-muted-foreground",
+    );
   });
 });

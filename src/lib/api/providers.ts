@@ -64,7 +64,6 @@ export interface ClaudeDesktopStatus {
 export interface ClaudeDesktopDefaultRoute {
   routeId: string;
   envKey: string;
-  displayName: string;
   supports1m: boolean;
 }
 

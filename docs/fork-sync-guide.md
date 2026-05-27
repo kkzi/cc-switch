@@ -5,8 +5,8 @@
 ## 1. 基线
 
 - 对比命令: `git diff upstream/main`
-- 当前状态: fork 相对 upstream `behind 5 / ahead 88 commits`
-- 当前 diff 规模: `148 files changed, 10921 insertions(+), 2475 deletions(-)`
+- 当前状态: fork 相对 upstream `behind 0 / ahead 90 commits`（同步 `upstream/main` 至 `5fd3ec0d` 后）
+- 当前 diff 规模: `158 files changed, 10845 insertions(+), 2240 deletions(-)`
 - 不纳入本文档:
   - 未跟踪文件
   - 口头约定
