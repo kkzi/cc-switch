@@ -335,7 +335,7 @@ const extractHealthTooltipMessage = (
     timestamp,
   );
   const summaryPrefixMatch = trimmed.match(
-    /^([^\n(]+?)\s*\((\d{3})\):\s*([\s\S]+)$/,
+    /^([^\n(]+?)\s*\((\d{3})\)(?:\s*:|\n)\s*([\s\S]+)$/,
   );
   if (summaryPrefixMatch) {
     const [, title, status, payload] = summaryPrefixMatch;
@@ -343,14 +343,16 @@ const extractHealthTooltipMessage = (
   }
 
   const localizedStatusPrefixMatch = trimmed.match(
-    /^([^\n(]+?)\s*\(状态码\s*(\d{3})\):\s*([\s\S]+)$/,
+    /^([^\n(]+?)\s*\(状态码\s*(\d{3})\)(?:\s*:|\n)\s*([\s\S]+)$/,
   );
   if (localizedStatusPrefixMatch) {
     const [, title, status, payload] = localizedStatusPrefixMatch;
     return formatTooltipPayload(status, title.trim(), payload, timestamp);
   }
 
-  const statusPrefixMatch = trimmed.match(/^(\d{3})\s+([^\n:]+):\s*([\s\S]+)$/);
+  const statusPrefixMatch = trimmed.match(
+    /^(\d{3})\s+([^\n:]+?)(?:\s*:|\n)\s*([\s\S]+)$/,
+  );
   if (statusPrefixMatch) {
     const [, status, title, payload] = statusPrefixMatch;
     return formatTooltipPayload(status, title.trim(), payload, timestamp);

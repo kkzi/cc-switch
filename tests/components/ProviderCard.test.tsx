@@ -451,6 +451,34 @@ describe("ProviderCard compact layout", () => {
     );
   });
 
+  it("extracts request_error messages from newline-separated raw json payloads", () => {
+    const failureTime = "2026-05-27T09:01:39Z";
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 1,
+        last_check_status: "failed",
+        last_error:
+          '400 Bad request\n{"type":"error","error":{"type":"request_error","message":"休息几个小时，等会换新key"},"message":"休息几个小时，等会换新key"}',
+        last_failure_at: failureTime,
+        updated_at: failureTime,
+      },
+    });
+
+    render(<ProviderCard {...baseProps} />);
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
+
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "2026-05-27 17:01:39 400 Bad request",
+    );
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "休息几个小时，等会换新key",
+    );
+    expect(screen.getByTestId("provider-card-tooltip")).not.toHaveTextContent(
+      '{"type":"error"',
+    );
+  });
+
   it("extracts string error fields from json health payloads", () => {
     const failureTime = "2026-05-05T11:11:11Z";
     useProviderHealthMock.mockReturnValue({
