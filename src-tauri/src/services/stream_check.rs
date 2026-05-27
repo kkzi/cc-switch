@@ -1,11 +1,11 @@
 //! 流式健康检查服务
 //!
-//! 使用流式 API 进行快速健康检查，只需接收首个 chunk 即判定成功。
+//! 使用流式 API 进行快速健康检查，基于 HTTP 状态和首个有效流事件判定成功/失败。
 
 use futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::time::Instant;
 
 use crate::app_config::AppType;
@@ -84,6 +84,12 @@ pub struct StreamCheckResult {
 
 /// 流式健康检查服务
 pub struct StreamCheckService;
+
+enum ProbeChunkOutcome {
+    Skip,
+    Success,
+    Error(String),
+}
 
 impl StreamCheckService {
     /// 执行流式健康检查（带重试）
@@ -503,16 +509,19 @@ impl StreamCheckService {
             return Err(Self::http_status_error(status, error_text));
         }
 
-        // 流式读取：只需首个 chunk
+        // 流式读取：只需首个有效 chunk，但不能把 SSE error 事件误判成成功。
         let mut stream = response.bytes_stream();
-        if let Some(chunk) = stream.next().await {
+        while let Some(chunk) = stream.next().await {
             match chunk {
-                Ok(_) => Ok((status, model.to_string())),
-                Err(e) => Err(AppError::Message(format!("Stream read failed: {e}"))),
+                Ok(chunk) => match Self::inspect_probe_chunk(chunk.as_ref()) {
+                    ProbeChunkOutcome::Skip => continue,
+                    ProbeChunkOutcome::Success => return Ok((status, model.to_string())),
+                    ProbeChunkOutcome::Error(message) => return Err(AppError::Message(message)),
+                },
+                Err(e) => return Err(AppError::Message(format!("Stream read failed: {e}"))),
             }
-        } else {
-            Err(AppError::Message("No response data received".to_string()))
         }
+        Err(AppError::Message("No response data received".to_string()))
     }
 
     /// Codex 流式检查
@@ -627,13 +636,18 @@ impl StreamCheckService {
             }
 
             let mut stream = response.bytes_stream();
-            if let Some(chunk) = stream.next().await {
+            while let Some(chunk) = stream.next().await {
                 match chunk {
-                    Ok(_) => return Ok((status, actual_model)),
+                    Ok(chunk) => match Self::inspect_probe_chunk(chunk.as_ref()) {
+                        ProbeChunkOutcome::Skip => continue,
+                        ProbeChunkOutcome::Success => return Ok((status, actual_model)),
+                        ProbeChunkOutcome::Error(message) => {
+                            return Err(AppError::Message(message));
+                        }
+                    },
                     Err(e) => return Err(AppError::Message(format!("Stream read failed: {e}"))),
                 }
             }
-
             return Err(AppError::Message("No response data received".to_string()));
         }
 
@@ -705,14 +719,17 @@ impl StreamCheckService {
         }
 
         let mut stream = response.bytes_stream();
-        if let Some(chunk) = stream.next().await {
+        while let Some(chunk) = stream.next().await {
             match chunk {
-                Ok(_) => Ok((status, model.to_string())),
-                Err(e) => Err(AppError::Message(format!("Stream read failed: {e}"))),
+                Ok(chunk) => match Self::inspect_probe_chunk(chunk.as_ref()) {
+                    ProbeChunkOutcome::Skip => continue,
+                    ProbeChunkOutcome::Success => return Ok((status, model.to_string())),
+                    ProbeChunkOutcome::Error(message) => return Err(AppError::Message(message)),
+                },
+                Err(e) => return Err(AppError::Message(format!("Stream read failed: {e}"))),
             }
-        } else {
-            Err(AppError::Message("No response data received".to_string()))
         }
+        Err(AppError::Message("No response data received".to_string()))
     }
 
     /// OpenCode / OpenClaw 的独立分发入口（绕过 `get_adapter`）
@@ -829,6 +846,101 @@ impl StreamCheckService {
                 }
             }
         }
+    }
+
+    fn inspect_probe_chunk(chunk: &[u8]) -> ProbeChunkOutcome {
+        let text = String::from_utf8_lossy(chunk);
+
+        for block in text.split("\n\n") {
+            let block = block.trim();
+            if block.is_empty() {
+                continue;
+            }
+
+            let mut event_name: Option<&str> = None;
+            let mut data_lines = Vec::new();
+            let mut saw_sse_syntax = false;
+
+            for line in block.lines() {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with(':') {
+                    continue;
+                }
+                if let Some(rest) = line.strip_prefix("event:") {
+                    event_name = Some(rest.trim());
+                    saw_sse_syntax = true;
+                    continue;
+                }
+                if let Some(rest) = line.strip_prefix("data:") {
+                    data_lines.push(rest.trim_start());
+                    saw_sse_syntax = true;
+                }
+            }
+
+            if saw_sse_syntax {
+                let data = data_lines.join("\n").trim().to_string();
+                if data.is_empty() || data == "[DONE]" {
+                    if event_name == Some("error") {
+                        return ProbeChunkOutcome::Error("SSE error event".to_string());
+                    }
+                    continue;
+                }
+                if event_name == Some("error") || Self::payload_contains_error(&data) {
+                    return ProbeChunkOutcome::Error(
+                        Self::extract_probe_error_message(&data).unwrap_or(data),
+                    );
+                }
+                return ProbeChunkOutcome::Success;
+            }
+
+            if Self::payload_contains_error(block) {
+                return ProbeChunkOutcome::Error(
+                    Self::extract_probe_error_message(block).unwrap_or_else(|| block.to_string()),
+                );
+            }
+            return ProbeChunkOutcome::Success;
+        }
+
+        ProbeChunkOutcome::Skip
+    }
+
+    fn payload_contains_error(payload: &str) -> bool {
+        let Ok(parsed) = serde_json::from_str::<Value>(payload) else {
+            return false;
+        };
+
+        matches!(parsed.get("type").and_then(Value::as_str), Some("error"))
+            || parsed
+                .get("error")
+                .is_some_and(|value| !value.is_null())
+    }
+
+    fn extract_probe_error_message(payload: &str) -> Option<String> {
+        let parsed = serde_json::from_str::<Value>(payload).ok()?;
+
+        if let Some(message) = parsed
+            .get("error")
+            .and_then(|value| value.get("message"))
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+        {
+            return Some(message.trim().to_string());
+        }
+
+        if let Some(message) = parsed
+            .get("error")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+        {
+            return Some(message.trim().to_string());
+        }
+
+        parsed
+            .get("message")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToString::to_string)
     }
 
     /// 基于 HTTP 状态码和响应体识别细粒度错误分类。
@@ -1873,6 +1985,39 @@ mod tests {
     fn test_format_http_status_message_without_body_uses_summary_only() {
         let message = StreamCheckService::format_http_status_message(404, "");
         assert_eq!(message, "Not found (404)");
+    }
+
+    #[test]
+    fn test_inspect_probe_chunk_treats_sse_error_event_as_failure() {
+        let chunk = b"event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"Insufficient balance\"}}\n\ndata: [DONE]\n\n";
+
+        match StreamCheckService::inspect_probe_chunk(chunk) {
+            ProbeChunkOutcome::Error(message) => {
+                assert_eq!(message, "Insufficient balance");
+            }
+            _ => panic!("expected error outcome"),
+        }
+    }
+
+    #[test]
+    fn test_inspect_probe_chunk_treats_message_start_as_success() {
+        let chunk =
+            b"event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\"}}\n\n";
+
+        match StreamCheckService::inspect_probe_chunk(chunk) {
+            ProbeChunkOutcome::Success => {}
+            _ => panic!("expected success outcome"),
+        }
+    }
+
+    #[test]
+    fn test_inspect_probe_chunk_skips_done_only_chunk() {
+        let chunk = b"data: [DONE]\n\n";
+
+        match StreamCheckService::inspect_probe_chunk(chunk) {
+            ProbeChunkOutcome::Skip => {}
+            _ => panic!("expected skip outcome"),
+        }
     }
 
     #[test]

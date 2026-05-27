@@ -225,6 +225,7 @@
   若都不存在，则显示解码后的原文
 - Codex stream check 对首个候选 URL 返回 `text/html` 时会自动 fallback 到备用 `/v1/responses`
 - stream check 的 HTTP 错误 message 不再只保留状态码，而是会附带响应体摘要
+- stream check 成功判定不能只看 HTTP 2xx；还必须检查首个有效 SSE / 流式事件，`event: error` 或错误 JSON 需要判失败
 - provider card 第二行采用紧凑布局：
   - 长 URL 单行截断为 `...`，但 hover/title 与点击打开仍使用完整 URL
   - 多套餐入口使用无 padding 的低高度文本样式
@@ -248,6 +249,7 @@
 - upstream 若修改 stream check 成功/失败判定，必须人工复核以下 fork 规则：
   - `text/html` 不能被当作 Codex Responses 成功响应
   - 根地址 `/responses` 返回 HTML 时要继续尝试 `/v1/responses`
+  - HTTP 2xx 但首个有效流事件是 `event: error` / 错误 JSON 时，stream check 必须判失败，不能只因读到首个 chunk 就算成功
   - tooltip / recent result message 需要保留状态码之外的错误正文
   - tooltip 在显示期间遇到任意滚动事件时需要立即关闭
   - tooltip 需要比较 `testedAt` 与 `last_failure_at / updated_at`，而不是固定 recent 优先
