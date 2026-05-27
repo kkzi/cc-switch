@@ -268,6 +268,29 @@ describe("ProviderCard compact layout", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps a persisted success tooltip and green border after test success", () => {
+    const successTime = "2026-05-05T11:11:11Z";
+    useProviderHealthMock.mockReturnValue({
+      data: {
+        consecutive_failures: 0,
+        last_check_status: "operational",
+        last_error: "Check succeeded",
+        last_success_at: successTime,
+        updated_at: successTime,
+      },
+    });
+
+    const { container } = render(<ProviderCard {...baseProps} />);
+
+    expect(container.querySelector(".border-green-500")).toBeInTheDocument();
+
+    fireEvent.pointerEnter(screen.getByTestId("provider-icon").parentElement!);
+
+    expect(screen.getByTestId("provider-card-tooltip")).toHaveTextContent(
+      "2026-05-05 19:11:11 Check succeeded",
+    );
+  });
+
   it("resets icon border to default while testing is running", () => {
     useProviderHealthMock.mockReturnValue({
       data: {

@@ -45,11 +45,7 @@ pub async fn stream_check_provider(
     )
     .await?;
 
-    let health_message = if result.success {
-        None
-    } else {
-        Some(result.message.clone())
-    };
+    let health_message = Some(result.message.clone());
     let health_status = match result.status {
         HealthStatus::Operational => "operational",
         HealthStatus::Degraded => "degraded",
@@ -159,11 +155,7 @@ pub async fn stream_check_all_providers(
             }
         });
 
-        let health_message = if result.success {
-            None
-        } else {
-            Some(result.message.clone())
-        };
+        let health_message = Some(result.message.clone());
         let health_status = match result.status {
             HealthStatus::Operational => "operational",
             HealthStatus::Degraded => "degraded",

@@ -211,6 +211,7 @@
   - `recentTestResult.message` + `testedAt`
   - `provider_health.last_error` + `last_failure_at`（无则退回 `updated_at`）
 - 单个 / 批量 stream check 结果现在会持久写回 `provider_health.last_error` 与 `last_check_status`
+- stream check 成功时也要保留 success tooltip 文案；recent tooltip 自动消失后，仍可通过卡片 icon 随时再次查看
 - 本地路由真实请求里的失败，不只 stream check：
   - provider 级可重试故障会正常写入 `provider_health`
   - 客户端类 / 非可重试错误也要写最近失败展示，驱动 provider card icon + tooltip
@@ -252,6 +253,7 @@
   - tooltip 需要比较 `testedAt` 与 `last_failure_at / updated_at`，而不是固定 recent 优先
   - 过滤/恢复 provider list 时不能重放旧 `recentTestResult` tooltip
   - 测试按钮触发的 stream check 结果需要持久写回 `provider_health`
+  - stream check 成功与失败都要持久写回 tooltip 文案；不要只保留失败消息
   - 本地路由的非可重试错误也要写到 provider card 的最近失败展示，但不能计入熔断器统计
   - 接管模式下当前实际路由 provider 的浅绿背景高亮必须保留，且应优先按 `activeProviderId` 判断
   - `ProviderCard` tooltip 需要把 `Auth rejected (401): {...}` 一类错误整理成带时间前缀的多行可读文本，而不是只显示摘要前缀
