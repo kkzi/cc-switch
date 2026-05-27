@@ -27,7 +27,6 @@ import {
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { getVersion } from "@tauri-apps/api/app";
-import { motion } from "framer-motion";
 import { settingsApi } from "@/lib/api";
 import type {
   ToolInstallation,
@@ -972,7 +971,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
         </div>
 
         <div className="grid gap-3 px-1 sm:grid-cols-2 xl:grid-cols-3">
-          {TOOL_NAMES.map((toolName, index) => {
+          {TOOL_NAMES.map((toolName) => {
             const tool = toolVersionByName.get(toolName);
             const appConfig = APP_ICON_MAP[TOOL_APP_IDS[toolName]];
             const displayName = TOOL_DISPLAY_NAMES[toolName];
@@ -1000,11 +999,8 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
             const conflicts = toolDiagnostics[toolName];
 
             return (
-              <motion.div
+              <div
                 key={toolName}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.15 + index * 0.04 }}
                 className="flex min-h-[150px] flex-col gap-3 rounded-xl border border-border bg-gradient-to-br from-card/80 to-card/40 p-4 shadow-sm transition-colors hover:border-primary/30"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -1177,18 +1173,13 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
                     </span>
                   )}
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.3 }}
-        className="space-y-3"
-      >
+      <div className="space-y-3">
         <button
           type="button"
           onClick={() => setShowInstallCommands((v) => !v)}
@@ -1223,7 +1214,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
             </pre>
           </div>
         )}
-      </motion.div>
+      </div>
 
       <ToolUpgradeConfirmDialog
         isOpen={pendingUpgrade !== null}

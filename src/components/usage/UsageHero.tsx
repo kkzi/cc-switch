@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { useUsageSummaryByApp } from "@/lib/query/usage";
 import { cn } from "@/lib/utils";
@@ -196,11 +195,7 @@ export function UsageHero({
   const hitPercentLabel = hitPercent.toFixed(hitPercent >= 99.95 ? 0 : 1);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
+    <div>
       <Card className="relative overflow-hidden border border-border/50 bg-gradient-to-br from-primary/5 via-card/50 to-background/50 backdrop-blur-xl shadow-sm">
         <CardContent className="p-6 md:p-8">
           {/* Header: title + cost */}
@@ -297,17 +292,15 @@ export function UsageHero({
               </span>
             </div>
             <div className="relative h-2 rounded-full bg-muted/50 overflow-hidden">
-              <motion.div
+              <div
                 className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500/80 to-emerald-400 rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${hitPercent}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+                style={{ width: `${hitPercent}%` }}
               />
             </div>
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }
 
