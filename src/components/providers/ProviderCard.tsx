@@ -388,15 +388,16 @@ const extractHealthTooltipMessage = (
 
 type TooltipEntrySource = "recent" | "health";
 
-type TooltipEntry = {
+type StatusEntry = {
   source: TooltipEntrySource;
+  status: StreamCheckResult["status"] | string | null | undefined;
   message: string;
   timestamp: number | null;
 };
 
-const pickNewerTooltipEntry = (
-  recent: TooltipEntry | null,
-  health: TooltipEntry | null,
+const pickNewerStatusEntry = (
+  recent: StatusEntry | null,
+  health: StatusEntry | null,
 ) => {
   if (!recent) return health;
   if (!health) return recent;
@@ -481,10 +482,20 @@ export function ProviderCard({
     return true;
   }, [provider.notes, displayUrl, fallbackUrlText]);
   const latestHealthError = health?.last_error?.trim() || "";
-  const latestHealthTimestamp = useMemo(
-    () => parseTimestamp(health?.last_failure_at ?? health?.updated_at),
-    [health?.last_failure_at, health?.updated_at],
-  );
+  const latestHealthTimestamp = useMemo(() => {
+    if (health?.last_check_status === "failed") {
+      return parseTimestamp(health.last_failure_at ?? health.updated_at);
+    }
+
+    return parseTimestamp(
+      health?.last_success_at ?? health?.updated_at ?? health?.last_failure_at,
+    );
+  }, [
+    health?.last_check_status,
+    health?.last_failure_at,
+    health?.last_success_at,
+    health?.updated_at,
+  ]);
   const latestHealthTooltip = useMemo(
     () => extractHealthTooltipMessage(latestHealthError, latestHealthTimestamp),
     [latestHealthError, latestHealthTimestamp],
@@ -501,32 +512,34 @@ export function ProviderCard({
       ),
     [recentTestResult?.message, recentTestTimestamp],
   );
-  const latestHealthEntry = useMemo<TooltipEntry | null>(() => {
-    if (!latestHealthTooltip) return null;
+  const latestHealthStatusEntry = useMemo<StatusEntry | null>(() => {
+    if (!health?.last_check_status && !latestHealthTooltip) return null;
     return {
       source: "health",
+      status: health?.last_check_status,
       message: latestHealthTooltip,
       timestamp: latestHealthTimestamp,
     };
-  }, [latestHealthTimestamp, latestHealthTooltip]);
-  const recentTestEntry = useMemo<TooltipEntry | null>(() => {
-    if (!recentTestTooltip) return null;
+  }, [health?.last_check_status, latestHealthTimestamp, latestHealthTooltip]);
+  const recentTestStatusEntry = useMemo<StatusEntry | null>(() => {
+    if (!recentTestResult?.status && !recentTestTooltip) return null;
     return {
       source: "recent",
+      status: recentTestResult?.status,
       message: recentTestTooltip,
       timestamp: recentTestTimestamp,
     };
-  }, [recentTestTimestamp, recentTestTooltip]);
-  const latestTooltipEntry = useMemo(
-    () => pickNewerTooltipEntry(recentTestEntry, latestHealthEntry),
-    [latestHealthEntry, recentTestEntry],
+  }, [recentTestResult?.status, recentTestTimestamp, recentTestTooltip]);
+  const latestStatusEntry = useMemo(
+    () => pickNewerStatusEntry(recentTestStatusEntry, latestHealthStatusEntry),
+    [latestHealthStatusEntry, recentTestStatusEntry],
   );
   const recentTooltipKey = useMemo(() => {
-    if (!latestTooltipEntry || latestTooltipEntry.source !== "recent")
+    if (!latestStatusEntry || latestStatusEntry.source !== "recent")
       return "";
-    return `${recentTestResult?.testedAt ?? ""}:${recentTestResult?.status ?? ""}:${latestTooltipEntry.message}`;
+    return `${recentTestResult?.testedAt ?? ""}:${recentTestResult?.status ?? ""}:${latestStatusEntry.message}`;
   }, [
-    latestTooltipEntry,
+    latestStatusEntry,
     recentTestResult?.status,
     recentTestResult?.testedAt,
   ]);
@@ -546,9 +559,7 @@ export function ProviderCard({
       ? (recentTestResult?.status ??
         recentStatusSnapshot ??
         health?.last_check_status)
-      : latestTooltipEntry?.source === "health"
-        ? health?.last_check_status
-        : (recentTestResult?.status ?? health?.last_check_status);
+      : latestStatusEntry?.status;
   const iconBorderClass = useMemo(() => {
     if (lastCheckStatus === "operational") return "border-green-500";
     if (lastCheckStatus === "degraded") return "border-yellow-500";
@@ -556,9 +567,7 @@ export function ProviderCard({
     return "border-border-default";
   }, [lastCheckStatus]);
   const tooltipMessage =
-    activeRecentTooltip || latestTooltipEntry?.message || "";
-  const isHealthTooltipActive =
-    !activeRecentTooltip && latestTooltipEntry?.source === "health";
+    activeRecentTooltip || latestStatusEntry?.message || "";
   const hideTooltipTimerRef = useRef<number | null>(null);
   const lastAutoOpenedRecentTooltipKeyRef = useRef("");
   const hasHandledInitialRecentTooltipRef = useRef(false);
@@ -688,7 +697,7 @@ export function ProviderCard({
     }
 
     clearHideTooltipTimer();
-    setRecentTooltipSnapshot(latestTooltipEntry?.message || recentTestTooltip);
+    setRecentTooltipSnapshot(latestStatusEntry?.message || recentTestTooltip);
     setRecentStatusSnapshot(recentTestResult?.status ?? null);
     setIsTooltipOpen(true);
     setIsRecentTooltipActive(true);
@@ -705,7 +714,7 @@ export function ProviderCard({
     isRecentTooltipActive,
     isTesting,
     isTooltipRegionHovered,
-    latestTooltipEntry,
+    latestStatusEntry,
     recentTestResult?.status,
     recentTestTooltip,
     recentTooltipKey,
@@ -756,12 +765,12 @@ export function ProviderCard({
   };
 
   const handleTooltipCopy = async () => {
-    if (!isHealthTooltipActive || latestTooltipEntry?.source !== "health") {
+    if (!tooltipMessage) {
       return;
     }
 
     try {
-      await copyText(latestTooltipEntry.message);
+      await copyText(tooltipMessage);
       toast.success(
         t("sessionManager.messageCopied", {
           defaultValue: "已复制消息内容",
@@ -900,21 +909,16 @@ export function ProviderCard({
                   side="top"
                   className={cn(
                     "max-w-[420px] whitespace-pre-wrap break-all",
-                    isHealthTooltipActive &&
-                      "cursor-copy select-text transition-opacity hover:opacity-90",
+                    "cursor-copy select-text transition-opacity hover:opacity-90",
                   )}
                   onPointerEnter={handleTooltipRegionEnter}
                   onPointerLeave={handleTooltipRegionLeave}
                   onClick={() => {
                     void handleTooltipCopy();
                   }}
-                  title={
-                    isHealthTooltipActive
-                      ? t("sessionManager.copyMessage", {
-                          defaultValue: "复制消息",
-                        })
-                      : undefined
-                  }
+                  title={t("sessionManager.copyMessage", {
+                    defaultValue: "复制消息",
+                  })}
                 >
                   {tooltipMessage}
                 </TooltipContent>

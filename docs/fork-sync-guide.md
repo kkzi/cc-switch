@@ -204,12 +204,13 @@
 - 搜索过滤、0 结果再清空、或其它列表重挂载场景中，已有的旧 `recentTestResult` 不应在卡片首次挂载时自动弹出 tooltip
 - `ProviderList` 通过 `suppressInitialRecentTooltip` 抑制重挂载旧结果；真正新的测试结果仍应自动弹出
 - `last error` / recent test tooltip 在显示期间如果触发滚动，会立即隐藏，而不是继续停留到超时
-- icon 边框状态基于：
-  - `recentTestResult.status`
-  - 或 `health.last_check_status`
-- tooltip 不是固定 recent 优先，而是会在以下两者之间按时间取最近一条：
+- icon 边框状态和 tooltip 共享同一套优先级：前端手动测试结果与后台路由写入的 `provider_health` 都按发生时间取最近一条，不再固定 recent 优先
+- 后台路由健康状态的时间选择需要区分状态：
+  - `failed` 使用 `last_failure_at`（无则退回 `updated_at`）
+  - `operational` / `degraded` 使用 `last_success_at` 或 `updated_at`，避免成功恢复后仍被旧失败时间压住
+- tooltip 文案同样会在以下两者之间按时间取最近一条：
   - `recentTestResult.message` + `testedAt`
-  - `provider_health.last_error` + `last_failure_at`（无则退回 `updated_at`）
+  - `provider_health.last_error` / success message + health 最新状态时间
 - 单个 / 批量 stream check 结果现在会持久写回 `provider_health.last_error` 与 `last_check_status`
 - stream check 成功时也要保留 success tooltip 文案；recent tooltip 自动消失后，仍可通过卡片 icon 随时再次查看
 - 本地路由真实请求里的失败，不只 stream check：
@@ -252,7 +253,8 @@
   - HTTP 2xx 但首个有效流事件是 `event: error` / 错误 JSON 时，stream check 必须判失败，不能只因读到首个 chunk 就算成功
   - tooltip / recent result message 需要保留状态码之外的错误正文
   - tooltip 在显示期间遇到任意滚动事件时需要立即关闭
-  - tooltip 需要比较 `testedAt` 与 `last_failure_at / updated_at`，而不是固定 recent 优先
+  - icon 边框和 tooltip 都需要比较前端测试 `testedAt` 与后台 health 最新状态时间，而不是固定 recent 优先
+  - health 最新状态时间不能一律使用 `last_failure_at`；成功恢复必须用 `last_success_at` / `updated_at`
   - 过滤/恢复 provider list 时不能重放旧 `recentTestResult` tooltip
   - 测试按钮触发的 stream check 结果需要持久写回 `provider_health`
   - stream check 成功与失败都要持久写回 tooltip 文案；不要只保留失败消息
