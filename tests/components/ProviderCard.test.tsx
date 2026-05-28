@@ -589,7 +589,7 @@ describe("ProviderCard compact layout", () => {
     );
   });
 
-  it("does not copy recent test tooltip text when clicked", () => {
+  it("copies recent test tooltip text when clicked", () => {
     const recentResult = {
       status: "degraded",
       success: true,
@@ -603,7 +603,9 @@ describe("ProviderCard compact layout", () => {
 
     fireEvent.click(screen.getByTestId("provider-card-tooltip"));
 
-    expect(copyTextMock).not.toHaveBeenCalled();
+    expect(copyTextMock).toHaveBeenCalledWith(
+      expect.stringContaining("temporary slowdown"),
+    );
   });
 
   it("keeps the recent tooltip visible while hovering the icon region", () => {

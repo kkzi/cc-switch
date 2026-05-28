@@ -336,6 +336,56 @@ describe("ProviderList Component", () => {
     expect(emptyNotice).toHaveClass("px-5", "py-6");
   });
 
+  it("matches multiple providers by extracted base url", () => {
+    const providerHhhc = createProvider({
+      id: "hhhc",
+      name: "hhhc",
+      settingsConfig: {
+        env: {
+          ANTHROPIC_BASE_URL: "https://hhhl.cc",
+        },
+      },
+    });
+    const providerTest = createProvider({
+      id: "test",
+      name: "test",
+      settingsConfig: {
+        env: {
+          ANTHROPIC_BASE_URL: "https://hhhl.cc",
+        },
+      },
+    });
+
+    useDragSortMock.mockReturnValue({
+      sortedProviders: [providerHhhc, providerTest],
+      sensors: [],
+      handleDragEnd: vi.fn(),
+    });
+
+    renderWithQueryClient(
+      <ProviderList
+        providers={{ hhhc: providerHhhc, test: providerTest }}
+        currentProviderId=""
+        appId="claude"
+        onSwitch={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onDuplicate={vi.fn()}
+        onOpenWebsite={vi.fn()}
+      />,
+    );
+
+    fireEvent.keyDown(window, { key: "f", metaKey: true });
+    const searchInput = screen.getByPlaceholderText(
+      "Search name, notes, or URL...",
+    );
+
+    fireEvent.change(searchInput, { target: { value: "hhhl.cc" } });
+
+    expect(screen.getByTestId("provider-card-hhhc")).toBeInTheDocument();
+    expect(screen.getByTestId("provider-card-test")).toBeInTheDocument();
+  });
+
   it("hides the Claude virtual provider card when proxy is not running", () => {
     const providerA = createProvider({ id: "alpha", name: "Alpha Labs" });
 

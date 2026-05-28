@@ -535,14 +535,9 @@ export function ProviderCard({
     [latestHealthStatusEntry, recentTestStatusEntry],
   );
   const recentTooltipKey = useMemo(() => {
-    if (!latestStatusEntry || latestStatusEntry.source !== "recent")
-      return "";
+    if (!latestStatusEntry || latestStatusEntry.source !== "recent") return "";
     return `${recentTestResult?.testedAt ?? ""}:${recentTestResult?.status ?? ""}:${latestStatusEntry.message}`;
-  }, [
-    latestStatusEntry,
-    recentTestResult?.status,
-    recentTestResult?.testedAt,
-  ]);
+  }, [latestStatusEntry, recentTestResult?.status, recentTestResult?.testedAt]);
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
   const [isRecentTooltipActive, setIsRecentTooltipActive] = useState(false);
   const [isTooltipRegionHovered, setIsTooltipRegionHovered] = useState(false);

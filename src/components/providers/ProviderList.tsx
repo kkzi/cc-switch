@@ -485,12 +485,18 @@ export function ProviderList({
     const keyword = searchTerm.trim().toLowerCase();
     if (!keyword) return sortedProviders;
     return sortedProviders.filter((provider) => {
-      const fields = [provider.name, provider.notes, provider.websiteUrl];
+      const { baseUrl } = extractProviderConnectionInfo(provider, appId);
+      const fields = [
+        provider.name,
+        provider.notes,
+        provider.websiteUrl,
+        baseUrl,
+      ];
       return fields.some((field) =>
         field?.toString().toLowerCase().includes(keyword),
       );
     });
-  }, [searchTerm, sortedProviders]);
+  }, [appId, searchTerm, sortedProviders]);
 
   const claudeDesktopStatusMessages = useMemo(() => {
     if (appId !== "claude-desktop" || !claudeDesktopStatus) return [];
