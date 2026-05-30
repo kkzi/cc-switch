@@ -69,7 +69,7 @@ export function ClaudeDesktopRouteToggle({
   return (
     <div
       className={cn(
-        "flex items-center gap-1 px-1.5 h-8 rounded-lg bg-muted/50 transition-all",
+        "flex items-center gap-1 px-1.5 h-8 rounded-lg bg-muted/50",
         className,
       )}
       title={tooltipText}
@@ -79,10 +79,8 @@ export function ClaudeDesktopRouteToggle({
       ) : (
         <Radio
           className={cn(
-            "h-4 w-4 transition-colors",
-            isRunning
-              ? "text-emerald-500 animate-pulse"
-              : "text-muted-foreground",
+            "h-4 w-4",
+            isRunning ? "text-emerald-500" : "text-muted-foreground",
           )}
         />
       )}

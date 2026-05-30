@@ -104,9 +104,7 @@ export function ProxyTabContent({
                 variant={isRunning ? "default" : "secondary"}
                 className="gap-1.5 h-6 ml-auto mr-2"
               >
-                <Activity
-                  className={`h-3 w-3 ${isRunning ? "animate-pulse" : ""}`}
-                />
+                <Activity className="h-3 w-3" />
                 {isRunning
                   ? t("settings.advanced.proxy.running")
                   : t("settings.advanced.proxy.stopped")}
