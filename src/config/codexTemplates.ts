@@ -13,8 +13,8 @@ export interface CodexTemplate {
  * @returns Codex 模板配置
  */
 export function getCodexCustomTemplate(): CodexTemplate {
-  const config = `model_provider = "custom"
-model = "gpt-5.4"
+const config = `model_provider = "custom"
+model = "gpt-5.5"
 approvals_reviewer = "user"
 model_reasoning_effort = "high"
 disable_response_storage = true
