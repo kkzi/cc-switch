@@ -3,6 +3,7 @@ import {
   extractCodexBaseUrl,
   extractCodexExperimentalBearerToken,
   extractCodexModelName,
+  isCodexChatCompletionsFullUrl,
   normalizeCodexCustomProviderConfig,
   extractCodexTopLevelInt,
   isCodexGoalModeEnabled,
@@ -178,6 +179,30 @@ describe("Codex TOML utils", () => {
     expect(output).toContain('name = "custom"');
     expect(output).toContain('base_url = "https://api.example.com/v1"');
     expect(output).not.toContain("[model_providers.newapi]");
+  });
+
+  it("detects full Codex Chat Completions endpoint URLs", () => {
+    expect(
+      isCodexChatCompletionsFullUrl(
+        true,
+        "https://api.example.com/v1/chat/completions",
+      ),
+    ).toBe(true);
+    expect(
+      isCodexChatCompletionsFullUrl(
+        true,
+        "https://api.example.com/v1/chat/completions/?stream=true#top",
+      ),
+    ).toBe(true);
+    expect(
+      isCodexChatCompletionsFullUrl(
+        false,
+        "https://api.example.com/v1/chat/completions",
+      ),
+    ).toBe(false);
+    expect(
+      isCodexChatCompletionsFullUrl(true, "https://api.example.com/v1"),
+    ).toBe(false);
   });
 
   it("reads, writes, and removes top-level integer metadata fields", () => {

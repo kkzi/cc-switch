@@ -51,14 +51,13 @@ import { HermesFormFields } from "./HermesFormFields";
 import type { UniversalProviderPreset } from "@/config/universalProviderPresets";
 import {
   applyTemplateValues,
-  hasApiKeyField,
-  normalizeCodexCustomProviderConfig,
-} from "@/utils/providerConfigUtils";
-import { mergeProviderMeta } from "@/utils/providerMetaUtils";
-import {
   extractCodexWireApi,
+  hasApiKeyField,
+  isCodexChatCompletionsFullUrl,
+  normalizeCodexCustomProviderConfig,
   setCodexWireApi,
 } from "@/utils/providerConfigUtils";
+import { mergeProviderMeta } from "@/utils/providerMetaUtils";
 import { isNonNegativeDecimalString } from "@/types/usage";
 import { getCodexCustomTemplate } from "@/config/codexTemplates";
 import CodexConfigEditor from "./CodexConfigEditor";
@@ -546,6 +545,16 @@ function ProviderFormFull({
         ) ?? "openai_responses"
       );
     });
+  const effectiveCodexApiFormat = useMemo<CodexApiFormat>(() => {
+    if (
+      appId === "codex" &&
+      category !== "official" &&
+      isCodexChatCompletionsFullUrl(localIsFullUrl, codexBaseUrl)
+    ) {
+      return "openai_chat";
+    }
+    return localCodexApiFormat;
+  }, [appId, category, localIsFullUrl, codexBaseUrl, localCodexApiFormat]);
 
   const { configError: codexConfigError, debouncedValidate } =
     useCodexTomlValidation();
@@ -1391,7 +1400,7 @@ function ProviderFormFull({
               )
             : (codexConfig ?? "");
         const normalizedCatalogModels =
-          category !== "official" && localCodexApiFormat === "openai_chat"
+          category !== "official" && effectiveCodexApiFormat === "openai_chat"
             ? normalizeCodexCatalogModelsForSave(codexCatalogModels)
             : [];
         const configObj = {
@@ -1580,7 +1589,7 @@ function ProviderFormFull({
       codexChatReasoning:
         appId === "codex" &&
         category !== "official" &&
-        localCodexApiFormat === "openai_chat"
+        effectiveCodexApiFormat === "openai_chat"
           ? normalizeCodexChatReasoningForSave(codexChatReasoning)
           : undefined,
       testConfig: testConfig.enabled ? testConfig : undefined,
@@ -1595,7 +1604,7 @@ function ProviderFormFull({
         appId === "claude" && category !== "official"
           ? localApiFormat
           : appId === "codex" && category !== "official"
-            ? localCodexApiFormat
+            ? effectiveCodexApiFormat
             : undefined,
       apiKeyField:
         appId === "claude" &&
@@ -2237,7 +2246,7 @@ function ProviderFormFull({
               }
               autoSelect={endpointAutoSelect}
               onAutoSelectChange={setEndpointAutoSelect}
-              apiFormat={localCodexApiFormat}
+              apiFormat={effectiveCodexApiFormat}
               codexChatReasoning={codexChatReasoning}
               onCodexChatReasoningChange={setCodexChatReasoning}
               catalogModels={codexCatalogModels}

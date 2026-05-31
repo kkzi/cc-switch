@@ -694,6 +694,19 @@ export const isCodexChatWireApi = (
 ): boolean =>
   CODEX_CHAT_WIRE_API_VALUES.has((wireApi ?? "").trim().toLowerCase());
 
+export const isCodexChatCompletionsFullUrl = (
+  isFullUrl: boolean,
+  url: string | undefined | null,
+): boolean => {
+  if (!isFullUrl) return false;
+  const path = (url ?? "")
+    .trim()
+    .split(/[?#]/, 1)[0]
+    .replace(/\/+$/, "")
+    .toLowerCase();
+  return path.endsWith("/chat/completions");
+};
+
 // 从 Codex 的 TOML 配置文本中提取 wire_api（支持单/双引号）
 export const extractCodexWireApi = (
   configText: string | undefined | null,
