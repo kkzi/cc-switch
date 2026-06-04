@@ -625,15 +625,6 @@ export function ClaudeFormFields({
           value={baseUrl}
           onChange={onBaseUrlChange}
           placeholder={t("providerForm.apiEndpointPlaceholder")}
-          hint={
-            apiFormat === "openai_responses"
-              ? t("providerForm.apiHintResponses")
-              : apiFormat === "openai_chat"
-                ? t("providerForm.apiHintOAI")
-                : apiFormat === "gemini_native"
-                  ? t("providerForm.apiHintGeminiNative")
-                  : t("providerForm.apiHint")
-          }
           fullUrlHint={
             apiFormat === "gemini_native"
               ? t("providerForm.fullUrlHintGeminiNative")
@@ -683,85 +674,73 @@ export function ClaudeFormFields({
               {t("providerForm.advancedOptionsToggle")}
             </Button>
           </CollapsibleTrigger>
-          {!advancedExpanded && (
-            <p className="text-xs text-muted-foreground mt-1 ml-1">
-              {t("providerForm.advancedOptionsHint")}
-            </p>
-          )}
           <CollapsibleContent className="space-y-4 pt-2">
-            {/* API 格式选择（仅非云服务商显示） */}
-            {category !== "cloud_provider" && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* API 格式选择（仅非云服务商显示） */}
+              {category !== "cloud_provider" && (
+                <div className="space-y-2">
+                  <FormLabel htmlFor="apiFormat">
+                    {t("providerForm.apiFormat", { defaultValue: "API 格式" })}
+                  </FormLabel>
+                  <Select value={apiFormat} onValueChange={onApiFormatChange}>
+                    <SelectTrigger id="apiFormat" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="anthropic">
+                        {t("providerForm.apiFormatAnthropic", {
+                          defaultValue: "Anthropic Messages (原生)",
+                        })}
+                      </SelectItem>
+                      <SelectItem value="openai_chat">
+                        {t("providerForm.apiFormatOpenAIChat", {
+                          defaultValue: "OpenAI Chat Completions (需转换)",
+                        })}
+                      </SelectItem>
+                      <SelectItem value="openai_responses">
+                        {t("providerForm.apiFormatOpenAIResponses", {
+                          defaultValue: "OpenAI Responses API (需转换)",
+                        })}
+                      </SelectItem>
+                      <SelectItem value="gemini_native">
+                        {t("providerForm.apiFormatGeminiNative", {
+                          defaultValue:
+                            "Gemini Native generateContent (需转换)",
+                        })}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* 认证字段选择器 */}
               <div className="space-y-2">
-                <FormLabel htmlFor="apiFormat">
-                  {t("providerForm.apiFormat", { defaultValue: "API 格式" })}
+                <FormLabel>
+                  {t("providerForm.authField", { defaultValue: "认证字段" })}
                 </FormLabel>
-                <Select value={apiFormat} onValueChange={onApiFormatChange}>
-                  <SelectTrigger id="apiFormat" className="w-full">
+                <Select
+                  value={apiKeyField}
+                  onValueChange={(v) =>
+                    onApiKeyFieldChange(v as ClaudeApiKeyField)
+                  }
+                >
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="anthropic">
-                      {t("providerForm.apiFormatAnthropic", {
-                        defaultValue: "Anthropic Messages (原生)",
+                    <SelectItem value="ANTHROPIC_AUTH_TOKEN">
+                      {t("providerForm.authFieldAuthToken", {
+                        defaultValue: "ANTHROPIC_AUTH_TOKEN（默认）",
                       })}
                     </SelectItem>
-                    <SelectItem value="openai_chat">
-                      {t("providerForm.apiFormatOpenAIChat", {
-                        defaultValue: "OpenAI Chat Completions (需转换)",
-                      })}
-                    </SelectItem>
-                    <SelectItem value="openai_responses">
-                      {t("providerForm.apiFormatOpenAIResponses", {
-                        defaultValue: "OpenAI Responses API (需转换)",
-                      })}
-                    </SelectItem>
-                    <SelectItem value="gemini_native">
-                      {t("providerForm.apiFormatGeminiNative", {
-                        defaultValue: "Gemini Native generateContent (需转换)",
+                    <SelectItem value="ANTHROPIC_API_KEY">
+                      {t("providerForm.authFieldApiKey", {
+                        defaultValue: "ANTHROPIC_API_KEY",
                       })}
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  {t("providerForm.apiFormatHint", {
-                    defaultValue: "选择供应商 API 的输入格式",
-                  })}
-                </p>
               </div>
-            )}
-
-            {/* 认证字段选择器 */}
-            <div className="space-y-2">
-              <FormLabel>
-                {t("providerForm.authField", { defaultValue: "认证字段" })}
-              </FormLabel>
-              <Select
-                value={apiKeyField}
-                onValueChange={(v) =>
-                  onApiKeyFieldChange(v as ClaudeApiKeyField)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ANTHROPIC_AUTH_TOKEN">
-                    {t("providerForm.authFieldAuthToken", {
-                      defaultValue: "ANTHROPIC_AUTH_TOKEN（默认）",
-                    })}
-                  </SelectItem>
-                  <SelectItem value="ANTHROPIC_API_KEY">
-                    {t("providerForm.authFieldApiKey", {
-                      defaultValue: "ANTHROPIC_API_KEY",
-                    })}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {t("providerForm.authFieldHint", {
-                  defaultValue: "选择写入配置的认证环境变量名",
-                })}
-              </p>
             </div>
 
             {/* 模型映射 */}
@@ -828,9 +807,6 @@ export function ClaudeFormFields({
                   </Button>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {t("providerForm.modelMappingHint")}
-              </p>
             </div>
 
             <div className="space-y-3">
@@ -914,8 +890,11 @@ export function ClaudeFormFields({
               })}
             </div>
 
-            <div className="space-y-2 border-t pt-4">
-              <FormLabel htmlFor="claudeModel">
+            <div className="grid grid-cols-1 gap-2 border-t pt-4 md:grid-cols-[140px_1fr]">
+              <FormLabel
+                htmlFor="claudeModel"
+                className="flex h-9 items-center"
+              >
                 {t("providerForm.fallbackModelLabel", {
                   defaultValue: "默认兜底模型",
                 })}
@@ -926,12 +905,6 @@ export function ClaudeFormFields({
                 "ANTHROPIC_MODEL",
                 t("providerForm.modelPlaceholder", { defaultValue: "" }),
               )}
-              <p className="text-xs text-muted-foreground">
-                {t("providerForm.fallbackModelHint", {
-                  defaultValue:
-                    "仅在 Claude Code 请求没有明确落到 Sonnet、Opus 或 Haiku 角色时使用；通常可以留空。",
-                })}
-              </p>
             </div>
           </CollapsibleContent>
         </Collapsible>
