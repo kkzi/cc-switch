@@ -36,10 +36,24 @@ use super::{
 };
 use crate::app_config::AppType;
 use crate::database::PRICING_SOURCE_REQUEST;
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
+};
 use bytes::Bytes;
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
+
+type ProviderAdminResult = Result<
+    Json<super::provider_admin::ProviderAdminView>,
+    super::provider_admin::ProviderAdminError,
+>;
+type ProviderAdminListResult = Result<
+    Json<Vec<super::provider_admin::ProviderAdminView>>,
+    super::provider_admin::ProviderAdminError,
+>;
 
 // ============================================================================
 // 健康检查和状态查询（简单端点）
@@ -60,6 +74,32 @@ pub async fn health_check() -> (StatusCode, Json<Value>) {
 pub async fn get_status(State(state): State<ProxyState>) -> Result<Json<ProxyStatus>, ProxyError> {
     let status = state.status.read().await.clone();
     Ok(Json(status))
+}
+
+pub async fn get_provider_admin(
+    State(state): State<ProxyState>,
+    Path((app, provider_id)): Path<(String, String)>,
+) -> ProviderAdminResult {
+    let app_type = super::provider_admin::parse_admin_app(&app)?;
+    super::provider_admin::get_provider_admin_view(&state.db, &app_type, &provider_id).map(Json)
+}
+
+pub async fn list_provider_admin(
+    State(state): State<ProxyState>,
+    Path(app): Path<String>,
+) -> ProviderAdminListResult {
+    let app_type = super::provider_admin::parse_admin_app(&app)?;
+    super::provider_admin::list_provider_admin_views(&state.db, &app_type).map(Json)
+}
+
+pub async fn update_provider_admin(
+    State(state): State<ProxyState>,
+    Path((app, provider_id)): Path<(String, String)>,
+    Json(update): Json<super::provider_admin::ProviderAdminUpdate>,
+) -> ProviderAdminResult {
+    let app_type = super::provider_admin::parse_admin_app(&app)?;
+    super::provider_admin::update_provider_admin(&state.db, &app_type, &provider_id, update)
+        .map(Json)
 }
 
 // ============================================================================

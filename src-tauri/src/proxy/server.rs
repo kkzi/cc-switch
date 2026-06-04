@@ -290,6 +290,16 @@ impl ProxyServer {
             // 健康检查
             .route("/health", get(handlers::health_check))
             .route("/status", get(handlers::get_status))
+            // 本地管理接口：查询/修改指定 provider 的上游 URL 与 Key。
+            .route(
+                "/cc-switch/providers/:app",
+                get(handlers::list_provider_admin),
+            )
+            .route(
+                "/cc-switch/providers/:app/:provider_id",
+                get(handlers::get_provider_admin)
+                    .patch(handlers::update_provider_admin),
+            )
             // Claude API (支持带前缀和不带前缀两种格式)
             .route("/v1/messages", post(handlers::handle_messages))
             .route("/claude/v1/messages", post(handlers::handle_messages))
