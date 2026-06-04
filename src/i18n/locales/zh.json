@@ -309,12 +309,35 @@
     "tabAuth": "认证",
     "tabAdvanced": "高级",
     "tabProxy": "路由",
+    "tabExtensions": "扩展",
     "authCenter": {
       "title": "OAuth 认证中心",
       "description": "在 Claude Code 中使用您的其他订阅，请注意合规风险。",
       "beta": "Beta",
       "copilotDescription": "管理 GitHub Copilot 账号",
       "codexOauthDescription": "管理 ChatGPT 账号"
+    },
+    "extensions": {
+      "heading": "扩展",
+      "headingDescription": "配置全局扩展能力和实验性路由行为。",
+      "schema": {
+        "title": "URL Schema 注册",
+        "description": "注册 ccswitch:// 协议处理器，用于从浏览器或外部工具导入供应商、MCP、提示词和技能。",
+        "registerDescription": "在当前用户下注册系统协议。Windows 和 Linux 可手动执行，macOS 通常由应用包自动处理。"
+      },
+      "responseErrors": {
+        "title": "响应内容错误检测",
+        "description": "当上游返回 2xx，但 HTTP body 或 SSE 起始内容包含关键字时，将本次响应视为失败并触发故障转移。",
+        "enabled": "启用响应内容错误检测",
+        "enabledDescription": "开启后，命中任一关键字的响应会被视为上游错误。",
+        "keywords": "错误关键字",
+        "keywordsPlaceholder": "每行一个关键字，例如：\nquota exceeded\ninvalid api key\ninsufficient balance",
+        "keywordsDescription": "使用包含匹配，区分大小写；空行会被忽略，重复关键字会自动去重。",
+        "sseScanChunks": "SSE 预检 Chunk 数",
+        "sseScanBytes": "SSE 预检字节数",
+        "sseNote": "SSE 只在响应开始阶段预检。内容已经透传给客户端后，无法无损切换到下一家供应商。",
+        "saved": "扩展配置已保存"
+      }
     },
     "advanced": {
       "configDir": {

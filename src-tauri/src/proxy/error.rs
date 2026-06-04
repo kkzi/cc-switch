@@ -42,6 +42,9 @@ pub enum ProxyError {
     #[error("上游错误 (状态码 {status}): {body:?}")]
     UpstreamError { status: u16, body: Option<String> },
 
+    #[error("响应内容命中错误关键字: {keyword}; snippet: {snippet}")]
+    ResponseContentError { keyword: String, snippet: String },
+
     #[error("超过最大重试次数")]
     MaxRetriesExceeded,
 
@@ -125,6 +128,9 @@ impl IntoResponse for ProxyError {
                         (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
                     }
                     ProxyError::ForwardFailed(_) => (StatusCode::BAD_GATEWAY, self.to_string()),
+                    ProxyError::ResponseContentError { .. } => {
+                        (StatusCode::BAD_GATEWAY, self.to_string())
+                    }
                     ProxyError::NoAvailableProvider => {
                         (StatusCode::SERVICE_UNAVAILABLE, self.to_string())
                     }

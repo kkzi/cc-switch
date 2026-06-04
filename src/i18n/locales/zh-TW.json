@@ -307,12 +307,35 @@
     "tabAuth": "驗證",
     "tabAdvanced": "進階",
     "tabProxy": "路由",
+    "tabExtensions": "擴充",
     "authCenter": {
       "title": "OAuth 驗證中心",
       "description": "在 Claude Code 中使用您的其他訂閱，請注意合規風險。",
       "beta": "Beta",
       "copilotDescription": "管理 GitHub Copilot 帳號",
       "codexOauthDescription": "管理 ChatGPT 帳號"
+    },
+    "extensions": {
+      "heading": "擴充",
+      "headingDescription": "設定全域擴充能力與實驗性路由行為。",
+      "schema": {
+        "title": "URL Schema 註冊",
+        "description": "註冊 ccswitch:// 協議處理器，用於從瀏覽器或外部工具匯入供應商、MCP、提示詞和技能。",
+        "registerDescription": "在目前使用者下註冊系統協議。Windows 和 Linux 可手動執行，macOS 通常由應用程式套件自動處理。"
+      },
+      "responseErrors": {
+        "title": "回應內容錯誤偵測",
+        "description": "當上游回傳 2xx，但 HTTP body 或 SSE 起始內容包含關鍵字時，將本次回應視為失敗並觸發故障轉移。",
+        "enabled": "啟用回應內容錯誤偵測",
+        "enabledDescription": "開啟後，命中任一關鍵字的回應會被視為上游錯誤。",
+        "keywords": "錯誤關鍵字",
+        "keywordsPlaceholder": "每行一個關鍵字，例如：\nquota exceeded\ninvalid api key\ninsufficient balance",
+        "keywordsDescription": "使用包含比對，區分大小寫；空行會被忽略，重複關鍵字會自動去重。",
+        "sseScanChunks": "SSE 預檢 Chunk 數",
+        "sseScanBytes": "SSE 預檢位元組數",
+        "sseNote": "SSE 只會在回應開始階段預檢。內容已透傳給用戶端後，無法無損切換到下一個供應商。",
+        "saved": "擴充設定已儲存"
+      }
     },
     "advanced": {
       "configDir": {

@@ -6,7 +6,6 @@ import {
   Github,
   Globe,
   Info,
-  Link2,
   Loader2,
   RefreshCw,
   Terminal,
@@ -36,7 +35,7 @@ import { useUpdate } from "@/contexts/UpdateContext";
 import { relaunchApp } from "@/lib/updater";
 import { Badge } from "@/components/ui/badge";
 import appIcon from "@/assets/icons/app-icon.png";
-import { isLinux, isWindows } from "@/lib/platform";
+import { isWindows } from "@/lib/platform";
 import { APP_ICON_MAP } from "@/config/appConfig";
 import type { AppId } from "@/lib/api/types";
 import { extractErrorMessage } from "@/utils/errorUtils";
@@ -185,7 +184,6 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
   const [version, setVersion] = useState<string | null>(null);
   const [isLoadingVersion, setIsLoadingVersion] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isRegisteringProtocol, setIsRegisteringProtocol] = useState(false);
   const [toolVersions, setToolVersions] = useState<ToolVersion[]>([]);
   const [isLoadingTools, setIsLoadingTools] = useState(true);
   const [toolActions, setToolActions] = useState<
@@ -443,25 +441,6 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
     } catch (error) {
       console.error("[AboutSection] Failed to copy install commands", error);
       toast.error(t("settings.installCommandsCopyFailed"));
-    }
-  }, [t]);
-
-  const handleRegisterDeepLinkProtocols = useCallback(async () => {
-    setIsRegisteringProtocol(true);
-    try {
-      await settingsApi.registerDeepLinkProtocols();
-      toast.success(t("settings.deepLinkRegistered"), { closeButton: true });
-    } catch (error) {
-      console.error(
-        "[AboutSection] Failed to register deep link protocols",
-        error,
-      );
-      toast.error(t("settings.deepLinkRegisterFailed"), {
-        description: extractErrorMessage(error) || undefined,
-        closeButton: true,
-      });
-    } finally {
-      setIsRegisteringProtocol(false);
     }
   }, [t]);
 
@@ -806,28 +785,6 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {(isWindows() || isLinux()) && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleRegisterDeepLinkProtocols}
-                disabled={isRegisteringProtocol}
-                className="h-8 gap-1.5 text-xs"
-              >
-                {isRegisteringProtocol ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {t("settings.registeringDeepLink")}
-                  </>
-                ) : (
-                  <>
-                    <Link2 className="h-3.5 w-3.5" />
-                    {t("settings.registerDeepLink")}
-                  </>
-                )}
-              </Button>
-            )}
             <Button
               type="button"
               variant="outline"

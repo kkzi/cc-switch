@@ -309,12 +309,35 @@
     "tabAuth": "認証",
     "tabAdvanced": "詳細",
     "tabProxy": "ルーティング",
+    "tabExtensions": "拡張",
     "authCenter": {
       "title": "OAuth 認証センター",
       "description": "Claude Code で他のサブスクリプションをご利用いただけます。コンプライアンスリスクにご注意ください。",
       "beta": "Beta",
       "copilotDescription": "GitHub Copilot アカウントを管理します",
       "codexOauthDescription": "ChatGPT アカウントを管理します"
+    },
+    "extensions": {
+      "heading": "拡張",
+      "headingDescription": "グローバル拡張機能と実験的なルーティング動作を設定します。",
+      "schema": {
+        "title": "URL Schema 登録",
+        "description": "ブラウザや外部ツールからプロバイダー、MCP、プロンプト、スキルをインポートするために ccswitch:// プロトコルハンドラーを登録します。",
+        "registerDescription": "現在のユーザー向けにシステムプロトコルを登録します。Windows と Linux では手動実行でき、macOS では通常アプリバンドルが処理します。"
+      },
+      "responseErrors": {
+        "title": "レスポンス内容エラー検出",
+        "description": "上流が 2xx を返しても、HTTP body または SSE の開始部分にキーワードが含まれる場合は失敗として扱い、フェイルオーバーを実行します。",
+        "enabled": "レスポンス内容エラー検出を有効化",
+        "enabledDescription": "有効にすると、いずれかのキーワードに一致したレスポンスを上流エラーとして扱います。",
+        "keywords": "エラーキーワード",
+        "keywordsPlaceholder": "1 行に 1 つのキーワードを入力します。例：\nquota exceeded\ninvalid api key\ninsufficient balance",
+        "keywordsDescription": "大文字小文字を区別した部分一致です。空行は無視され、重複キーワードは削除されます。",
+        "sseScanChunks": "SSE 事前検査 Chunk 数",
+        "sseScanBytes": "SSE 事前検査バイト数",
+        "sseNote": "SSE はレスポンス開始時のみ検査されます。内容がクライアントへ送信された後は、ストリームを中断せずにプロバイダーを切り替えることはできません。",
+        "saved": "拡張設定を保存しました"
+      }
     },
     "advanced": {
       "configDir": {

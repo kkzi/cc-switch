@@ -29,7 +29,7 @@ pub fn map_proxy_error_to_status(error: &ProxyError) -> u16 {
         ProxyError::Timeout(_) | ProxyError::StreamIdleTimeout(_) => 504,
 
         // 转发失败/连接失败：502 Bad Gateway
-        ProxyError::ForwardFailed(_) => 502,
+        ProxyError::ForwardFailed(_) | ProxyError::ResponseContentError { .. } => 502,
 
         // 无可用 Provider：503 Service Unavailable
         ProxyError::NoAvailableProvider => 503,
@@ -75,6 +75,9 @@ pub fn get_error_message(error: &ProxyError) -> String {
         }
         ProxyError::Timeout(msg) => format!("请求超时: {msg}"),
         ProxyError::ForwardFailed(msg) => format!("转发失败: {msg}"),
+        ProxyError::ResponseContentError { keyword, snippet } => {
+            format!("响应内容命中错误关键字: {keyword}; snippet: {snippet}")
+        }
         ProxyError::NoAvailableProvider => "无可用 Provider".to_string(),
         ProxyError::AllProvidersCircuitOpen => "所有供应商已熔断，无可用渠道".to_string(),
         ProxyError::NoProvidersConfigured => "未配置供应商".to_string(),

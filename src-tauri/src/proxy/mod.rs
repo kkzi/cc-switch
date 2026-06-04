@@ -23,6 +23,7 @@ pub mod model_mapper;
 pub mod provider_router;
 pub mod providers;
 pub mod response_handler;
+pub(crate) mod response_error_detector;
 pub mod response_processor;
 pub(crate) mod server;
 pub mod session;

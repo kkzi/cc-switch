@@ -272,6 +272,46 @@ impl Default for OptimizerConfig {
     }
 }
 
+/// 响应内容错误检测配置
+///
+/// 存储在 settings 表中，key = "response_error_detection_config"。
+/// 当上游返回 2xx 但响应内容命中关键字时，将其视为上游失败。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResponseErrorDetectionConfig {
+    /// 总开关（默认关闭）
+    #[serde(default)]
+    pub enabled: bool,
+    /// 命中任一关键字即视为错误
+    #[serde(default)]
+    pub keywords: Vec<String>,
+    /// SSE 首段预检最多读取的 chunk 数
+    #[serde(default = "default_sse_error_scan_chunks")]
+    pub sse_scan_chunks: u32,
+    /// SSE 首段预检最多读取的字节数
+    #[serde(default = "default_sse_error_scan_bytes")]
+    pub sse_scan_bytes: u32,
+}
+
+fn default_sse_error_scan_chunks() -> u32 {
+    8
+}
+
+fn default_sse_error_scan_bytes() -> u32 {
+    32 * 1024
+}
+
+impl Default for ResponseErrorDetectionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            keywords: Vec::new(),
+            sse_scan_chunks: default_sse_error_scan_chunks(),
+            sse_scan_bytes: default_sse_error_scan_bytes(),
+        }
+    }
+}
+
 /// Copilot 优化器配置
 ///
 /// 存储在 settings 表中，key = "copilot_optimizer_config"

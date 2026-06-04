@@ -1146,6 +1146,8 @@ pub fn run() {
             commands::set_rectifier_config,
             commands::get_optimizer_config,
             commands::set_optimizer_config,
+            commands::get_response_error_detection_config,
+            commands::set_response_error_detection_config,
             commands::get_copilot_optimizer_config,
             commands::set_copilot_optimizer_config,
             commands::get_log_config,

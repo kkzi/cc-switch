@@ -8,7 +8,10 @@ use crate::proxy::{
     extract_session_id,
     forwarder::RequestForwarder,
     server::ProxyState,
-    types::{AppProxyConfig, CopilotOptimizerConfig, OptimizerConfig, RectifierConfig},
+    types::{
+        AppProxyConfig, CopilotOptimizerConfig, OptimizerConfig, RectifierConfig,
+        ResponseErrorDetectionConfig,
+    },
     ProxyError,
 };
 use axum::http::HeaderMap;
@@ -65,6 +68,8 @@ pub struct RequestContext {
     pub optimizer_config: OptimizerConfig,
     /// Copilot 优化器配置
     pub copilot_optimizer_config: CopilotOptimizerConfig,
+    /// 响应内容错误检测配置
+    pub response_error_detection_config: ResponseErrorDetectionConfig,
 }
 
 impl RequestContext {
@@ -101,6 +106,10 @@ impl RequestContext {
         let rectifier_config = state.db.get_rectifier_config().unwrap_or_default();
         let optimizer_config = state.db.get_optimizer_config().unwrap_or_default();
         let copilot_optimizer_config = state.db.get_copilot_optimizer_config().unwrap_or_default();
+        let response_error_detection_config = state
+            .db
+            .get_response_error_detection_config()
+            .unwrap_or_default();
 
         let current_provider_id =
             crate::settings::get_current_provider(&app_type).unwrap_or_default();
@@ -167,6 +176,7 @@ impl RequestContext {
             rectifier_config,
             optimizer_config,
             copilot_optimizer_config,
+            response_error_detection_config,
         })
     }
 
@@ -234,6 +244,7 @@ impl RequestContext {
             self.rectifier_config.clone(),
             self.optimizer_config.clone(),
             self.copilot_optimizer_config.clone(),
+            self.response_error_detection_config.clone(),
             max_retries,
         )
     }

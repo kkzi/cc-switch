@@ -333,6 +333,31 @@ pub async fn set_optimizer_config(
     Ok(true)
 }
 
+/// 获取响应内容错误检测配置
+#[tauri::command]
+pub async fn get_response_error_detection_config(
+    state: tauri::State<'_, crate::AppState>,
+) -> Result<crate::proxy::types::ResponseErrorDetectionConfig, String> {
+    state
+        .db
+        .get_response_error_detection_config()
+        .map_err(|e| e.to_string())
+}
+
+/// 设置响应内容错误检测配置
+#[tauri::command]
+pub async fn set_response_error_detection_config(
+    state: tauri::State<'_, crate::AppState>,
+    mut config: crate::proxy::types::ResponseErrorDetectionConfig,
+) -> Result<bool, String> {
+    config = crate::proxy::response_error_detector::normalize_config(config);
+    state
+        .db
+        .set_response_error_detection_config(&config)
+        .map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
 /// 获取 Copilot 优化器配置
 #[tauri::command]
 pub async fn get_copilot_optimizer_config(

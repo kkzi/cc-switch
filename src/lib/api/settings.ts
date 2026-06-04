@@ -236,6 +236,16 @@ export const settingsApi = {
     return await invoke("set_optimizer_config", { config });
   },
 
+  async getResponseErrorDetectionConfig(): Promise<ResponseErrorDetectionConfig> {
+    return await invoke("get_response_error_detection_config");
+  },
+
+  async setResponseErrorDetectionConfig(
+    config: ResponseErrorDetectionConfig,
+  ): Promise<boolean> {
+    return await invoke("set_response_error_detection_config", { config });
+  },
+
   async getLogConfig(): Promise<LogConfig> {
     return await invoke("get_log_config");
   },
@@ -276,6 +286,13 @@ export interface OptimizerConfig {
   thinkingOptimizer: boolean;
   cacheInjection: boolean;
   cacheTtl: string;
+}
+
+export interface ResponseErrorDetectionConfig {
+  enabled: boolean;
+  keywords: string[];
+  sseScanChunks: number;
+  sseScanBytes: number;
 }
 
 export interface LogConfig {

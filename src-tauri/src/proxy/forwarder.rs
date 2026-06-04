@@ -14,17 +14,25 @@ use super::{
         codex_chat_history::CodexChatHistoryStore, gemini_shadow::GeminiShadowStore, get_adapter,
         AuthInfo, AuthStrategy, ProviderAdapter, ProviderType,
     },
+    response_error_detector::{
+        detect_response_error, is_enabled as response_error_detection_enabled,
+        normalize_config as normalize_response_error_config,
+    },
     thinking_budget_rectifier::{rectify_thinking_budget, should_rectify_thinking_budget},
     thinking_rectifier::{
         normalize_thinking_type, rectify_anthropic_request, should_rectify_thinking_signature,
     },
-    types::{CopilotOptimizerConfig, OptimizerConfig, ProxyStatus, RectifierConfig},
+    types::{
+        CopilotOptimizerConfig, OptimizerConfig, ProxyStatus, RectifierConfig,
+        ResponseErrorDetectionConfig,
+    },
     ProxyError,
 };
 use crate::commands::{CodexOAuthState, CopilotAuthState};
 use crate::proxy::providers::codex_oauth_auth::CodexOAuthManager;
 use crate::proxy::providers::copilot_auth::CopilotAuthManager;
 use crate::{app_config::AppType, provider::Provider};
+use bytes::Bytes;
 use futures::StreamExt;
 use http::Extensions;
 use serde_json::Value;
@@ -33,6 +41,10 @@ use tauri::Manager;
 use tokio::sync::RwLock;
 
 const PROXY_AUTH_PLACEHOLDER: &str = "PROXY_MANAGED";
+const SSE_ERROR_SCAN_FIRST_CHUNK_TIMEOUT: std::time::Duration =
+    std::time::Duration::from_secs(60);
+const SSE_ERROR_SCAN_EXTRA_CHUNK_TIMEOUT: std::time::Duration =
+    std::time::Duration::from_millis(500);
 
 pub struct ForwardResult {
     pub response: ProxyResponse,
@@ -109,6 +121,8 @@ pub struct RequestForwarder {
     optimizer_config: OptimizerConfig,
     /// Copilot 优化器配置
     copilot_optimizer_config: CopilotOptimizerConfig,
+    /// 响应内容错误检测配置
+    response_error_detection_config: ResponseErrorDetectionConfig,
     /// 非流式请求超时（秒）
     non_streaming_timeout: std::time::Duration,
     /// 流式请求响应头等待超时（秒）
@@ -140,6 +154,7 @@ impl RequestForwarder {
         rectifier_config: RectifierConfig,
         optimizer_config: OptimizerConfig,
         copilot_optimizer_config: CopilotOptimizerConfig,
+        response_error_detection_config: ResponseErrorDetectionConfig,
         max_retries: u32,
     ) -> Self {
         // max_retries 是「失败后重试次数」语义，attempt 上限 = retries + 1。
@@ -159,6 +174,9 @@ impl RequestForwarder {
             rectifier_config,
             optimizer_config,
             copilot_optimizer_config,
+            response_error_detection_config: normalize_response_error_config(
+                response_error_detection_config,
+            ),
             non_streaming_timeout: std::time::Duration::from_secs(non_streaming_timeout),
             streaming_first_byte_timeout: std::time::Duration::from_secs(
                 streaming_first_byte_timeout,
@@ -238,7 +256,9 @@ impl RequestForwarder {
         // Provider 错误：本家上游/网络确实出问题，下一家 provider 可能可用 → 继续故障转移。
         // 客户端错误：整流后请求仍违法，下一家也修不好 → 直接返回。
         let is_provider_error = match &retry_err {
-            ProxyError::Timeout(_) | ProxyError::ForwardFailed(_) => true,
+            ProxyError::Timeout(_)
+            | ProxyError::ForwardFailed(_)
+            | ProxyError::ResponseContentError { .. } => true,
             ProxyError::UpstreamError { status, .. } => *status >= 500,
             _ => false,
         };
@@ -1781,21 +1801,29 @@ impl RequestForwarder {
             return self.prime_streaming_response(response).await;
         }
 
-        if self.non_streaming_timeout.is_zero() {
+        let detection_enabled =
+            response_error_detection_enabled(&self.response_error_detection_config);
+        if self.non_streaming_timeout.is_zero() && !detection_enabled {
             return Ok(response);
         }
 
         let status = response.status();
         let headers = response.headers().clone();
         let body_timeout = self.non_streaming_timeout;
-        let body = tokio::time::timeout(body_timeout, response.bytes())
-            .await
-            .map_err(|_| {
-                ProxyError::Timeout(format!(
-                    "响应体读取超时: {}s（上游发完响应头后 body 未到达）",
-                    body_timeout.as_secs()
-                ))
-            })??;
+        let body = if body_timeout.is_zero() {
+            response.bytes().await?
+        } else {
+            tokio::time::timeout(body_timeout, response.bytes())
+                .await
+                .map_err(|_| {
+                    ProxyError::Timeout(format!(
+                        "响应体读取超时: {}s（上游发完响应头后 body 未到达）",
+                        body_timeout.as_secs()
+                    ))
+                })??
+        };
+
+        self.detect_response_content_error(&body)?;
 
         Ok(ProxyResponse::buffered(status, headers, body))
     }
@@ -1804,14 +1832,30 @@ impl RequestForwarder {
         &self,
         response: ProxyResponse,
     ) -> Result<ProxyResponse, ProxyError> {
-        if self.streaming_first_byte_timeout.is_zero() {
+        let detection_enabled =
+            response_error_detection_enabled(&self.response_error_detection_config);
+        if self.streaming_first_byte_timeout.is_zero() && !detection_enabled {
             return Ok(response);
         }
 
         let status = response.status();
         let headers = response.headers().clone();
-        let timeout = self.streaming_first_byte_timeout;
+        let timeout = if self.streaming_first_byte_timeout.is_zero() {
+            SSE_ERROR_SCAN_FIRST_CHUNK_TIMEOUT
+        } else {
+            self.streaming_first_byte_timeout
+        };
         let mut stream = Box::pin(response.bytes_stream());
+        let scan_chunks = if detection_enabled {
+            self.response_error_detection_config
+                .sse_scan_chunks
+                .max(1) as usize
+        } else {
+            1
+        };
+        let scan_bytes = self.response_error_detection_config.sse_scan_bytes as usize;
+        let mut replay_chunks: Vec<Bytes> = Vec::new();
+        let mut scanned = 0usize;
 
         let first = tokio::time::timeout(timeout, stream.next())
             .await
@@ -1830,9 +1874,73 @@ impl RequestForwarder {
 
         let first =
             first.map_err(|e| ProxyError::ForwardFailed(format!("读取流式响应首包失败: {e}")))?;
+        scanned = scanned.saturating_add(first.len());
+        replay_chunks.push(first);
 
-        let replay = futures::stream::once(async move { Ok(first) }).chain(stream);
+        if detection_enabled {
+            self.detect_response_content_error_in_chunks(&replay_chunks)?;
+
+            while replay_chunks.len() < scan_chunks && scanned < scan_bytes {
+                let next = match tokio::time::timeout(
+                    SSE_ERROR_SCAN_EXTRA_CHUNK_TIMEOUT,
+                    stream.next(),
+                )
+                .await
+                {
+                    Ok(Some(Ok(bytes))) => bytes,
+                    Ok(Some(Err(e))) => {
+                        return Err(ProxyError::ForwardFailed(format!(
+                            "读取流式响应预检数据失败: {e}"
+                        )))
+                    }
+                    Ok(None) => break,
+                    Err(_) => break,
+                };
+
+                scanned = scanned.saturating_add(next.len());
+                replay_chunks.push(next);
+                self.detect_response_content_error_in_chunks(&replay_chunks)?;
+            }
+        }
+
+        let replay = futures::stream::iter(replay_chunks.into_iter().map(Ok)).chain(stream);
         Ok(ProxyResponse::streamed(status, headers, replay))
+    }
+
+    fn detect_response_content_error(&self, body: &Bytes) -> Result<(), ProxyError> {
+        if !response_error_detection_enabled(&self.response_error_detection_config) {
+            return Ok(());
+        }
+
+        let text = String::from_utf8_lossy(body);
+        if let Some(matched) =
+            detect_response_error(text.as_ref(), &self.response_error_detection_config)
+        {
+            log::warn!(
+                "[Forwarder] 响应内容命中错误关键字: keyword={}, snippet={}",
+                matched.keyword,
+                matched.snippet
+            );
+            return Err(ProxyError::ResponseContentError {
+                keyword: matched.keyword,
+                snippet: matched.snippet,
+            });
+        }
+
+        Ok(())
+    }
+
+    fn detect_response_content_error_in_chunks(&self, chunks: &[Bytes]) -> Result<(), ProxyError> {
+        if !response_error_detection_enabled(&self.response_error_detection_config) {
+            return Ok(());
+        }
+
+        let total_len = chunks.iter().map(Bytes::len).sum();
+        let mut buffer = Vec::with_capacity(total_len);
+        for chunk in chunks {
+            buffer.extend_from_slice(chunk);
+        }
+        self.detect_response_content_error(&Bytes::from(buffer))
     }
 
     async fn resolve_claude_api_format(
@@ -1945,6 +2053,7 @@ impl RequestForwarder {
             // 网络和上游错误：都应该尝试下一个供应商
             ProxyError::Timeout(_) => ErrorCategory::Retryable,
             ProxyError::ForwardFailed(_) => ErrorCategory::Retryable,
+            ProxyError::ResponseContentError { .. } => ErrorCategory::Retryable,
             ProxyError::ProviderUnhealthy(_) => ErrorCategory::Retryable,
             // 上游 HTTP 错误：按状态码分桶。
             //
@@ -2472,6 +2581,7 @@ mod tests {
             rectifier_config: RectifierConfig::default(),
             optimizer_config: OptimizerConfig::default(),
             copilot_optimizer_config: CopilotOptimizerConfig::default(),
+            response_error_detection_config: ResponseErrorDetectionConfig::default(),
             non_streaming_timeout,
             streaming_first_byte_timeout,
             max_attempts: 1,

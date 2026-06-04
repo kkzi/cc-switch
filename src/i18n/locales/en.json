@@ -309,12 +309,35 @@
     "tabAuth": "Auth",
     "tabAdvanced": "Advanced",
     "tabProxy": "Routing",
+    "tabExtensions": "Extensions",
     "authCenter": {
       "title": "OAuth Authentication Center",
       "description": "Use your other subscriptions in Claude Code — please be mindful of compliance risks.",
       "beta": "Beta",
       "copilotDescription": "Manage GitHub Copilot accounts",
       "codexOauthDescription": "Manage ChatGPT accounts"
+    },
+    "extensions": {
+      "heading": "Extensions",
+      "headingDescription": "Configure global extensions and experimental routing behavior.",
+      "schema": {
+        "title": "URL Schema Registration",
+        "description": "Register the ccswitch:// protocol handler for importing providers, MCP servers, prompts, and skills from browsers or external tools.",
+        "registerDescription": "Register the system protocol for the current user. Windows and Linux can run this manually; macOS is usually handled by the app bundle."
+      },
+      "responseErrors": {
+        "title": "Response Content Error Detection",
+        "description": "When upstream returns 2xx but the HTTP body or initial SSE content contains a keyword, treat the response as failed and trigger failover.",
+        "enabled": "Enable response content error detection",
+        "enabledDescription": "When enabled, any response matching a keyword is treated as an upstream error.",
+        "keywords": "Error Keywords",
+        "keywordsPlaceholder": "One keyword per line, for example:\nquota exceeded\ninvalid api key\ninsufficient balance",
+        "keywordsDescription": "Uses case-sensitive contains matching. Empty lines are ignored and duplicate keywords are removed.",
+        "sseScanChunks": "SSE Scan Chunks",
+        "sseScanBytes": "SSE Scan Bytes",
+        "sseNote": "SSE is only checked at the start of the response. After content has been sent to the client, CC Switch cannot switch providers without disrupting the stream.",
+        "saved": "Extensions settings saved"
+      }
     },
     "advanced": {
       "configDir": {

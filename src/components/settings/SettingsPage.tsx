@@ -9,6 +9,7 @@ import {
   HardDriveDownload,
   FlaskConical,
   KeyRound,
+  Puzzle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -45,6 +46,7 @@ import { ModelTestConfigPanel } from "@/components/usage/ModelTestConfigPanel";
 import { UsageDashboard } from "@/components/usage/UsageDashboard";
 import { LogConfigPanel } from "@/components/settings/LogConfigPanel";
 import { CodexAuthSettings } from "@/components/settings/CodexAuthSettings";
+import { ExtensionsSettings } from "@/components/settings/ExtensionsSettings";
 import { useInstalledSkills } from "@/hooks/useSkills";
 import { useSettings } from "@/hooks/useSettings";
 import { useImportExport } from "@/hooks/useImportExport";
@@ -196,7 +198,7 @@ export function SettingsPage({
           className="flex flex-col h-full"
         >
           <div className="mb-4 pt-3">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="general">
                 {t("settings.tabGeneral")}
               </TabsTrigger>
@@ -208,6 +210,9 @@ export function SettingsPage({
                 {t("settings.tabAdvanced")}
               </TabsTrigger>
               <TabsTrigger value="usage">{t("usage.title")}</TabsTrigger>
+              <TabsTrigger value="extensions">
+                {t("settings.tabExtensions")}
+              </TabsTrigger>
               <TabsTrigger value="about">{t("common.about")}</TabsTrigger>
             </TabsList>
           </div>
@@ -479,6 +484,24 @@ export function SettingsPage({
 
               <TabsContent value="usage" className="mt-0 pb-4">
                 <UsageDashboard />
+              </TabsContent>
+
+              <TabsContent value="extensions" className="mt-0 space-y-4 pb-4">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 px-1">
+                    <Puzzle className="h-5 w-5 text-primary" />
+                    <div>
+                      <h2 className="text-base font-semibold">
+                        {t("settings.extensions.heading")}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {t("settings.extensions.headingDescription")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <ExtensionsSettings />
+                </div>
               </TabsContent>
             </div>
 
