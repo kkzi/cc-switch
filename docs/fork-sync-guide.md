@@ -5,8 +5,8 @@
 ## 1. 基线
 
 - 对比命令: `git diff upstream/main`
-- 当前状态: fork 相对 upstream `behind 0 / ahead 90 commits`（同步 `upstream/main` 至 `5fd3ec0d` 后）
-- 当前 diff 规模: `158 files changed, 10845 insertions(+), 2240 deletions(-)`
+- 当前状态: fork 相对 upstream `behind 32 / ahead 103 commits`（已 fetch `upstream/main` 至 `f5acef32`，尚未合并这 32 个 upstream commits）
+- 当前 diff 规模: `250 files changed, 13825 insertions(+), 10912 deletions(-)`
 - 不纳入本文档:
   - 未跟踪文件
   - 口头约定
@@ -24,7 +24,8 @@
 4. OpenAI 兼容模型拉取能力
 5. Provider 列表/卡片交互、最近测试反馈与 tooltip 行为
 6. Provider 新增表单体验、剪贴板导入、Codex custom 配置标准化
-7. App shell、Settings、Usage 页面布局与动效取舍
+7. Proxy 响应内容错误检测与本地 provider 管理端点
+8. App shell、Settings、Usage 页面布局与动效取舍
 
 结论上，当前 fork 已不存在以下高误判风险的历史差异：
 
@@ -162,10 +163,19 @@
 
 - `src-tauri/src/proxy/provider_router.rs`
 - `src-tauri/src/proxy/forwarder.rs`
+- `src-tauri/src/proxy/response_error_detector.rs`
+- `src-tauri/src/proxy/provider_admin.rs`
+- `src-tauri/src/proxy/handlers.rs`
 - `src-tauri/src/proxy/server.rs`
+- `src-tauri/src/proxy/error.rs`
+- `src-tauri/src/proxy/error_mapper.rs`
+- `src-tauri/src/proxy/handler_context.rs`
 - `src-tauri/src/proxy/types.rs`
 - `src-tauri/src/database/dao/proxy.rs`
+- `src-tauri/src/database/dao/settings.rs`
 - `src/components/proxy/AutoFailoverConfigPanel.tsx`
+- `src/components/settings/ExtensionsSettings.tsx`
+- `src/lib/api/settings.ts`
 - `src/types/proxy.ts`
 
 从代码可确认：
@@ -176,6 +186,17 @@
 - `ProviderHealth` 新增 `last_check_status`
 - 前端依赖 `last_check_status` 展示最近测试状态
 - `AutoFailoverConfigPanel` 仅增加了锚点与滚动定位 id，不是新的 failover 模式
+- fork 新增全局响应内容错误检测，不按 app / provider / model 配置：
+  - 配置保存在 settings 表中，由 `get_response_error_detection_config` / `save_response_error_detection_config` 读写
+  - 前端入口位于 Settings 的“扩展”页，包含功能开关和关键字列表
+  - 非流式响应会在完整响应体中匹配关键字
+  - SSE / 流式响应会在初始扫描窗口内匹配关键字
+  - 命中后返回 `ProxyError::ResponseContentError`，并通过 `error_mapper` 进入统一错误映射链路
+- fork 新增本地 provider 管理端点：
+  - `GET /cc-switch/providers/:app`
+  - `GET /cc-switch/providers/:app/:provider_id`
+  - `PATCH /cc-switch/providers/:app/:provider_id`
+  - 返回结构由 `ProviderAdminView` 统一组织，错误响应使用 `provider_admin_error`
 
 同步约束：
 
@@ -183,6 +204,10 @@
   - `ActiveTarget.model_key`
   - `ProviderHealth.last_check_status`
 - 但不要再把“模型级路由/模型级故障转移”视为当前 fork 必保能力
+- upstream 若改 `forwarder.rs`、proxy error 类型、server route 注册或 settings command，需要保留响应关键字错误检测链路
+- 响应关键字错误检测是全局行为，不要合并成按 app / provider / model 的覆盖配置
+- `response_error_detector.rs` 的配置归一化、空关键字过滤、大小写处理与扫描窗口逻辑都属于行为代码，不要按普通 helper 删除
+- 本地 provider admin 路由属于 fork 管理接口，合并 `server.rs` / `handlers.rs` 时不要漏掉 `/cc-switch/providers` route
 
 ### 3.6 Provider 列表、卡片与测试反馈交互
 
@@ -273,6 +298,7 @@
 - `src/components/providers/forms/CodexConfigEditor.tsx`
 - `src/components/providers/forms/CodexConfigSections.tsx`
 - `src/components/providers/forms/CodexFormFields.tsx`
+- `src/components/providers/forms/ClaudeFormFields.tsx`
 - `src/config/codexProviderPresets.ts`
 - `src/config/codexTemplates.ts`
 - `src/utils/addProviderInitialData.ts`
@@ -301,6 +327,10 @@
 - `ProviderService::create` 对新增 provider 的默认插入位置做了 fork 定制：
   - 空列表插到第 1 个
   - 非空列表默认插到第 2 个
+- Claude 高级表单做了紧凑化：
+  - API 格式、认证字段、fallback model 等高级项采用更密集的网格布局
+  - 删除了一批说明性 helper 文案，避免高级区撑高
+  - fallback model 行保持内联、低高度输入节奏
 
 同步约束：
 
@@ -310,6 +340,7 @@
 - upstream 若恢复 Codex `apiFormat`/本地路由开关 UI，必须人工删除或隐藏；不要让它替代 fork 的 `模型名称 + 获取模型` 行
 - 合并 `useCodexConfigState.ts` 时必须保留 `extractCodexModelName()` / `setCodexModelName()` 与表单输入的双向同步
 - 新增 provider 默认插入第 2 位的行为不要被无意回滚
+- upstream 若改 `ClaudeFormFields.tsx`，不要把紧凑高级表单回滚成大段 helper 文案和高 padding 布局
 
 ### 3.8 App Shell、Settings、Usage 与样式层
 
@@ -320,6 +351,8 @@
 - `src/components/common/FullScreenPanel.tsx`
 - `src/components/UsageFooter.tsx`
 - `src/components/settings/SettingsPage.tsx`
+- `src/components/settings/ExtensionsSettings.tsx`
+- `src/components/settings/AboutSection.tsx`
 - `src/components/settings/WindowSettings.tsx`
 - `src/components/usage/UsageDashboard.tsx`
 - `src/components/UpdateBadge.tsx`
@@ -343,6 +376,9 @@
 - `AddProviderDialog` 现在接收 `initialData`
 - usage summary 卡片动画被移除
 - Settings 页结构、WindowSettings、About 区块都有明显 fork 定制
+- Settings 页在“关于”前插入了“扩展”页
+- “注册 Schema”入口已从 About 移到“扩展”页
+- “扩展”页同时承载全局响应内容错误检测的开关和关键字配置
 - Settings / Skills / Prompts / MCP / Sessions 等页面已统一外层面板 padding
 - Settings 高级页底部操作区采用“外层 top border 拉通主面板宽度，内层按钮区再对齐内容区”的显示逻辑
 - 余额查询（`templateType === "balance"`）在 provider card 内联区域使用独立的紧凑布局，而不是复用通用用量布局
@@ -355,6 +391,8 @@
 同步约束：
 
 - upstream 若改 `App.tsx`、settings shell、usage 页面，这里冲突概率很高
+- upstream 若改 Settings tab 结构，要保留“扩展”页在“关于”前的位置，以及“注册 Schema”入口的迁移
+- About 页不应重新放回注册 Schema 按钮，避免两个入口同时存在
 - 若 `App.tsx` 被大幅合并，必须同时决定是否同步更新 `App.tsx.fork`；不要让它长期停留在过期状态
 - 合并时重点回看：
   - header 结构
@@ -395,8 +433,19 @@
 - `src-tauri/src/services/provider/models.rs`
 - `src-tauri/src/services/stream_check.rs`
 - `src-tauri/src/commands/stream_check.rs`
+- `src-tauri/src/proxy/forwarder.rs`
+- `src-tauri/src/proxy/response_error_detector.rs`
+- `src-tauri/src/proxy/provider_admin.rs`
+- `src-tauri/src/proxy/handlers.rs`
+- `src-tauri/src/proxy/server.rs`
+- `src-tauri/src/proxy/error.rs`
+- `src-tauri/src/proxy/error_mapper.rs`
+- `src-tauri/src/proxy/handler_context.rs`
+- `src-tauri/src/database/dao/settings.rs`
+- `src-tauri/src/commands/settings.rs`
 - `src/lib/api/providers.ts`
 - `src/lib/api/vscode.ts`
+- `src/lib/api/settings.ts`
 - `src/types.ts`
 - `src/components/ui/model-suggest.tsx`
 
@@ -408,6 +457,7 @@
 - `src/hooks/useStreamCheck.ts`
 - `src/components/providers/forms/ProviderForm.tsx`
 - `src/components/providers/forms/ProviderPresetSelector.tsx`
+- `src/components/providers/forms/ClaudeFormFields.tsx`
 - `tests/components/ProviderCard.test.tsx`
 - `src/utils/addProviderInitialData.ts`
 - `src/utils/providerClipboard.ts`
@@ -426,6 +476,8 @@
 - `src-tauri/src/bin/export_providers.rs`
 - `README_EN.md`
 - `src/components/settings/SettingsPage.tsx`
+- `src/components/settings/ExtensionsSettings.tsx`
+- `src/components/settings/AboutSection.tsx`
 - `src/components/settings/ProxyTabContent.tsx`
 - `src/components/skills/SkillsPage.tsx`
 - `src/components/skills/UnifiedSkillsPanel.tsx`
@@ -440,10 +492,11 @@
 1. 先 fetch/merge upstream。
 2. 先处理主窗口、tray、`tauri.conf.json` 冲突。
 3. 再处理数据库 schema、provider health、speedtest、model fetch、stream check。
-4. 再处理 `App.tsx`、ProviderCard/List、ProviderForm、preset selector。
-5. 再处理 Settings / Skills / Prompts / MCP / Sessions 的面板布局和底部操作栏。
-6. 最后处理 workflow、文档、README 与测试。
-7. 推送前至少跑一轮与 CI 对齐的格式、Clippy、前端类型检查和单测。
+4. 再处理 proxy forwarder、响应错误检测、provider admin route。
+5. 再处理 `App.tsx`、ProviderCard/List、ProviderForm、preset selector。
+6. 再处理 Settings / Skills / Prompts / MCP / Sessions 的面板布局和底部操作栏。
+7. 最后处理 workflow、文档、README 与测试。
+8. 推送前至少跑一轮与 CI 对齐的格式、Clippy、前端类型检查和单测。
 
 ## 7. 同步后最少回归项
 
@@ -482,6 +535,7 @@
 - `Ctrl/Cmd + V` 能从剪贴板打开新增 provider
 - clipboard draft 能生成正确的初始配置
 - Codex custom provider 在新增初始值和保存提交时都会标准化到 `[model_providers.custom]`
+- Claude 高级表单保持紧凑布局，API 格式 / 认证 / fallback model 区域不应重新出现大段 helper 文案
 
 ### 7.5 App Shell / Settings / Usage
 
@@ -491,6 +545,12 @@
 - balance inline controls 保持紧凑，不应因时间文本或按钮 padding 撑大 provider card
 - 多套餐入口保持低高度文本按钮风格，不应因 hover 背景或 padding 撑大 provider card
 - settings 页面结构与窗口设置项正常
+- Settings “扩展”页位于“关于”前
+- “注册 Schema”入口只在“扩展”页，不在 About 重复出现
+- “扩展”页可读取、保存全局响应内容错误检测开关和关键字
+- 启用响应内容错误检测后，非流式响应体命中关键字会被代理判为错误
+- 启用响应内容错误检测后，SSE 初始扫描窗口命中关键字会被代理判为错误
+- 本地 provider admin 端点 `GET/PATCH /cc-switch/providers/:app/:provider_id` 可正常读写允许的 provider 字段
 - Skills / Prompts / MCP / Sessions 与 Settings 页的外层 padding 保持一致
 - Settings 高级页底部操作区的 top border 贯穿主面板宽度
 - Settings 高级页保存按钮右边界与内容区右边界对齐
@@ -516,4 +576,4 @@
 3. 若某项差异已被 upstream 吸收或 fork 已删除，应从本文档移除。
 4. README、旧 issue、旧设计稿不能替代代码事实。
 5. 对“是否仍属于 fork 差异”不确定时，优先检查：
-   `main_window.rs`、`tray.rs`、`database/schema.rs`、`provider.rs`、`services/provider/models.rs`、`App.tsx`、`ProviderList/Card`。
+   `main_window.rs`、`tray.rs`、`database/schema.rs`、`provider.rs`、`services/provider/models.rs`、`proxy/forwarder.rs`、`proxy/response_error_detector.rs`、`proxy/provider_admin.rs`、`App.tsx`、`ProviderList/Card`。
